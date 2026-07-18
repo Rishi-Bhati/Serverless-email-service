@@ -1,0 +1,15 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+
+# Cloudflare Wrangler state
+.wrangler/
+.dev.vars
+
+# Local environment variables
+.env
+
+# Build outputs (if any)
+dist/
+build/
+worker-configuration.d.ts
