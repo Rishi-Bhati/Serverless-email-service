@@ -223,6 +223,30 @@ export function renderDashboard(): string {
       color: var(--color-red);
     }
 
+    .report-issue-btn {
+      background: linear-gradient(135deg, var(--color-orange) 0%, #d97706 100%);
+      color: white !important;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 13px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+    }
+
+    .report-issue-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+      filter: brightness(1.1);
+    }
+
     main {
       flex: 1;
       padding: 40px;
@@ -535,6 +559,12 @@ export function renderDashboard(): string {
       <div class="logo-text">Reportary <span>Mail Edge</span></div>
     </div>
     <div class="header-actions">
+      <a href="https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/" target="_blank" class="report-issue-btn">
+        <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        Report Issues
+      </a>
       <div class="status-pill">
         <div class="status-dot"></div>
         <span>Edge Active</span>
