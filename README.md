@@ -2,9 +2,9 @@
 
 A high-performance, completely serverless, and free email queue service designed to be hosted on **Cloudflare Workers** and **Cloudflare D1** (SQLite database). 
 
-[![Report Issues Here](https://img.shields.io/badge/Report-Issues%20Here-orange?style=for-the-badge)](https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/)
-
 It allows you to use your own SMTP credentials (such as Gmail, Amazon SES, SendGrid, etc.) as an API, with built-in protection against overloading your SMTP server, automated serial queue processing, and a gorgeous web admin dashboard to monitor everything in real time.
+
+[![Report Issues Here](https://img.shields.io/badge/Report-Issues%20Here-orange?style=for-the-badge)](https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/)
 
 ---
 
