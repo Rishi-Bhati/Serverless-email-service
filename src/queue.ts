@@ -3,6 +3,9 @@ import { WorkerMailer } from 'worker-mailer';
 export interface Env {
   DB: D1Database;
   API_KEY: string;
+  API_SECRET: string;         // HMAC signing secret — configure on both server and client, never transmit
+  SECURITY_MODE?: string;     // 'api-key-only' | 'signed' | 'full'  (default: 'full')
+  NONCE_TTL_SECONDS?: string; // How long to keep used nonces in D1 (default: '300' = 5 minutes)
   SMTP_HOST: string;
   SMTP_PORT: string;
   SMTP_SECURE: string;
@@ -13,6 +16,7 @@ export interface Env {
   SMTP_FROM_NAME: string;
   SMTP_THROTTLE_DELAY_MS?: string;
   MAX_CONCURRENT_WORKERS?: string;
+  SMTP_AUTH_TYPE?: string;
 }
 
 export async function processQueue(env: Env): Promise<void> {

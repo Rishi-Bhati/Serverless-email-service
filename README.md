@@ -19,7 +19,7 @@ It allows you to use your own SMTP credentials (such as Gmail, Amazon SES, SendG
 * **Atomic Locking**: Uses SQLite's native `UPDATE ... RETURNING` statements to ensure that multiple concurrent workers never pick up or send the same email twice.
 * **Self-Healing Queue**: Includes automated cron fallback triggers and self-healing cleanup tasks to recover any emails stuck in a `sending` state if a worker times out.
 * **Sleek Admin Dashboard**: A premium dark-mode SPA served directly on your Worker root URL (`/`) to monitor logs, check queue counts, and send test emails interactively.
-* **Secured API**: Guarded by Bearer Token authorization to prevent unauthorized email dispatches.
+* **Hardened HMAC Request Signing**: Optional cryptographic validation chain (HMAC-SHA256 + nonce + timestamp) to defend against replay attacks, request tampering, and old captures.
 
 ---
 
@@ -102,7 +102,9 @@ npm run db:migrate:prod
 
 1. Copy the `.env` file containing configuration parameters.
 2. Open the `.env` file and replace the placeholder values with your real credentials:
-   - **`API_KEY`**: Create a custom secret key (e.g. a long random string) to protect your API.
+   - **`API_KEY`**: Create a custom API key (sent in request headers) to identify your client.
+   - **`API_SECRET`**: A private signing secret (configured on both sides, never sent over the network) for HMAC calculations.
+   - **`SECURITY_MODE`**: Level of validation to enforce (`api-key-only` | `signed` | `full`). Defaults to `full`.
    - **`SMTP_HOST` & `SMTP_PORT`**: SMTP endpoint details (e.g. `smtp.gmail.com` and `587`).
    - **`SMTP_SECURE`**: Set to `true` if connecting on port 465 (SSL/TLS direct), or `false` on port 587 (STARTTLS).
    - **`SMTP_USERNAME` & `SMTP_PASSWORD`**: Your SMTP credentials.
@@ -127,69 +129,129 @@ Once successful, the console will output your live URL:
 
 ---
 
+## 🔒 Security Levels
+
+You can adjust the validation strictness using the `SECURITY_MODE` secret:
+
+| Security Level | Header Checks | Replay Prevention | Tamper Protection |
+|---|---|---|---|
+| `api-key-only` | `X-API-Key` | ✗ No | ✗ No |
+| `signed` | `X-API-Key`, `X-Timestamp`, `X-Signature` | ✗ No (within 3m window) | ✓ Yes (HMAC body hash) |
+| `full` (default) | `X-API-Key`, `X-Timestamp`, `X-Nonce`, `X-Signature` | ✓ Yes (nonce check in D1) | ✓ Yes (HMAC body hash) |
+
+---
+
 ## 📬 API Documentation
 
-All API requests must include the `Authorization` header containing your configured `API_KEY`.
+Depending on the `SECURITY_MODE` enabled, you will need to construct and sign your requests before sending them to `POST /api/send`.
 
-### 1. Send / Queue Email
-* **Endpoint**: `POST /api/send`
-* **Headers**:
-  * `Authorization: Bearer YOUR_API_KEY`
-  * `Content-Type: application/json`
-* **JSON Payload Parameters**:
-  * `to` (Required): String (comma-separated list), array of strings, or recipient object array `[{"name": "Alice", "email": "alice@example.com"}]`.
-  * `cc` (Optional): Same format as `to`.
-  * `bcc` (Optional): Same format as `to`.
-  * `subject` (Required): String.
-  * `body` (Required): String (HTML templates and plain-text are both supported).
+### Request Headers
 
-#### Example Request
+* `X-API-Key` *(Required in all modes)*: Your API key string.
+* `X-Timestamp` *(Required in signed & full)*: Current Unix epoch timestamp in seconds. Must be within ±3 minutes of server time.
+* `X-Nonce` *(Required in full)*: Unique string per request (e.g. UUID). The server checks D1 to ensure this nonce hasn't been used before.
+* `X-Signature` *(Required in signed & full)*: The computed HMAC-SHA256 hex string.
+
+---
+
+### Request Signing Guide
+
+To compute the `X-Signature` hash:
+
+1. **Calculate the SHA-256 hash** of the raw JSON request body bytes:
+   ```
+   body_hash = SHA256(raw_request_body)  # represented as hex
+   ```
+2. **Build the canonical message** by joining parts with a literal newline (`\n`) character:
+   ```
+   canonical_message = timestamp + "\n" + nonce + "\n" + body_hash
+   ```
+   *(Note: in `signed` mode, the nonce is empty, so there will be two consecutive newlines between timestamp and body hash)*
+3. **Compute the HMAC-SHA256 signature** using your private `API_SECRET` as the key:
+   ```
+   signature = HMAC_SHA256(API_SECRET, canonical_message)  # represented as hex
+   ```
+
+---
+
+### Code Examples
+
+#### cURL / Bash (`full` mode)
 ```bash
+API_KEY="rpt_your_api_key"
+API_SECRET="your_api_secret"
+
+BODY='{"to":"user@example.com","subject":"Hello","body":"<h1>Hi!</h1>"}'
+TIMESTAMP=$(date +%s)
+NONCE=$(uuidgen)
+
+# 1. Body hash
+BODY_HASH=$(printf '%s' "$BODY" | openssl dgst -sha256 | awk '{print $2}')
+
+# 2. Canonical message
+MESSAGE="$TIMESTAMP
+$NONCE
+$BODY_HASH"
+
+# 3. Signature
+SIGNATURE=$(printf '%s' "$MESSAGE" | openssl dgst -sha256 -hmac "$API_SECRET" | awk '{print $2}')
+
 curl -X POST https://reportary-email-service.[your-subdomain].workers.dev/api/send \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
   -H "Content-Type: application/json" \
-  -d '{
-    "to": "recipient1@example.com, recipient2@example.com",
-    "cc": ["cc1@example.com"],
-    "subject": "Cloudflare Edge Dispatch",
-    "body": "<h1>Task Update</h1><p>Email has been sent successfully!</p>"
-  }'
+  -d "$BODY"
 ```
 
-#### Response (202 Accepted)
-```json
-{
-  "success": true,
-  "id": 1,
-  "message": "Email successfully queued for sending"
+#### JavaScript (`full` mode)
+```javascript
+async function sendSignedEmail(apiKey, apiSecret, payload) {
+  const body = JSON.stringify(payload);
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+
+  // 1. Hash body
+  const bodyBytes = new TextEncoder().encode(body);
+  const hashBuf = await crypto.subtle.digest('SHA-256', bodyBytes);
+  const bodyHash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  // 2. Canonical message
+  const message = `${timestamp}\n${nonce}\n${bodyHash}`;
+
+  // 3. HMAC-SHA256
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(apiSecret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sigBuf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+  const signature = Array.from(new Uint8Array(sigBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+  return fetch('https://reportary-email-service.[your-subdomain].workers.dev/api/send', {
+    method: 'POST',
+    headers: {
+      'X-API-Key': apiKey,
+      'X-Timestamp': timestamp,
+      'X-Nonce': nonce,
+      'X-Signature': signature,
+      'Content-Type': 'application/json'
+    },
+    body
+  });
 }
 ```
 
 ---
 
-### 2. View Queue Statistics
-* **Endpoint**: `GET /api/status`
-* **Headers**: `Authorization: Bearer YOUR_API_KEY`
-* **Response**:
-  ```json
-  {
-    "queued": 0,
-    "sending": 0,
-    "sent": 14,
-    "failed": 2
-  }
-  ```
-
----
-
 ## 🖥️ Web Admin Dashboard
 
-You can access a beautiful visual dashboard directly from the root URL of your deployed Worker in any browser:
+You can access the visual dashboard directly from the root URL of your deployed Worker:
 `https://reportary-email-service.[your-subdomain].workers.dev`
 
-1. Open the page.
-2. Enter your `API_KEY` in the overlay login box.
-3. You will be able to check real-time queue states, review dispatch history, inspect last failure logs, and send test emails interactively!
+1. Select your configured **Security Mode**.
+2. Enter your **API Key** (and **API Secret** if running in signed/full modes).
+3. Check real-time queue states, review dispatch history, inspect failure logs, and send signed test emails directly from the browser!
 
 ---
 
