@@ -139,17 +139,67 @@ export default {
       }
     }
 
-    // 6. GET /api/logs — Recent dispatch logs
+    // 6. GET /api/logs — Recent dispatch logs with pagination, filtering, and sorting
     if (url.pathname === '/api/logs' && request.method === 'GET') {
       try {
-        const logs = await env.DB.prepare(
-          `SELECT id, to_json, subject, status, attempts, error, updated_at
-           FROM emails
-           ORDER BY updated_at DESC
-           LIMIT 100`
-        ).all();
+        const limitParam = url.searchParams.get('limit');
+        const offsetParam = url.searchParams.get('offset');
+        const statusParam = url.searchParams.get('status');
+        const qParam = url.searchParams.get('q');
+        const sortParam = url.searchParams.get('sort') || 'updated_at_desc';
 
-        return jsonResponse(logs.results);
+        const limit = limitParam ? Math.min(200, Math.max(1, parseInt(limitParam, 10))) : 100;
+        const offset = offsetParam ? Math.max(0, parseInt(offsetParam, 10)) : 0;
+
+        let query = `SELECT id, to_json, cc_json, bcc_json, subject, body, status, attempts, error, created_at, updated_at FROM emails`;
+        const conditions: string[] = [];
+        const bindings: any[] = [];
+
+        if (statusParam && ['queued', 'sending', 'sent', 'failed'].includes(statusParam)) {
+          conditions.push(`status = ?${bindings.length + 1}`);
+          bindings.push(statusParam);
+        }
+
+        if (qParam && qParam.trim()) {
+          const likeTerm = `%${qParam.trim()}%`;
+          conditions.push(`(subject LIKE ?${bindings.length + 1} OR to_json LIKE ?${bindings.length + 1} OR cc_json LIKE ?${bindings.length + 1} OR bcc_json LIKE ?${bindings.length + 1} OR body LIKE ?${bindings.length + 1} OR error LIKE ?${bindings.length + 1})`);
+          bindings.push(likeTerm);
+        }
+
+        if (conditions.length > 0) {
+          query += ` WHERE ` + conditions.join(' AND ');
+        }
+
+        // Sorting
+        let orderBy = 'updated_at DESC';
+        if (sortParam === 'updated_at_asc') orderBy = 'updated_at ASC';
+        else if (sortParam === 'created_at_desc') orderBy = 'created_at DESC';
+        else if (sortParam === 'created_at_asc') orderBy = 'created_at ASC';
+        else if (sortParam === 'attempts_desc') orderBy = 'attempts DESC';
+
+        query += ` ORDER BY ${orderBy}`;
+
+        // Pagination
+        query += ` LIMIT ?${bindings.length + 1} OFFSET ?${bindings.length + 2}`;
+        bindings.push(limit, offset);
+
+        const logs = await env.DB.prepare(query).bind(...bindings).all();
+
+        // Count query
+        let countQuery = `SELECT COUNT(*) as total FROM emails`;
+        if (conditions.length > 0) {
+          countQuery += ` WHERE ` + conditions.join(' AND ');
+        }
+        const countBindings = bindings.slice(0, -2);
+        const countResult = await env.DB.prepare(countQuery).bind(...countBindings).first<{ total: number }>();
+        const total = countResult?.total || 0;
+
+        return jsonResponse({
+          results: logs.results,
+          total,
+          limit,
+          offset
+        });
       } catch (err: any) {
         return jsonResponse({ error: err.message || String(err) }, 500);
       }

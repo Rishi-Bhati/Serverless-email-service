@@ -186,6 +186,30 @@ export function renderDashboard(): string {
     }
     .ghost-btn:hover { border-color: var(--color-red); color: var(--color-red); }
 
+    /* Report issues button */
+    .report-issue-btn {
+      background: linear-gradient(135deg, var(--color-orange) 0%, #d97706 100%);
+      color: white !important;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 13px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+    }
+    .report-issue-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+      filter: brightness(1.1);
+    }
+
     /* ── Dashboard Main ───────────────────────────── */
     main {
       flex: 1; padding: 36px 40px;
@@ -255,6 +279,199 @@ export function renderDashboard(): string {
     .empty-state {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       color: var(--text-muted); padding: 50px 0; gap: 10px;
+    }
+
+    /* Expandable rows */
+    .expand-caret {
+      transition: transform 0.2s ease;
+      cursor: pointer;
+    }
+    .expand-caret.rotated {
+      transform: rotate(90deg);
+    }
+    .log-row {
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+    .log-row:hover {
+      background-color: rgba(255, 255, 255, 0.02) !important;
+    }
+    .detail-row {
+      background-color: rgba(11, 15, 25, 0.4);
+    }
+    .detail-container {
+      padding: 20px;
+      border-radius: 8px;
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--color-primary);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin: 10px 4px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 768px) {
+      .detail-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .detail-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .detail-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .detail-val {
+      font-size: 13px;
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+    .detail-val-mono {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: rgba(0,0,0,0.3);
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      max-height: 180px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    /* Email Body Tab layout inside detail container */
+    .detail-tabs-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border-color);
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .detail-tab {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      font-family: var(--font-body);
+    }
+    .detail-tab.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+    /* Iframe styled preview */
+    .body-preview-iframe {
+      width: 100%;
+      height: 250px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: white;
+    }
+
+    /* Filter Controls in Logs page */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 16px 24px;
+      border-radius: 12px;
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .filter-group label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+    .filter-select {
+      background-color: rgba(11, 15, 25, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 9px 14px;
+      color: white;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+    }
+    .filter-select:focus {
+      border-color: var(--color-primary);
+    }
+    .filter-search-input {
+      background-color: rgba(11, 15, 25, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 9px 14px;
+      color: white;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+      width: 280px;
+    }
+    .filter-search-input:focus {
+      border-color: var(--color-primary);
+    }
+
+    /* Pagination controls */
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 20px;
+      margin-top: 10px;
+      border-top: 1px solid var(--border-color);
+    }
+    .pagination-info {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .pagination-btns {
+      display: flex;
+      gap: 8px;
+    }
+    .pagination-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 500;
+    }
+    .pagination-btn:hover:not(:disabled) {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+    .pagination-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
 
     /* Form */
@@ -507,6 +724,10 @@ export function renderDashboard(): string {
       <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"/></svg>
       Dashboard
     </button>
+    <button class="nav-tab" data-view="logs" onclick="switchView('logs')" id="nav-logs">
+      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 00-4-4H5m14 0v-2a4 4 0 00-4-4h-5m2 18h.01M12 21a9 9 0 110-18 9 9 0 010 18z"/></svg>
+      Detailed Logs
+    </button>
     <button class="nav-tab" data-view="docs" onclick="switchView('docs')" id="nav-docs">
       <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
       API Docs
@@ -514,6 +735,12 @@ export function renderDashboard(): string {
   </div>
 
   <div class="header-right">
+    <a href="https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/" target="_blank" class="report-issue-btn">
+      <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+      </svg>
+      Report Issues
+    </a>
     <div class="status-pill"><div class="status-dot"></div><span>Edge Active</span></div>
     <button class="ghost-btn" onclick="logout()">Disconnect</button>
   </div>
@@ -554,16 +781,20 @@ export function renderDashboard(): string {
         <div class="panel-header">
           <div class="panel-title">
             <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-            Recent Dispatch Logs
+            Recent Dispatch Logs (Last 10)
           </div>
-          <button class="ghost-btn" onclick="fetchDashboardData(this)">Refresh Queue</button>
+          <div style="display:flex; gap:10px;">
+            <button class="ghost-btn" style="border-color:var(--color-primary); color:var(--color-primary);" onclick="switchView('logs')">View Detailed Logs →</button>
+            <button class="ghost-btn" onclick="fetchDashboardData(this)">Refresh Queue</button>
+          </div>
         </div>
         <div class="table-container">
           <table id="logs-table">
             <thead>
               <tr>
+                <th style="width: 40px;"></th>
                 <th>ID</th><th>Recipient</th><th>Subject</th>
-                <th>Status</th><th>Tries</th><th>Last Update</th><th>Error</th>
+                <th>Status</th><th>Tries</th><th>Last Update</th>
               </tr>
             </thead>
             <tbody id="logs-body">
@@ -634,6 +865,92 @@ export function renderDashboard(): string {
           </button>
         </div>
 
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ DETAILED LOGS VIEW -->
+<div id="view-logs" style="display:none;">
+  <main>
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label for="log-filter-status">Status</label>
+        <select id="log-filter-status" class="filter-select" onchange="onLogFilterChange()">
+          <option value="">All Statuses</option>
+          <option value="queued">Queued</option>
+          <option value="sending">Sending</option>
+          <option value="sent">Sent</option>
+          <option value="failed">Failed</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="log-filter-sort">Sort By</label>
+        <select id="log-filter-sort" class="filter-select" onchange="onLogFilterChange()">
+          <option value="updated_at_desc">Last Update (Newest)</option>
+          <option value="updated_at_asc">Last Update (Oldest)</option>
+          <option value="created_at_desc">Created Time (Newest)</option>
+          <option value="created_at_asc">Created Time (Oldest)</option>
+          <option value="attempts_desc">Most Attempts</option>
+        </select>
+      </div>
+
+      <div class="filter-group" style="flex: 1; min-width: 200px;">
+        <label for="log-filter-search">Search</label>
+        <input type="text" id="log-filter-search" class="filter-search-input" style="width:100%;" placeholder="Search subject, recipient, body, error..." oninput="onLogSearchInput()">
+      </div>
+      
+      <div class="filter-group" style="align-self: flex-end;">
+        <button class="ghost-btn" style="padding:9px 16px;" onclick="resetLogFilters()">Reset Filters</button>
+      </div>
+    </div>
+
+    <!-- Logs Panel -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          Detailed Queue History Logs
+        </div>
+        <button class="ghost-btn" onclick="fetchDetailedLogsData(this)">Sync Table</button>
+      </div>
+      
+      <div class="table-container">
+        <table id="detailed-logs-table">
+          <thead>
+            <tr>
+              <th style="width: 40px;"></th>
+              <th>ID</th>
+              <th>Recipient</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Tries</th>
+              <th>Last Update</th>
+            </tr>
+          </thead>
+          <tbody id="detailed-logs-body">
+            <tr><td colspan="7" class="empty-state">Loading logs data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Footer -->
+      <div class="pagination-bar">
+        <div class="pagination-info" id="logs-pagination-info">
+          Showing 0 - 0 of 0 entries
+        </div>
+        <div class="pagination-btns">
+          <button class="pagination-btn" id="btn-prev-page" onclick="changeLogsPage(-1)" disabled>
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            Previous
+          </button>
+          <button class="pagination-btn" id="btn-next-page" onclick="changeLogsPage(1)" disabled>
+            Next
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
       </div>
     </div>
   </main>
@@ -1068,17 +1385,18 @@ sendEmail('rpt_your_api_key', 'your_api_secret', {
 <pre>import requests
 import json
 
+body = json.dumps({
+    'to': 'user@example.com',
+    'subject': 'Hello from Reportary',
+    'body': '&lt;h1&gt;Hello!&lt;/h1&gt;&lt;p&gt;Test email.&lt;/p&gt;'
+})
 response = requests.post(
     'YOUR_WORKER_URL/api/send',
     headers={
         'X-API-Key': 'rpt_your_api_key',
         'Content-Type': 'application/json'
     },
-    data=json.dumps({
-        'to': 'user@example.com',
-        'subject': 'Hello from Reportary',
-        'body': '&lt;h1&gt;Hello!&lt;/h1&gt;&lt;p&gt;Test email.&lt;/p&gt;'
-    })
+    data=body
 )
 print(response.json())</pre>
               </div>
@@ -1298,6 +1616,8 @@ print(response.json())</pre>
       document.getElementById('auth-overlay').style.display = 'flex';
       document.getElementById('auth-error').textContent = 'Authentication failed. Check your API Key.';
       document.getElementById('auth-error').style.display = 'block';
+    } else {
+      fetchDetailedLogsData();
     }
   }
 
@@ -1336,14 +1656,169 @@ print(response.json())</pre>
     return h;
   }
 
-  // ── Dashboard data ───────────────────────────────────────────────────────
+  // ── Expandable table helper ──────────────────────────────────────────────
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#039;');
+  }
+
+  function toggleExpand(rowId, prefix) {
+    var caret = document.getElementById(prefix + 'caret-' + rowId);
+    var details = document.getElementById(prefix + 'detail-' + rowId);
+    if (caret && details) {
+      var isHidden = details.style.display === 'none';
+      details.style.display = isHidden ? '' : 'none';
+      if (isHidden) {
+        caret.classList.add('rotated');
+      } else {
+        caret.classList.remove('rotated');
+      }
+    }
+  }
+
+  function switchDetailBodyTab(prefix, id, tab) {
+    var previewTab = document.getElementById(prefix + 'tab-preview-' + id);
+    var rawTab = document.getElementById(prefix + 'tab-raw-' + id);
+    var previewEl = document.getElementById(prefix + 'body-preview-' + id);
+    var rawEl = document.getElementById(prefix + 'body-raw-' + id);
+    
+    if (previewTab && rawTab && previewEl && rawEl) {
+      if (tab === 'preview') {
+        previewTab.classList.add('active');
+        rawTab.classList.remove('active');
+        previewEl.style.display = '';
+        rawEl.style.display = 'none';
+      } else {
+        previewTab.classList.remove('active');
+        rawTab.classList.add('active');
+        previewEl.style.display = 'none';
+        rawEl.style.display = '';
+      }
+    }
+  }
+
+  function renderLogRow(tbody, log, prefix) {
+    var date = new Date(log.updated_at);
+    var timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
+                  ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                  
+    var createdDate = new Date(log.created_at || log.updated_at);
+    var createdTimeStr = createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
+                        ' ' + createdDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+    var toDisp = '';
+    var ccDisp = '';
+    var bccDisp = '';
+    
+    try {
+      var toObj = JSON.parse(log.to_json);
+      if (Array.isArray(toObj))       toDisp = toObj.map(function(o) { return typeof o === 'string' ? o : o.email; }).join(', ');
+      else if (typeof toObj === 'object') toDisp = toObj.email || JSON.stringify(toObj);
+      else                            toDisp = String(toObj);
+    } catch(_) { toDisp = log.to_json; }
+
+    try {
+      if (log.cc_json) {
+        var ccObj = JSON.parse(log.cc_json);
+        if (Array.isArray(ccObj))       ccDisp = ccObj.map(function(o) { return typeof o === 'string' ? o : o.email; }).join(', ');
+        else if (typeof ccObj === 'object') ccDisp = ccObj.email || JSON.stringify(ccObj);
+        else                            ccDisp = String(ccObj);
+      }
+    } catch(_) { ccDisp = log.cc_json; }
+
+    try {
+      if (log.bcc_json) {
+        var bccObj = JSON.parse(log.bcc_json);
+        if (Array.isArray(bccObj))       bccDisp = bccObj.map(function(o) { return typeof o === 'string' ? o : o.email; }).join(', ');
+        else if (typeof bccObj === 'object') bccDisp = bccObj.email || JSON.stringify(bccObj);
+        else                            bccDisp = String(bccObj);
+      }
+    } catch(_) { bccDisp = log.bcc_json; }
+
+    var tr = document.createElement('tr');
+    tr.className = 'log-row';
+    tr.onclick = function(e) {
+      if (e.target.closest('.detail-container') || e.target.closest('button') || e.target.closest('a')) return;
+      toggleExpand(log.id, prefix);
+    };
+
+    tr.innerHTML =
+      '<td style="text-align:center; padding:10px 0;"><svg id="' + prefix + 'caret-' + log.id + '" class="expand-caret" width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/></svg></td>' +
+      '<td style="color:var(--text-muted);font-weight:600;">#' + log.id + '</td>' +
+      '<td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + toDisp + '">' + toDisp + '</td>' +
+      '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + log.subject + '">' + log.subject + '</td>' +
+      '<td><span class="status-badge badge-' + log.status + '">' + log.status + '</span></td>' +
+      '<td style="text-align:center;">' + log.attempts + '</td>' +
+      '<td style="color:var(--text-muted);font-size:12px;">' + timeStr + '</td>';
+
+    tbody.appendChild(tr);
+
+    // Detail row rendering
+    var detTr = document.createElement('tr');
+    detTr.id = prefix + 'detail-' + log.id;
+    detTr.className = 'detail-row';
+    detTr.style.display = 'none';
+
+    var ccHtml = ccDisp ? '<div><span style="font-weight:600; color:var(--color-orange);">CC:</span> ' + escapeHtml(ccDisp) + '</div>' : '';
+    var bccHtml = bccDisp ? '<div><span style="font-weight:600; color:var(--color-purple);">BCC:</span> ' + escapeHtml(bccDisp) + '</div>' : '';
+    
+    var errHtml = log.error ? 
+      '<div class="detail-block">' +
+        '<div class="detail-label" style="color:var(--color-red);">Error Log</div>' +
+        '<div class="detail-val-mono" style="border-color:rgba(239, 68, 68, 0.3); color:#fca5a5;">' + escapeHtml(log.error) + '</div>' +
+      '</div>' : '';
+
+    detTr.innerHTML = 
+      '<td colspan="7">' +
+        '<div class="detail-container">' +
+          '<div class="detail-grid">' +
+            '<div class="detail-block">' +
+              '<div class="detail-label">Recipients</div>' +
+              '<div class="detail-val">' +
+                '<div><span style="font-weight:600; color:var(--color-cyan);">To:</span> ' + escapeHtml(toDisp) + '</div>' +
+                ccHtml +
+                bccHtml +
+              '</div>' +
+            '</div>' +
+            '<div class="detail-block">' +
+              '<div class="detail-label">Timestamps (UTC)</div>' +
+              '<div class="detail-val">' +
+                '<strong>Created:</strong> ' + createdTimeStr + '<br>' +
+                '<strong>Updated:</strong> ' + timeStr +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          errHtml +
+          '<div class="detail-block">' +
+            '<div class="detail-label">Email Body Content</div>' +
+            '<div class="detail-tabs-bar">' +
+              '<button class="detail-tab active" id="' + prefix + 'tab-preview-' + log.id + '" onclick="switchDetailBodyTab(\'' + prefix + '\', ' + log.id + ', \'preview\')">Visual Preview</button>' +
+              '<button class="detail-tab" id="' + prefix + 'tab-raw-' + log.id + '" onclick="switchDetailBodyTab(\'' + prefix + '\', ' + log.id + ', \'raw\')">Raw Content</button>' +
+            '</div>' +
+            '<div id="' + prefix + 'body-preview-' + log.id + '">' +
+              '<iframe class="body-preview-iframe" srcdoc="' + escapeHtml(log.body) + '"></iframe>' +
+            '</div>' +
+            '<div id="' + prefix + 'body-raw-' + log.id + '" style="display:none;">' +
+              '<div class="detail-val-mono">' + escapeHtml(log.body) + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</td>';
+
+    tbody.appendChild(detTr);
+  }
+
+  // ── Dashboard data (Last 10 emails) ──────────────────────────────────────
   async function fetchDashboardData(btn) {
     var key = getApiKey();
     if (!key) return false;
 
     if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
     try {
-      // GET endpoints only need the API key — no body to sign
       var headers = { 'X-API-Key': key };
 
       var statsRes = await fetch('/api/status', { headers: headers });
@@ -1354,45 +1829,114 @@ print(response.json())</pre>
       document.getElementById('stats-sent').textContent    = stats.sent    || 0;
       document.getElementById('stats-failed').textContent  = stats.failed  || 0;
 
-      var logsRes = await fetch('/api/logs', { headers: headers });
-      var logs    = await logsRes.json();
+      // Limit to 10 logs on main dashboard
+      var logsRes = await fetch('/api/logs?limit=10', { headers: headers });
+      var data    = await logsRes.json();
+      var logs    = data.results || [];
       var tbody   = document.getElementById('logs-body');
 
       if (!logs || logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No emails queued or sent yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No recent emails queued or sent.</td></tr>';
       } else {
         tbody.innerHTML = '';
         logs.forEach(function(log) {
-          var tr   = document.createElement('tr');
-          var date = new Date(log.updated_at);
-          var timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
-                        ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-          var toDisp = '';
-          try {
-            var toObj = JSON.parse(log.to_json);
-            if (Array.isArray(toObj))       toDisp = toObj.map(function(o) { return typeof o === 'string' ? o : o.email; }).join(', ');
-            else if (typeof toObj === 'object') toDisp = toObj.email || JSON.stringify(toObj);
-            else                            toDisp = String(toObj);
-          } catch(_) { toDisp = log.to_json; }
-          var errDisp = log.error
-            ? '<div class="err-text" title="' + log.error + '">' + log.error + '</div>'
-            : '-';
-          tr.innerHTML =
-            '<td style="color:var(--text-muted);font-weight:600;">#' + log.id + '</td>' +
-            '<td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + toDisp + '">' + toDisp + '</td>' +
-            '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + log.subject + '</td>' +
-            '<td><span class="status-badge badge-' + log.status + '">' + log.status + '</span></td>' +
-            '<td style="text-align:center;">' + log.attempts + '</td>' +
-            '<td style="color:var(--text-muted);font-size:12px;">' + timeStr + '</td>' +
-            '<td>' + errDisp + '</td>';
-          tbody.appendChild(tr);
+          renderLogRow(tbody, log, 'dash-');
         });
       }
       return true;
     } catch(err) {
-      console.error('Fetch error:', err); return false;
+      console.error('Fetch dashboard error:', err); return false;
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = 'Refresh Queue'; }
+    }
+  }
+
+  // ── Detailed Logs page state & data ──────────────────────────────────────
+  var logsFilterStatus = '';
+  var logsSortOrder    = 'updated_at_desc';
+  var logsSearchQuery  = '';
+  var logsPageOffset   = 0;
+  var logsPageLimit    = 100;
+  var searchTimeout    = null;
+
+  function onLogFilterChange() {
+    logsFilterStatus = document.getElementById('log-filter-status').value;
+    logsSortOrder    = document.getElementById('log-filter-sort').value;
+    logsPageOffset   = 0; 
+    fetchDetailedLogsData();
+  }
+
+  function onLogSearchInput() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(function() {
+      logsSearchQuery = document.getElementById('log-filter-search').value.trim();
+      logsPageOffset   = 0; 
+      fetchDetailedLogsData();
+    }, 450);
+  }
+
+  function resetLogFilters() {
+    document.getElementById('log-filter-status').value = '';
+    document.getElementById('log-filter-sort').value = 'updated_at_desc';
+    document.getElementById('log-filter-search').value = '';
+    logsFilterStatus = '';
+    logsSortOrder    = 'updated_at_desc';
+    logsSearchQuery  = '';
+    logsPageOffset   = 0;
+    fetchDetailedLogsData();
+  }
+
+  function changeLogsPage(dir) {
+    if (dir === -1) {
+      logsPageOffset = Math.max(0, logsPageOffset - logsPageLimit);
+    } else {
+      logsPageOffset += logsPageLimit;
+    }
+    fetchDetailedLogsData();
+  }
+
+  async function fetchDetailedLogsData(btn) {
+    var key = getApiKey();
+    if (!key) return false;
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
+    try {
+      var headers = { 'X-API-Key': key };
+      var url = '/api/logs?limit=' + logsPageLimit + '&offset=' + logsPageOffset;
+      if (logsFilterStatus) url += '&status=' + encodeURIComponent(logsFilterStatus);
+      if (logsSortOrder)    url += '&sort=' + encodeURIComponent(logsSortOrder);
+      if (logsSearchQuery)  url += '&q=' + encodeURIComponent(logsSearchQuery);
+
+      var res = await fetch(url, { headers: headers });
+      var data = await res.json();
+      var tbody = document.getElementById('detailed-logs-body');
+
+      // Update pagination info
+      var total = data.total || 0;
+      var start = total === 0 ? 0 : logsPageOffset + 1;
+      var end = Math.min(total, logsPageOffset + logsPageLimit);
+      document.getElementById('logs-pagination-info').textContent = 
+        'Showing ' + start + ' - ' + end + ' of ' + total + ' entries';
+
+      // Update button disabled state
+      document.getElementById('btn-prev-page').disabled = (logsPageOffset === 0);
+      document.getElementById('btn-next-page').disabled = (logsPageOffset + logsPageLimit >= total);
+
+      var results = data.results || [];
+      if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No matching logs found.</td></tr>';
+      } else {
+        tbody.innerHTML = '';
+        results.forEach(function(log) {
+          renderLogRow(tbody, log, 'det-');
+        });
+      }
+      return true;
+    } catch(err) {
+      console.error('Fetch detailed logs error:', err);
+      return false;
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Sync Table'; }
     }
   }
 
@@ -1454,7 +1998,7 @@ print(response.json())</pre>
         resultDiv.textContent   = 'Success! Email queued (ID: ' + data.id + '). Background job started.';
         document.getElementById('test-subject').value = '';
         document.getElementById('test-body').value    = '';
-        setTimeout(function(){ fetchDashboardData(); }, 1000);
+        setTimeout(function(){ fetchDashboardData(); fetchDetailedLogsData(); }, 1000);
       } else {
         resultDiv.style.color = 'var(--color-red)';
         resultDiv.textContent = 'Error: ' + (data.reason || data.error || 'Unknown error');
@@ -1471,10 +2015,18 @@ print(response.json())</pre>
   // ── Navigation ───────────────────────────────────────────────────────────
   function switchView(view) {
     document.getElementById('view-dashboard').style.display = (view === 'dashboard') ? '' : 'none';
+    document.getElementById('view-logs').style.display      = (view === 'logs') ? '' : 'none';
     document.getElementById('view-docs').style.display      = (view === 'docs') ? '' : 'none';
+    
     document.querySelectorAll('.nav-tab').forEach(function(t) {
       t.classList.toggle('active', t.dataset.view === view);
     });
+
+    if (view === 'logs') {
+      fetchDetailedLogsData();
+    } else if (view === 'dashboard') {
+      fetchDashboardData();
+    }
   }
 
   // ── Docs page ────────────────────────────────────────────────────────────
