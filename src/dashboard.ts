@@ -1796,8 +1796,8 @@ print(response.json())</pre>
           '<div class="detail-block">' +
             '<div class="detail-label">Email Body Content</div>' +
             '<div class="detail-tabs-bar">' +
-              '<button class="detail-tab active" id="' + prefix + 'tab-preview-' + log.id + '" onclick="switchDetailBodyTab(\'' + prefix + '\', ' + log.id + ', \'preview\')">Visual Preview</button>' +
-              '<button class="detail-tab" id="' + prefix + 'tab-raw-' + log.id + '" onclick="switchDetailBodyTab(\'' + prefix + '\', ' + log.id + ', \'raw\')">Raw Content</button>' +
+              '<button class="detail-tab active" id="' + prefix + 'tab-preview-' + log.id + '" onclick="switchDetailBodyTab(\\\'' + prefix + '\\\', ' + log.id + ', \\\'preview\\\')">Visual Preview</button>' +
+              '<button class="detail-tab" id="' + prefix + 'tab-raw-' + log.id + '" onclick="switchDetailBodyTab(\\\'' + prefix + '\\\', ' + log.id + ', \\\'raw\\\')">Raw Content</button>' +
             '</div>' +
             '<div id="' + prefix + 'body-preview-' + log.id + '">' +
               '<iframe class="body-preview-iframe" srcdoc="' + escapeHtml(log.body) + '"></iframe>' +
