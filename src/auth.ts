@@ -108,7 +108,7 @@ export async function verifyRequest(
   }
   const nowSec = Math.floor(Date.now() / 1000);
   if (Math.abs(nowSec - timestamp) > 180) {
-    return { ok: false, reason: 'Timestamp out of range (must be within ±3 minutes of server time)' };
+    return { ok: false, reason: 'Timestamp out of range (must be within ±3 minutes of server time in UTC)' };
   }
 
   // ── Step 3: Nonce presence (required in 'full' mode) ────────────────────

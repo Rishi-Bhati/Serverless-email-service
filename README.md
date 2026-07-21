@@ -148,7 +148,7 @@ Depending on the `SECURITY_MODE` enabled, you will need to construct and sign yo
 ### Request Headers
 
 * `X-API-Key` *(Required in all modes)*: Your API key string.
-* `X-Timestamp` *(Required in signed & full)*: Current Unix epoch timestamp in seconds. Must be within ±3 minutes of server time.
+* `X-Timestamp` *(Required in signed & full)*: Current Unix epoch timestamp in seconds (UTC). Must be within ±3 minutes of server time (UTC).
 * `X-Nonce` *(Required in full)*: Unique string per request (e.g. UUID). The server checks D1 to ensure this nonce hasn't been used before.
 * `X-Signature` *(Required in signed & full)*: The computed HMAC-SHA256 hex string.
 

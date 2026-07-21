@@ -756,7 +756,7 @@ export function renderDashboard(): string {
               <tr id="hdr-timestamp" style="display:none;">
                 <td><code>X-Timestamp</code></td>
                 <td><span class="tag tag-req">Required</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">Unix epoch seconds. Must be within ±3 minutes of server time.</td>
+                <td style="color:var(--text-muted);font-size:12px;">Unix epoch seconds (UTC). Must be within ±3 minutes of server time (UTC).</td>
               </tr>
               <tr id="hdr-nonce" style="display:none;">
                 <td><code>X-Nonce</code></td>
@@ -818,8 +818,8 @@ export function renderDashboard(): string {
             <div class="step">
               <div class="step-num">1</div>
               <div class="step-content">
-                <div class="step-title">Get Unix timestamp</div>
-                <div class="step-desc">Current time in seconds since epoch. Must be within ±3 minutes of server time.</div>
+                <div class="step-title">Get Unix timestamp (UTC)</div>
+                <div class="step-desc">Current UTC time in seconds since Unix epoch. Must be within ±3 minutes of server time (UTC).</div>
               </div>
             </div>
 
@@ -1193,7 +1193,7 @@ print(response.json())</pre>
               <tr>
                 <td><code>401</code></td>
                 <td class="err-code">Timestamp out of range</td>
-                <td class="err-reason">Clock skew exceeds ±3 minutes.</td>
+                <td class="err-reason">Clock skew exceeds ±3 minutes. Ensure client timestamp is in UTC Unix epoch seconds.</td>
               </tr>
               <tr>
                 <td><code>401</code></td>
