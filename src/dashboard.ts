@@ -1,2176 +1,988 @@
 export function renderDashboard(): string {
+  // Template literal – uses backtick; inner JS template literals use \` escaping
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reportary Mail Edge - Dashboard</title>
-  <meta name="description" content="Reportary Mail Edge email queueing service — dashboard and API reference">
+  <title>ESET Mail – Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg-dark: #0b0f19;
-      --bg-card: #151b2c;
-      --border-color: #242f47;
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --color-primary: #6366f1;
-      --color-primary-glow: rgba(99,102,241,0.15);
-      --color-cyan: #06b6d4;
-      --color-green: #10b981;
-      --color-red: #ef4444;
-      --color-orange: #f59e0b;
-      --color-purple: #a78bfa;
-      --font-display: 'Outfit', sans-serif;
-      --font-body: 'Plus Jakarta Sans', sans-serif;
-      --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+    :root{
+      --bg-dark:#0b0f19;--bg-card:#151b2c;--border:#242f47;
+      --text:#f3f4f6;--muted:#9ca3af;
+      --primary:#6366f1;--primary-glow:rgba(99,102,241,.15);
+      --cyan:#06b6d4;--green:#10b981;--red:#ef4444;--orange:#f59e0b;--purple:#a78bfa;
+      --ff-display:'Outfit',sans-serif;--ff-body:'Plus Jakarta Sans',sans-serif;--ff-mono:'JetBrains Mono',monospace;
     }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      font-family: var(--font-body);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      line-height: 1.5;
-    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg-dark);color:var(--text);font-family:var(--ff-body);min-height:100vh;display:flex;flex-direction:column;line-height:1.5}
 
-    /* ── Auth Overlay ─────────────────────────────── */
-    #auth-overlay {
-      position: fixed; inset: 0;
-      background: rgba(11,15,25,0.96);
-      backdrop-filter: blur(12px);
-      display: flex; justify-content: center; align-items: center;
-      z-index: 1000;
-      transition: opacity 0.3s;
-    }
-    .auth-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 40px;
-      width: 100%;
-      max-width: 460px;
-      box-shadow: 0 24px 48px rgba(0,0,0,0.5), 0 0 60px var(--color-primary-glow);
-      text-align: center;
-    }
-    .auth-card h2 {
-      font-family: var(--font-display);
-      font-size: 26px; font-weight: 700;
-      margin-bottom: 6px;
-      background: linear-gradient(135deg,#fff 0%,var(--text-muted) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .auth-card > p { color: var(--text-muted); font-size: 13px; margin-bottom: 24px; }
+    /* AUTH OVERLAY */
+    #auth-overlay{position:fixed;inset:0;background:rgba(11,15,25,.96);backdrop-filter:blur(12px);display:flex;justify-content:center;align-items:center;z-index:1000}
+    .auth-card{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:460px;box-shadow:0 24px 48px rgba(0,0,0,.5),0 0 60px var(--primary-glow);text-align:center}
+    .auth-card h2{font-family:var(--ff-display);font-size:26px;font-weight:700;margin-bottom:6px;background:linear-gradient(135deg,#fff,var(--muted));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .auth-card>p{color:var(--muted);font-size:13px;margin-bottom:24px}
+    .auth-mode-group{display:flex;background:rgba(11,15,25,.7);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:20px}
+    .auth-mode-btn{flex:1;background:none;border:none;color:var(--muted);padding:8px 6px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;font-family:var(--ff-body);transition:all .2s;white-space:nowrap}
+    .auth-mode-btn.active{background:linear-gradient(135deg,var(--primary),#4f46e5);color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.3)}
+    .ig{margin-bottom:16px;text-align:left}
+    .ig label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;color:var(--muted)}
+    .ifield{width:100%;background:rgba(11,15,25,.6);border:1px solid var(--border);border-radius:8px;padding:11px 14px;color:#fff;font-family:inherit;font-size:14px;transition:all .2s}
+    .ifield:focus{outline:none;border-color:var(--primary);box-shadow:0 0 10px rgba(99,102,241,.25)}
+    select.ifield option{background:#151b2c}
+    .auth-hint{font-size:11px;color:var(--muted);text-align:left;margin-bottom:20px;line-height:1.6;padding:10px 12px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:8px}
+    .auth-hint b{color:var(--purple)}
+    .btn{width:100%;background:linear-gradient(135deg,var(--primary),#4f46e5);color:#fff;border:none;border-radius:8px;padding:13px;font-family:var(--ff-display);font-weight:600;font-size:15px;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(99,102,241,.35)}
+    .btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(99,102,241,.45)}
+    .bsm{padding:7px 14px;font-size:13px;width:auto;border-radius:7px;font-weight:600;cursor:pointer;border:none;font-family:var(--ff-body);transition:all .2s}
+    .b-primary{background:linear-gradient(135deg,var(--primary),#4f46e5);color:#fff}
+    .b-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+    .b-warn{background:rgba(245,158,11,.15);color:var(--orange);border:1px solid rgba(245,158,11,.3)}
+    .b-ghost{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border)}
+    .b-green{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3)}
 
-    /* Mode segmented control in auth overlay */
-    .auth-mode-group {
-      display: flex; gap: 0;
-      background: rgba(11,15,25,0.7);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 4px;
-      margin-bottom: 20px;
-    }
-    .auth-mode-btn {
-      flex: 1; background: none; border: none;
-      color: var(--text-muted);
-      padding: 8px 6px;
-      border-radius: 7px;
-      cursor: pointer;
-      font-size: 12px; font-weight: 600;
-      font-family: var(--font-body);
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    .auth-mode-btn.active {
-      background: linear-gradient(135deg, var(--color-primary), #4f46e5);
-      color: white;
-      box-shadow: 0 2px 8px rgba(99,102,241,0.3);
-    }
+    /* HEADER */
+    header{background:var(--bg-card);border-bottom:1px solid var(--border);padding:14px 36px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+    .logo-wrap{display:flex;align-items:center;gap:12px}
+    .logo-badge{background:linear-gradient(135deg,var(--primary),var(--cyan));width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;color:#fff;box-shadow:0 0 15px rgba(99,102,241,.4)}
+    .logo-text{font-family:var(--ff-display);font-size:18px;font-weight:700;letter-spacing:-.02em}
+    .logo-text span{background:linear-gradient(135deg,var(--primary),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .nav-tabs{display:flex;gap:4px;background:rgba(11,15,25,.6);border:1px solid var(--border);border-radius:9px;padding:4px}
+    .nav-tab{background:none;border:none;color:var(--muted);padding:7px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;font-family:var(--ff-body);transition:all .2s;display:flex;align-items:center;gap:6px}
+    .nav-tab.active{background:var(--primary);color:#fff}
+    .nav-tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.06)}
+    .hdr-right{display:flex;align-items:center;gap:14px}
+    .status-pill{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:var(--green);padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+    .status-dot{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 7px var(--green)}
+    .ghost-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:7px 13px;border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--ff-body);transition:all .2s}
+    .ghost-btn:hover{border-color:var(--red);color:var(--red)}
 
-    .input-group { margin-bottom: 16px; text-align: left; }
-    .input-group label {
-      display: block; font-size: 11px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.06em;
-      margin-bottom: 7px; color: var(--text-muted);
-    }
-    .input-field {
-      width: 100%;
-      background: rgba(11,15,25,0.6);
-      border: 1px solid var(--border-color);
-      border-radius: 8px; padding: 11px 14px;
-      color: white; font-family: inherit; font-size: 14px;
-      transition: all 0.2s;
-    }
-    .input-field:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 10px rgba(99,102,241,0.25); }
-    .auth-hint {
-      font-size: 11px; color: var(--text-muted);
-      text-align: left; margin-bottom: 20px; line-height: 1.6;
-      padding: 10px 12px;
-      background: rgba(99,102,241,0.06);
-      border: 1px solid rgba(99,102,241,0.15);
-      border-radius: 8px;
-    }
-    .auth-hint b { color: var(--color-purple); }
-    .btn {
-      width: 100%;
-      background: linear-gradient(135deg, var(--color-primary), #4f46e5);
-      color: white; border: none; border-radius: 8px;
-      padding: 13px; font-family: var(--font-display);
-      font-weight: 600; font-size: 15px;
-      cursor: pointer; transition: all 0.2s;
-      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
-    }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(99,102,241,0.45); }
+    /* MAIN */
+    main{flex:1;padding:36px 40px;max-width:1400px;width:100%;margin:0 auto;display:grid;gap:28px}
+    .view{display:none;flex-direction:column;gap:28px}
+    .view.active{display:flex}
 
-    /* ── Header ───────────────────────────────────── */
-    header {
-      background: var(--bg-card);
-      border-bottom: 1px solid var(--border-color);
-      padding: 14px 36px;
-      display: flex; justify-content: space-between; align-items: center;
-      position: sticky; top: 0; z-index: 100;
-    }
-    .logo-container { display: flex; align-items: center; gap: 12px; }
-    .logo-badge {
-      background: linear-gradient(135deg, var(--color-primary), var(--color-cyan));
-      width: 34px; height: 34px; border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 17px; color: white;
-      box-shadow: 0 0 15px rgba(99,102,241,0.4);
-    }
-    .logo-text { font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: -0.02em; }
-    .logo-text span {
-      background: linear-gradient(135deg, var(--color-primary), var(--color-cyan));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
+    /* STATS */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px}
+    .stat-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:22px;display:flex;flex-direction:column;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
+    .stat-card:hover{transform:translateY(-2px);border-color:rgba(99,102,241,.4)}
+    .stat-label{color:var(--muted);font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+    .stat-value{font-family:var(--ff-display);font-size:34px;font-weight:700;line-height:1}
+    .stat-indicator{width:4px;position:absolute;top:0;left:0;bottom:0}
+    .stat-queued .stat-indicator{background:var(--cyan)}
+    .stat-sending .stat-indicator{background:var(--orange)}
+    .stat-sent .stat-indicator{background:var(--green)}
+    .stat-failed .stat-indicator{background:var(--red)}
+    .content-grid{display:grid;grid-template-columns:1fr;gap:28px}
+    @media(min-width:1024px){.content-grid{grid-template-columns:3fr 2fr}}
+    .panel{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:26px;display:flex;flex-direction:column}
+    .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .panel-title{font-family:var(--ff-display);font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
 
-    /* Nav tabs */
-    .nav-tabs {
-      display: flex; gap: 4px;
-      background: rgba(11,15,25,0.6);
-      border: 1px solid var(--border-color);
-      border-radius: 9px; padding: 4px;
-    }
-    .nav-tab {
-      background: none; border: none;
-      color: var(--text-muted);
-      padding: 7px 18px; border-radius: 6px;
-      cursor: pointer; font-size: 13px; font-weight: 600;
-      font-family: var(--font-body);
-      transition: all 0.2s;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .nav-tab.active { background: var(--color-primary); color: white; }
-    .nav-tab:hover:not(.active) { color: var(--text-main); background: rgba(255,255,255,0.06); }
+    /* TABLE */
+    .table-wrap{overflow-x:auto;min-height:160px}
+    table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+    th{color:var(--muted);font-weight:600;padding:11px 14px;border-bottom:1px solid var(--border);text-transform:uppercase;font-size:11px;letter-spacing:.05em}
+    td{padding:12px 14px;border-bottom:1px solid rgba(36,47,71,.5);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600;gap:4px}
+    .b-queued{background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);color:var(--cyan)}
+    .b-sending{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:var(--orange)}
+    .b-sent{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:var(--green)}
+    .b-failed{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red)}
+    .b-active{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:var(--green)}
+    .b-disabled{background:rgba(156,163,175,.1);border:1px solid rgba(156,163,175,.2);color:var(--muted)}
+    .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);padding:50px 0;gap:10px}
+    .err-text{color:var(--red);font-size:11px;font-family:var(--ff-mono);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
 
-    .header-right { display: flex; align-items: center; gap: 14px; }
-    .status-pill {
-      background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2);
-      color: var(--color-green); padding: 5px 11px; border-radius: 20px;
-      font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px;
-    }
-    .status-dot {
-      width: 7px; height: 7px; background: var(--color-green);
-      border-radius: 50%; box-shadow: 0 0 7px var(--color-green);
-    }
-    .ghost-btn {
-      background: none; border: 1px solid var(--border-color);
-      color: var(--text-muted); padding: 7px 13px;
-      border-radius: 8px; cursor: pointer; font-size: 13px;
-      font-family: var(--font-body); transition: all 0.2s;
-    }
-    .ghost-btn:hover { border-color: var(--color-red); color: var(--color-red); }
+    /* LOG DETAIL */
+    .log-row{cursor:pointer;transition:background .15s}
+    .log-row:hover{background:rgba(255,255,255,.02)!important}
+    .expand-caret{transition:transform .2s;cursor:pointer;display:inline-block}
+    .expand-caret.rotated{transform:rotate(90deg)}
+    .detail-row{background:rgba(11,15,25,.4)}
+    .detail-box{padding:20px;border-radius:8px;background:var(--bg-dark);border:1px solid var(--border);border-left:4px solid var(--primary);display:flex;flex-direction:column;gap:16px;margin:8px 4px}
+    .detail-grid{display:grid;grid-template-columns:1fr;gap:16px}
+    @media(min-width:768px){.detail-grid{grid-template-columns:1fr 1fr}}
+    .detail-blk{display:flex;flex-direction:column;gap:6px}
+    .detail-lbl{font-size:11px;text-transform:uppercase;font-weight:600;color:var(--muted);letter-spacing:.05em}
+    .detail-val{font-size:13px;color:var(--text);line-height:1.6}
+    .detail-mono{font-family:var(--ff-mono);font-size:12px;background:rgba(0,0,0,.3);padding:10px 14px;border-radius:6px;border:1px solid var(--border);max-height:180px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+    .dtabs{display:flex;border-bottom:1px solid var(--border);gap:4px;margin-bottom:8px}
+    .dtab{background:none;border:none;color:var(--muted);padding:6px 12px;cursor:pointer;font-size:12px;font-weight:500;border-bottom:2px solid transparent;transition:all .2s;font-family:var(--ff-body)}
+    .dtab.active{color:var(--primary);border-bottom-color:var(--primary)}
+    .preview-iframe{width:100%;height:250px;border:1px solid var(--border);border-radius:6px;background:#fff}
 
-    /* Report issues button */
-    .report-issue-btn {
-      background: linear-gradient(135deg, var(--color-orange) 0%, #d97706 100%);
-      color: white !important;
-      border: none;
-      border-radius: 8px;
-      padding: 8px 14px;
-      font-family: var(--font-display);
-      font-weight: 600;
-      font-size: 13px;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
-    }
-    .report-issue-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
-      filter: brightness(1.1);
-    }
+    /* FILTER BAR */
+    .filter-bar{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:20px;background:var(--bg-card);border:1px solid var(--border);padding:16px 24px;border-radius:12px}
+    .flbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;display:block}
+    .finput{background:rgba(11,15,25,.6);border:1px solid var(--border);border-radius:7px;padding:8px 12px;color:#fff;font-family:var(--ff-body);font-size:13px;min-width:140px;transition:border-color .2s}
+    .finput:focus{outline:none;border-color:var(--primary)}
+    select.finput option{background:#151b2c}
+    .pag{display:flex;justify-content:space-between;align-items:center;padding:16px 20px}
+    .pag-info{font-size:13px;color:var(--muted)}
+    .pag-btns{display:flex;gap:8px}
+    .pag-btn{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--ff-body);transition:all .2s}
+    .pag-btn:hover{border-color:var(--primary);color:var(--primary)}
+    .pag-btn:disabled{opacity:.4;cursor:not-allowed}
 
-    /* ── Dashboard Main ───────────────────────────── */
-    main {
-      flex: 1; padding: 36px 40px;
-      max-width: 1400px; width: 100%; margin: 0 auto;
-      display: grid; grid-template-columns: 1fr; gap: 28px;
-    }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 18px;
-    }
-    .stat-card {
-      background: var(--bg-card); border: 1px solid var(--border-color);
-      border-radius: 12px; padding: 22px;
-      display: flex; flex-direction: column;
-      position: relative; overflow: hidden;
-      transition: transform 0.2s, border-color 0.2s;
-    }
-    .stat-card:hover { transform: translateY(-2px); border-color: rgba(99,102,241,0.4); }
-    .stat-label { color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-    .stat-value { font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1; }
-    .stat-indicator { width: 4px; position: absolute; top: 0; left: 0; bottom: 0; }
-    .stat-queued  .stat-indicator { background: var(--color-cyan); }
-    .stat-sending .stat-indicator { background: var(--color-orange); }
-    .stat-sent    .stat-indicator { background: var(--color-green); }
-    .stat-failed  .stat-indicator { background: var(--color-red); }
+    /* QUOTA BAR */
+    .qbar-wrap{display:flex;align-items:center;gap:8px;min-width:120px}
+    .qbar-track{flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+    .qbar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--cyan));transition:width .4s}
+    .qbar-fill.warn{background:linear-gradient(90deg,var(--orange),#d97706)}
+    .qbar-fill.danger{background:linear-gradient(90deg,var(--red),#dc2626)}
+    .qbar-text{font-size:11px;color:var(--muted);white-space:nowrap}
 
-    .content-grid {
-      display: grid; grid-template-columns: 1fr; gap: 28px;
-    }
-    @media (min-width: 1024px) { .content-grid { grid-template-columns: 3fr 2fr; } }
+    /* PROVIDER TYPE BADGE */
+    .tbadge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    .t-smtp{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);color:var(--primary)}
+    .t-resend{background:rgba(6,182,212,.12);border:1px solid rgba(6,182,212,.25);color:var(--cyan)}
+    .t-sendgrid{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);color:var(--green)}
+    .t-mailgun{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);color:var(--orange)}
+    .t-postmark{background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.25);color:var(--purple)}
+    .def-star{color:var(--orange);font-size:14px}
+    .row-actions{display:flex;gap:6px;flex-wrap:wrap}
 
-    .panel {
-      background: var(--bg-card); border: 1px solid var(--border-color);
-      border-radius: 14px; padding: 26px; display: flex; flex-direction: column;
-    }
-    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-    .panel-title {
-      font-family: var(--font-display); font-size: 16px; font-weight: 600;
-      display: flex; align-items: center; gap: 8px;
-    }
+    /* MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(11,15,25,.85);backdrop-filter:blur(8px);display:none;justify-content:center;align-items:center;z-index:500}
+    .modal-overlay.open{display:flex}
+    .modal-card{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:36px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+    .modal-title{font-family:var(--ff-display);font-size:20px;font-weight:700;margin-bottom:24px;display:flex;align-items:center;gap:10px}
+    .modal-footer{display:flex;gap:12px;justify-content:flex-end;margin-top:24px}
+    .cred-section{border:1px solid var(--border);border-radius:10px;padding:16px;margin:4px 0 12px}
+    .cred-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px}
+    .cbrow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+    .cbrow input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--primary)}
+    .cbrow label{font-size:14px;cursor:pointer}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:640px){.form-row{grid-template-columns:1fr}}
 
-    /* Table */
-    .table-container { overflow-x: auto; min-height: 220px; }
-    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
-    th {
-      color: var(--text-muted); font-weight: 600; padding: 11px 14px;
-      border-bottom: 1px solid var(--border-color);
-      text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;
-    }
-    td { padding: 13px 14px; border-bottom: 1px solid rgba(36,47,71,0.5); vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    .status-badge {
-      display: inline-flex; align-items: center;
-      padding: 3px 9px; border-radius: 12px;
-      font-size: 11px; font-weight: 600; gap: 4px;
-    }
-    .badge-queued  { background: rgba(6,182,212,0.1);  border: 1px solid rgba(6,182,212,0.2);  color: var(--color-cyan); }
-    .badge-sending { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); color: var(--color-orange); }
-    .badge-sent    { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: var(--color-green); }
-    .badge-failed  { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.2);  color: var(--color-red); }
-    .err-text {
-      color: var(--color-red); font-size: 11px;
-      font-family: var(--font-mono); max-width: 160px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;
-    }
-    .empty-state {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      color: var(--text-muted); padding: 50px 0; gap: 10px;
-    }
+    /* QUICK REF */
+    .qr-grid{display:grid;gap:10px}
+    .qr-item{background:rgba(11,15,25,.6);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:4px}
+    .qr-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+    .qr-val{font-family:var(--ff-mono);font-size:12px;word-break:break-all}
 
-    /* Expandable rows */
-    .expand-caret {
-      transition: transform 0.2s ease;
-      cursor: pointer;
-    }
-    .expand-caret.rotated {
-      transform: rotate(90deg);
-    }
-    .log-row {
-      cursor: pointer;
-      transition: background-color 0.15s ease;
-    }
-    .log-row:hover {
-      background-color: rgba(255, 255, 255, 0.02) !important;
-    }
-    .detail-row {
-      background-color: rgba(11, 15, 25, 0.4);
-    }
-    .detail-container {
-      padding: 20px;
-      border-radius: 8px;
-      background-color: var(--bg-dark);
-      border: 1px solid var(--border-color);
-      border-left: 4px solid var(--color-primary);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin: 10px 4px;
-    }
-    .detail-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-    }
-    @media (min-width: 768px) {
-      .detail-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-    .detail-block {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .detail-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      font-weight: 600;
-      color: var(--text-muted);
-      letter-spacing: 0.05em;
-    }
-    .detail-val {
-      font-size: 13px;
-      color: var(--text-main);
-      line-height: 1.6;
-    }
-    .detail-val-mono {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      background: rgba(0,0,0,0.3);
-      padding: 10px 14px;
-      border-radius: 6px;
-      border: 1px solid var(--border-color);
-      max-height: 180px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-    /* Email Body Tab layout inside detail container */
-    .detail-tabs-bar {
-      display: flex;
-      border-bottom: 1px solid var(--border-color);
-      gap: 4px;
-      margin-bottom: 8px;
-    }
-    .detail-tab {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      padding: 6px 12px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 500;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s;
-      font-family: var(--font-body);
-    }
-    .detail-tab.active {
-      color: var(--color-primary);
-      border-bottom-color: var(--color-primary);
-    }
-    /* Iframe styled preview */
-    .body-preview-iframe {
-      width: 100%;
-      height: 250px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      background: white;
-    }
+    /* API DOCS */
+    .docs-hero{background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(6,182,212,.08));border:1px solid rgba(99,102,241,.2);border-radius:16px;padding:32px;text-align:center}
+    .docs-hero h2{font-family:var(--ff-display);font-size:26px;font-weight:700;margin-bottom:8px;background:linear-gradient(135deg,#fff,var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .docs-hero p{color:var(--muted);font-size:14px;max-width:600px;margin:0 auto}
+    .docs-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:26px}
+    .docs-card+.docs-card{margin-top:0}
+    .docs-title{font-family:var(--ff-display);font-size:17px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+    pre{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:10px;padding:20px;overflow-x:auto;font-family:var(--ff-mono);font-size:13px;line-height:1.7}
+    .hl-k{color:var(--cyan)}.hl-v{color:var(--green)}.hl-s{color:var(--orange)}.hl-c{color:#6b7280;font-style:italic}
+    .ep-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+    .ep-post{background:rgba(16,185,129,.15);color:var(--green)}
+    .ep-get{background:rgba(6,182,212,.15);color:var(--cyan)}
+    .ep-put{background:rgba(245,158,11,.15);color:var(--orange)}
+    .ep-delete{background:rgba(239,68,68,.15);color:var(--red)}
+    .ep-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(36,47,71,.4)}
+    .ep-row:last-child{border-bottom:none}
+    .ep-path{font-family:var(--ff-mono);font-size:13px}
+    .ep-desc{font-size:13px;color:var(--muted);margin-left:auto}
+    .cmp-table{width:100%;border-collapse:collapse;font-size:13px}
+    .cmp-table th{background:rgba(11,15,25,.7);padding:12px 16px;text-align:left;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--border)}
+    .cmp-table td{padding:12px 16px;border-bottom:1px solid rgba(36,47,71,.4)}
+    .cmp-table tr:last-child td{border-bottom:none}
+    .chk-yes{color:var(--green);font-weight:700}.chk-no{color:var(--red);font-weight:700}
+    .info-box{background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:16px 20px;display:flex;gap:12px;align-items:flex-start}
+    .info-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+    .info-text{font-size:13px;color:var(--muted);line-height:1.7}
+    .info-text b{color:var(--text)}
 
-    /* Filter Controls in Logs page */
-    .filter-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      align-items: center;
-      margin-bottom: 20px;
-      background-color: var(--bg-card);
-      border: 1px solid var(--border-color);
-      padding: 16px 24px;
-      border-radius: 12px;
-    }
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .filter-group label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-    }
-    .filter-select {
-      background-color: rgba(11, 15, 25, 0.6);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 9px 14px;
-      color: white;
-      font-size: 13px;
-      outline: none;
-      font-family: inherit;
-    }
-    .filter-select:focus {
-      border-color: var(--color-primary);
-    }
-    .filter-search-input {
-      background-color: rgba(11, 15, 25, 0.6);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      padding: 9px 14px;
-      color: white;
-      font-size: 13px;
-      outline: none;
-      font-family: inherit;
-      width: 280px;
-    }
-    .filter-search-input:focus {
-      border-color: var(--color-primary);
-    }
+    /* SECTION HEADER */
+    .sec-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .sec-title{font-family:var(--ff-display);font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+    hr.div{border:none;border-top:1px solid var(--border);margin:10px 0}
 
-    /* Pagination controls */
-    .pagination-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 20px;
-      margin-top: 10px;
-      border-top: 1px solid var(--border-color);
-    }
-    .pagination-info {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-    .pagination-btns {
-      display: flex;
-      gap: 8px;
-    }
-    .pagination-btn {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      font-family: inherit;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-weight: 500;
-    }
-    .pagination-btn:hover:not(:disabled) {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
-    }
-    .pagination-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    /* Form */
-    .form-group { margin-bottom: 14px; }
-    .form-group label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .form-control {
-      width: 100%; background: rgba(11,15,25,0.4);
-      border: 1px solid var(--border-color); border-radius: 8px;
-      padding: 9px 12px; color: white; font-family: inherit; font-size: 13px;
-      transition: all 0.2s;
-    }
-    .form-control:focus { outline: none; border-color: var(--color-primary); }
-    textarea.form-control { min-height: 100px; resize: vertical; }
-
-    /* Inline code + pre */
-    code {
-      font-family: var(--font-mono);
-      background: rgba(11,15,25,0.8); border: 1px solid var(--border-color);
-      border-radius: 5px; padding: 2px 6px; font-size: 12px; color: #fb7185;
-    }
-    pre {
-      background: rgba(11,15,25,0.85); border: 1px solid var(--border-color);
-      border-radius: 10px; padding: 16px 18px;
-      font-family: var(--font-mono); font-size: 12px;
-      overflow-x: auto; color: #e2e8f0;
-      position: relative; line-height: 1.7;
-      tab-size: 2;
-    }
-    .copy-btn {
-      position: absolute; top: 10px; right: 10px;
-      background: var(--bg-card); border: 1px solid var(--border-color);
-      color: var(--text-muted); padding: 4px 9px;
-      border-radius: 5px; font-size: 10px; cursor: pointer;
-      transition: all 0.2s; font-family: var(--font-body); font-weight: 600;
-    }
-    .copy-btn:hover { color: white; border-color: var(--color-primary); }
-    .copy-btn.copied { color: var(--color-green); border-color: var(--color-green); }
-
-    /* Security mode badge in quick-ref panel */
-    .mode-indicator {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
-    }
-    .mode-apikey { background: rgba(239,68,68,0.1);   border: 1px solid rgba(239,68,68,0.2);   color: var(--color-red); }
-    .mode-signed { background: rgba(245,158,11,0.1);  border: 1px solid rgba(245,158,11,0.2);  color: var(--color-orange); }
-    .mode-full   { background: rgba(16,185,129,0.1);  border: 1px solid rgba(16,185,129,0.2);  color: var(--color-green); }
-
-    /* ── Docs View ────────────────────────────────── */
-    #view-docs { flex: 1; display: flex; flex-direction: column; }
-    .docs-main { flex: 1; padding: 36px 40px; max-width: 1400px; width: 100%; margin: 0 auto; }
-
-    .docs-hero {
-      text-align: center;
-      padding: 48px 20px 36px;
-    }
-    .docs-hero-eyebrow {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
-      color: var(--color-purple); padding: 5px 14px; border-radius: 20px;
-      font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-      margin-bottom: 20px;
-    }
-    .docs-hero h1 {
-      font-family: var(--font-display); font-size: 44px; font-weight: 700;
-      margin-bottom: 12px; line-height: 1.1;
-      background: linear-gradient(135deg,#fff 30%,#a5b4fc 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .docs-hero-sub { color: var(--text-muted); font-size: 16px; margin-bottom: 32px; max-width: 560px; margin-left: auto; margin-right: auto; }
-
-    /* Docs mode pills */
-    .docs-mode-wrap { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-    .docs-mode-label { color: var(--text-muted); font-size: 13px; font-weight: 500; }
-    .docs-mode-pills {
-      display: inline-flex;
-      background: rgba(11,15,25,0.7);
-      border: 1px solid var(--border-color);
-      border-radius: 12px; padding: 5px;
-    }
-    .mode-pill {
-      background: none; border: none;
-      color: var(--text-muted);
-      padding: 9px 22px; border-radius: 8px;
-      cursor: pointer; font-size: 13px; font-weight: 600;
-      font-family: var(--font-body); transition: all 0.25s;
-    }
-    .mode-pill.active {
-      background: linear-gradient(135deg, var(--color-primary), #4f46e5);
-      color: white;
-      box-shadow: 0 4px 14px rgba(99,102,241,0.35);
-    }
-    .mode-pill:hover:not(.active) { color: var(--text-main); }
-
-    .mode-desc-box {
-      display: inline-flex; align-items: flex-start; gap: 10px;
-      background: rgba(11,15,25,0.5); border: 1px solid var(--border-color);
-      border-radius: 10px; padding: 12px 18px; margin-top: 16px;
-      max-width: 640px; text-align: left; font-size: 13px; color: var(--text-muted);
-      line-height: 1.6;
-    }
-
-    /* Docs grid */
-    .docs-grid {
-      display: grid; gap: 24px; grid-template-columns: 1fr;
-      margin-bottom: 24px;
-    }
-    @media (min-width: 1024px) { .docs-grid { grid-template-columns: 1fr 1fr; } }
-
-    /* Security comparison table */
-    .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .compare-table th {
-      color: var(--text-muted); text-align: left; padding: 10px 14px;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-    }
-    .compare-table td { padding: 12px 14px; border-bottom: 1px solid rgba(36,47,71,0.4); }
-    .compare-table tr:last-child td { border-bottom: none; }
-    .compare-table td:first-child { color: var(--text-muted); }
-    .check-yes { color: var(--color-green); font-size: 15px; }
-    .check-no  { color: #374151; font-size: 15px; }
-
-    /* Request block diagram */
-    .req-block {
-      background: rgba(11,15,25,0.8); border: 1px solid var(--border-color);
-      border-radius: 10px; padding: 18px 20px;
-      font-family: var(--font-mono); font-size: 12.5px; line-height: 1.9;
-    }
-    .req-method { color: #fb7185; font-weight: 700; }
-    .req-path   { color: #e2e8f0; }
-    .req-header-name  { color: #6ee7b7; }
-    .req-header-value { color: #fbbf24; }
-    .req-header-value.dim { color: #4b5563; font-style: italic; }
-    .req-divider { border: none; border-top: 1px dashed var(--border-color); margin: 10px 0; }
-    .req-body   { color: #a5b4fc; }
-
-    /* Signing steps */
-    .signing-steps { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
-    .step { display: flex; gap: 14px; align-items: flex-start; }
-    .step-num {
-      width: 26px; height: 26px; min-width: 26px;
-      background: linear-gradient(135deg, var(--color-primary), #4f46e5);
-      border-radius: 50%; display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700; color: white; margin-top: 2px;
-    }
-    .step-content { flex: 1; }
-    .step-title { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
-    .step-desc  { color: var(--text-muted); font-size: 12px; line-height: 1.6; }
-    .step-code  { margin-top: 6px; }
-    .step-code pre { padding: 10px 14px; font-size: 11.5px; margin: 0; }
-
-    /* Language tabs */
-    .lang-tabs-bar {
-      display: flex; border-bottom: 1px solid var(--border-color);
-      margin-bottom: 0;
-    }
-    .lang-tab {
-      background: none; border: none;
-      border-bottom: 2px solid transparent;
-      color: var(--text-muted); padding: 9px 16px;
-      cursor: pointer; font-size: 12px; font-weight: 600;
-      font-family: var(--font-body); transition: all 0.2s; margin-bottom: -1px;
-    }
-    .lang-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
-
-    /* Error reference */
-    .err-ref-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .err-ref-table th {
-      color: var(--text-muted); text-align: left; padding: 10px 14px;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
-    }
-    .err-ref-table td { padding: 11px 14px; border-bottom: 1px solid rgba(36,47,71,0.4); vertical-align: top; }
-    .err-ref-table tr:last-child td { border-bottom: none; }
-    .err-code { font-family: var(--font-mono); color: var(--color-red); font-size: 12px; font-weight: 500; }
-    .err-reason { color: var(--text-muted); font-size: 12px; }
-
-    /* ── Footer ───────────────────────────────────── */
-    footer {
-      text-align: center; padding: 20px;
-      color: var(--text-muted); font-size: 12px;
-      border-top: 1px solid var(--border-color); margin-top: auto;
-    }
-
-    /* ── Utility ──────────────────────────────────── */
-    .section-title {
-      font-family: var(--font-display); font-size: 14px; font-weight: 600;
-      color: var(--color-cyan); margin-bottom: 10px;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .section-title::before { content: ''; width: 3px; height: 14px; background: var(--color-cyan); border-radius: 2px; display: inline-block; }
-    .divider { border: none; border-top: 1px solid var(--border-color); margin: 20px 0; }
-    .tag {
-      display: inline-block; padding: 2px 8px; border-radius: 6px;
-      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-    }
-    .tag-get    { background: rgba(16,185,129,0.15); color: var(--color-green); }
-    .tag-post   { background: rgba(99,102,241,0.15); color: var(--color-purple); }
-    .tag-req    { background: rgba(239,68,68,0.12);  color: var(--color-red); }
-    .tag-opt    { background: rgba(156,163,175,0.12); color: var(--text-muted); }
+    /* TOAST */
+    #toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px 22px;font-size:14px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.4);opacity:0;transition:opacity .3s,transform .3s;z-index:9999;pointer-events:none}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    #toast.tok{border-color:rgba(16,185,129,.4);color:var(--green)}
+    #toast.terr{border-color:rgba(239,68,68,.4);color:var(--red)}
+    .mono{font-family:var(--ff-mono);font-size:12px}
+    .docs-section{display:flex;flex-direction:column;gap:24px}
   </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════════════════ Auth Overlay -->
+<!-- AUTH OVERLAY -->
 <div id="auth-overlay">
   <div class="auth-card">
-    <div class="logo-badge" style="margin: 0 auto 14px auto; width:40px;height:40px;font-size:20px;">R</div>
-    <h2>Authenticate</h2>
-    <p>Enter your Worker credentials to access the dashboard.</p>
-
-    <!-- Security Mode selector -->
-    <div style="text-align:left; margin-bottom:10px;">
-      <label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;color:var(--text-muted);">Security Mode</label>
-      <div class="auth-mode-group">
-        <button type="button" class="auth-mode-btn" id="mode-btn-apikey"  onclick="selectAuthMode('api-key-only')">🔑 API Key Only</button>
-        <button type="button" class="auth-mode-btn" id="mode-btn-signed"  onclick="selectAuthMode('signed')">🔐 Signed</button>
-        <button type="button" class="auth-mode-btn active" id="mode-btn-full" onclick="selectAuthMode('full')">🛡️ Full</button>
-      </div>
+    <div style="font-size:36px;margin-bottom:12px">✉️</div>
+    <h2>ESET Mail</h2>
+    <p>Authenticate to access your dashboard</p>
+    <div class="auth-mode-group">
+      <button class="auth-mode-btn active" onclick="setAuthMode('apikey')" id="mbtn-apikey">API Key</button>
+      <button class="auth-mode-btn" onclick="setAuthMode('hmac')" id="mbtn-hmac">HMAC Signed</button>
     </div>
-
-    <div class="input-group">
-      <label for="dashboard-api-key">API Key (X-API-Key)</label>
-      <input type="password" id="dashboard-api-key" class="input-field" placeholder="rpt_xxxxxxxxxxxxxxxxx">
+    <div id="auth-apikey-form">
+      <div class="ig"><label>API Key</label><input class="ifield" type="password" id="ak-input" placeholder="sk-…" autocomplete="off"></div>
+      <div class="auth-hint"><b>API Key mode</b> — Simple bearer token. Set <code>API_KEY</code> in your Worker env vars.</div>
+      <button class="btn" onclick="doAuth()">🔓 Unlock Dashboard</button>
     </div>
-
-    <div id="auth-secret-row" class="input-group">
-      <label for="dashboard-api-secret">API Secret (signing key — never transmitted)</label>
-      <input type="password" id="dashboard-api-secret" class="input-field" placeholder="your_api_secret_configured_in_worker">
+    <div id="auth-hmac-form" style="display:none">
+      <div class="ig"><label>API Key</label><input class="ifield" type="password" id="ak-input-hmac" placeholder="sk-…" autocomplete="off"></div>
+      <div class="ig"><label>Secret Key</label><input class="ifield" type="password" id="sk-input" placeholder="your-hmac-secret" autocomplete="off"></div>
+      <div class="auth-hint"><b>HMAC Signed mode</b> — Requests signed with <b>HMAC-SHA256</b> using your <code>API_SECRET</code>. <code>X-API-Key</code> authenticates access, and provider routing headers are bound into the signature to prevent MITM.</div>
+      <button class="btn" onclick="doAuth()">🔐 Unlock Dashboard</button>
     </div>
-
-    <div class="auth-hint" id="auth-mode-hint">
-      <b>Full mode:</b> Protects against tampering, replay attacks, and stale captured requests.
-      Requires <code>API_SECRET</code> to be configured on both the Worker and here.
-    </div>
-
-    <button class="btn" onclick="authenticate()">Authenticate</button>
-    <div id="auth-error" style="color:var(--color-red);font-size:12px;margin-top:12px;display:none;"></div>
+    <p id="auth-err" style="color:var(--red);margin-top:14px;font-size:13px;display:none"></p>
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════ Header -->
+<!-- HEADER -->
 <header>
-  <div class="logo-container">
-    <div class="logo-badge">R</div>
-    <div class="logo-text">Reportary <span>Mail Edge</span></div>
+  <div class="logo-wrap">
+    <div class="logo-badge">✉</div>
+    <div class="logo-text">ESET <span>Mail</span></div>
   </div>
-
-  <div class="nav-tabs">
-    <button class="nav-tab active" data-view="dashboard" onclick="switchView('dashboard')" id="nav-dashboard">
-      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"/></svg>
-      Dashboard
-    </button>
-    <button class="nav-tab" data-view="logs" onclick="switchView('logs')" id="nav-logs">
-      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 00-4-4H5m14 0v-2a4 4 0 00-4-4h-5m2 18h.01M12 21a9 9 0 110-18 9 9 0 010 18z"/></svg>
-      Detailed Logs
-    </button>
-    <button class="nav-tab" data-view="docs" onclick="switchView('docs')" id="nav-docs">
-      <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-      API Docs
-    </button>
-  </div>
-
-  <div class="header-right">
-    <a href="https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/" target="_blank" class="report-issue-btn">
-      <svg style="width: 14px; height: 14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-      </svg>
-      Report Issues
-    </a>
-    <div class="status-pill"><div class="status-dot"></div><span>Edge Active</span></div>
-    <button class="ghost-btn" onclick="logout()">Disconnect</button>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchView('v-dash')" id="tab-dash">📊 Dashboard</button>
+    <button class="nav-tab" onclick="switchView('v-prov')" id="tab-prov">🔌 Providers</button>
+    <button class="nav-tab" onclick="switchView('v-logs')" id="tab-logs">📋 Logs</button>
+    <button class="nav-tab" onclick="switchView('v-docs')" id="tab-docs">📖 API Docs</button>
+  </nav>
+  <div class="hdr-right">
+    <div class="status-pill"><div class="status-dot"></div> Live</div>
+    <button class="ghost-btn" onclick="logout()">↩ Logout</button>
   </div>
 </header>
 
-<!-- ═══════════════════════════════════════════════════════════════ DASHBOARD VIEW -->
-<div id="view-dashboard">
-  <main>
-    <!-- Stats -->
-    <div class="stats-grid">
-      <div class="stat-card stat-queued">
-        <div class="stat-indicator"></div>
-        <div class="stat-label">Queued</div>
-        <div class="stat-value" id="stats-queued">—</div>
-      </div>
-      <div class="stat-card stat-sending">
-        <div class="stat-indicator"></div>
-        <div class="stat-label">Sending</div>
-        <div class="stat-value" id="stats-sending">—</div>
-      </div>
-      <div class="stat-card stat-sent">
-        <div class="stat-indicator"></div>
-        <div class="stat-label">Sent</div>
-        <div class="stat-value" id="stats-sent">—</div>
-      </div>
-      <div class="stat-card stat-failed">
-        <div class="stat-indicator"></div>
-        <div class="stat-label">Failed</div>
-        <div class="stat-value" id="stats-failed">—</div>
-      </div>
-    </div>
+<main>
 
-    <!-- Content grid -->
-    <div class="content-grid">
-
-      <!-- Left: Logs -->
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-            Recent Dispatch Logs (Last 10)
-          </div>
-          <div style="display:flex; gap:10px;">
-            <button class="ghost-btn" style="border-color:var(--color-primary); color:var(--color-primary);" onclick="switchView('logs')">View Detailed Logs →</button>
-            <button class="ghost-btn" onclick="fetchDashboardData(this)">Refresh Queue</button>
-          </div>
-        </div>
-        <div class="table-container">
-          <table id="logs-table">
-            <thead>
-              <tr>
-                <th style="width: 40px;"></th>
-                <th>ID</th><th>Recipient</th><th>Subject</th>
-                <th>Status</th><th>Tries</th><th>Last Update</th>
-              </tr>
-            </thead>
-            <tbody id="logs-body">
-              <tr><td colspan="7" class="empty-state">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Right column -->
-      <div style="display:flex;flex-direction:column;gap:24px;">
-
-        <!-- Test email -->
-        <div class="panel">
-          <div class="panel-title" style="margin-bottom:18px;">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-            Send Test Email
-          </div>
-          <form id="test-email-form" onsubmit="sendTestEmail(event)">
-            <div class="form-group">
-              <label for="test-to">To (comma-separated or JSON array)</label>
-              <input type="text" id="test-to" class="form-control" placeholder="recipient@example.com" required>
-            </div>
-            <div class="form-group">
-              <label for="test-cc">CC (optional)</label>
-              <input type="text" id="test-cc" class="form-control" placeholder="cc@example.com">
-            </div>
-            <div class="form-group">
-              <label for="test-bcc">BCC (optional)</label>
-              <input type="text" id="test-bcc" class="form-control" placeholder="bcc@example.com">
-            </div>
-            <div class="form-group">
-              <label for="test-subject">Subject</label>
-              <input type="text" id="test-subject" class="form-control" placeholder="Test from Reportary Mail Edge" required>
-            </div>
-            <div class="form-group">
-              <label for="test-body">Body (HTML supported)</label>
-              <textarea id="test-body" class="form-control" placeholder="&lt;h1&gt;Hello&lt;/h1&gt;&lt;p&gt;This is a test.&lt;/p&gt;" required></textarea>
-            </div>
-            <button type="submit" class="btn" id="send-test-btn" style="margin-top:4px;">Enqueue Test Email</button>
-            <div id="test-result" style="margin-top:10px;font-size:13px;font-weight:500;display:none;"></div>
-          </form>
-        </div>
-
-        <!-- Quick reference -->
-        <div class="panel">
-          <div class="panel-title" style="margin-bottom:16px;">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right:4px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            Quick Reference
-          </div>
-
-          <div class="section-title">Endpoint</div>
-          <code id="qr-endpoint" style="display:block;font-size:12px;padding:10px;margin-bottom:16px;word-break:break-all;">/api/send</code>
-
-          <div class="section-title">Active Security Mode</div>
-          <div id="qr-mode-badge" style="margin-bottom:16px;">
-            <span class="mode-indicator mode-full">🛡️ Full</span>
-          </div>
-
-          <div class="section-title">Required Headers</div>
-          <div id="qr-headers" style="font-size:12px;color:var(--text-muted);line-height:2;font-family:var(--font-mono);">
-            X-API-Key, X-Timestamp, X-Nonce, X-Signature
-          </div>
-
-          <hr class="divider">
-          <button class="btn" style="background:rgba(99,102,241,0.12);color:var(--color-primary);box-shadow:none;border:1px solid rgba(99,102,241,0.3);" onclick="switchView('docs')">
-            View Full API Docs →
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </main>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════════════ DETAILED LOGS VIEW -->
-<div id="view-logs" style="display:none;">
-  <main>
-    <!-- Filter bar -->
-    <div class="filter-bar">
-      <div class="filter-group">
-        <label for="log-filter-status">Status</label>
-        <select id="log-filter-status" class="filter-select" onchange="onLogFilterChange()">
-          <option value="">All Statuses</option>
-          <option value="queued">Queued</option>
-          <option value="sending">Sending</option>
-          <option value="sent">Sent</option>
-          <option value="failed">Failed</option>
-        </select>
-      </div>
-
-      <div class="filter-group">
-        <label for="log-filter-sort">Sort By</label>
-        <select id="log-filter-sort" class="filter-select" onchange="onLogFilterChange()">
-          <option value="updated_at_desc">Last Update (Newest)</option>
-          <option value="updated_at_asc">Last Update (Oldest)</option>
-          <option value="created_at_desc">Created Time (Newest)</option>
-          <option value="created_at_asc">Created Time (Oldest)</option>
-          <option value="attempts_desc">Most Attempts</option>
-        </select>
-      </div>
-
-      <div class="filter-group" style="flex: 1; min-width: 200px;">
-        <label for="log-filter-search">Search</label>
-        <input type="text" id="log-filter-search" class="filter-search-input" style="width:100%;" placeholder="Search subject, recipient, body, error..." oninput="onLogSearchInput()">
-      </div>
-      
-      <div class="filter-group" style="align-self: flex-end;">
-        <button class="ghost-btn" style="padding:9px 16px;" onclick="resetLogFilters()">Reset Filters</button>
-      </div>
-    </div>
-
-    <!-- Logs Panel -->
+<!-- ══════════════ VIEW: DASHBOARD ══════════════ -->
+<div id="v-dash" class="view active">
+  <div class="stats-grid">
+    <div class="stat-card stat-queued"><div class="stat-indicator"></div><div class="stat-label">Queued</div><div class="stat-value" id="st-queued">—</div></div>
+    <div class="stat-card stat-sending"><div class="stat-indicator"></div><div class="stat-label">Sending</div><div class="stat-value" id="st-sending">—</div></div>
+    <div class="stat-card stat-sent"><div class="stat-indicator"></div><div class="stat-label">Sent</div><div class="stat-value" id="st-sent">—</div></div>
+    <div class="stat-card stat-failed"><div class="stat-indicator"></div><div class="stat-label">Failed</div><div class="stat-value" id="st-failed">—</div></div>
+  </div>
+  <div class="content-grid">
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">
-          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-          Detailed Queue History Logs
-        </div>
-        <button class="ghost-btn" onclick="fetchDetailedLogsData(this)">Sync Table</button>
+        <div class="panel-title">📬 Recent Emails</div>
+        <button class="ghost-btn" onclick="fetchDash(this)">↻ Refresh</button>
       </div>
-      
-      <div class="table-container">
-        <table id="detailed-logs-table">
-          <thead>
-            <tr>
-              <th style="width: 40px;"></th>
-              <th>ID</th>
-              <th>Recipient</th>
-              <th>Subject</th>
-              <th>Status</th>
-              <th>Tries</th>
-              <th>Last Update</th>
-            </tr>
-          </thead>
-          <tbody id="detailed-logs-body">
-            <tr><td colspan="7" class="empty-state">Loading logs data...</td></tr>
-          </tbody>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Recipient</th><th>Subject</th><th>Status</th><th>Provider</th><th>Time</th></tr></thead>
+          <tbody id="dash-emails"><tr><td colspan="5"><div class="empty-state">⏳ Loading…</div></td></tr></tbody>
         </table>
       </div>
-
-      <!-- Pagination Footer -->
-      <div class="pagination-bar">
-        <div class="pagination-info" id="logs-pagination-info">
-          Showing 0 - 0 of 0 entries
+    </div>
+    <div class="panel">
+      <div class="panel-header"><div class="panel-title">🧪 Send Test Email</div></div>
+      <form onsubmit="sendTest(event)">
+        <div class="ig"><label>To</label><input class="ifield" type="email" id="te-to" placeholder="recipient@example.com" required></div>
+        <div class="ig"><label>Subject</label><input class="ifield" type="text" id="te-subj" placeholder="Hello from ESET Mail"></div>
+        <div class="ig"><label>Body (HTML)</label><textarea class="ifield" id="te-body" rows="3" placeholder="&lt;p&gt;Test body&lt;/p&gt;"></textarea></div>
+        <div class="ig">
+          <label>Route via Provider (optional)</label>
+          <select class="ifield" id="te-prov">
+            <option value="">— Auto (priority order) —</option>
+          </select>
         </div>
-        <div class="pagination-btns">
-          <button class="pagination-btn" id="btn-prev-page" onclick="changeLogsPage(-1)" disabled>
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-            Previous
-          </button>
-          <button class="pagination-btn" id="btn-next-page" onclick="changeLogsPage(1)" disabled>
-            Next
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-          </button>
-        </div>
+        <button class="btn" type="submit" id="te-btn">📤 Send Test Email</button>
+      </form>
+      <hr class="div" style="margin-top:20px">
+      <div class="panel-title" style="margin:14px 0 10px">⚡ Quick Reference</div>
+      <div class="qr-grid">
+        <div class="qr-item"><div class="qr-lbl">API Base</div><div class="qr-val" id="qr-base">—</div></div>
+        <div class="qr-item"><div class="qr-lbl">Auth Method</div><div class="qr-val" id="qr-auth">—</div></div>
+        <div class="qr-item"><div class="qr-lbl">Active Providers</div><div class="qr-val" id="qr-provs">—</div></div>
       </div>
     </div>
-  </main>
+  </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════════════════════ DOCS VIEW -->
-<div id="view-docs" style="display:none;">
-  <div class="docs-main">
+<!-- ══════════════ VIEW: PROVIDERS ══════════════ -->
+<div id="v-prov" class="view">
+  <div class="sec-hdr">
+    <div class="sec-title">🔌 Email Providers</div>
+    <button class="bsm b-primary" onclick="openAddProv()">＋ Add Provider</button>
+  </div>
+  <div class="info-box">
+    <div class="info-icon">ℹ️</div>
+    <div class="info-text">
+      The <b>default provider</b> (⭐) is tried first in the failover chain regardless of priority number.
+      Providers that exceed their daily limit are automatically skipped. If env-var SMTP credentials are configured,
+      they serve as the <b>final fallback</b> (labeled <em>Default Env SMTP</em>).
+    </div>
+  </div>
+  <div class="panel" style="padding:0">
+    <div class="panel-header" style="padding:20px 26px 16px">
+      <div class="panel-title">Provider List</div>
+      <button class="ghost-btn" onclick="fetchProviders(this)">↻ Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:40px">#</th><th>Name</th><th>Type</th><th>From Email</th><th>Daily Quota</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="prov-body"><tr><td colspan="7"><div class="empty-state">⏳ Loading…</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
-    <!-- Hero -->
-    <div class="docs-hero">
-      <div class="docs-hero-eyebrow">📬 Reportary Mail Edge</div>
-      <h1>API Reference</h1>
-      <p class="docs-hero-sub">Everything you need to integrate Reportary Mail Edge into your application — from simple API key auth to full HMAC-signed requests.</p>
-
-      <div class="docs-mode-wrap">
-        <span class="docs-mode-label">Security Mode:</span>
-        <div class="docs-mode-pills">
-          <button class="mode-pill" data-mode="api-key-only" onclick="setDocsMode('api-key-only')">🔑 API Key Only</button>
-          <button class="mode-pill" data-mode="signed"       onclick="setDocsMode('signed')">🔐 Signed</button>
-          <button class="mode-pill active" data-mode="full"  onclick="setDocsMode('full')">🛡️ Full</button>
-        </div>
-      </div>
-      <div id="mode-desc-box" class="mode-desc-box">
-        🛡️ <span id="mode-desc-text">Maximum security. Verifies API key, HMAC signature, timestamp (±3 min), and a unique per-request nonce. Fully prevents tampering, replay attacks, and stale captures.</span>
+<!-- ══════════════ VIEW: LOGS ══════════════ -->
+<div id="v-logs" class="view">
+  <div class="sec-hdr"><div class="sec-title">📋 Detailed Logs</div></div>
+  <div class="filter-bar">
+    <div><label class="flbl">Status</label><select class="finput" id="fl-status"><option value="">All</option><option value="queued">Queued</option><option value="sending">Sending</option><option value="sent">Sent</option><option value="failed">Failed</option></select></div>
+    <div><label class="flbl">Search</label><input class="finput" type="text" id="fl-search" placeholder="recipient / subject…"></div>
+    <div><label class="flbl">From Date</label><input class="finput" type="date" id="fl-from"></div>
+    <div><label class="flbl">To Date</label><input class="finput" type="date" id="fl-to"></div>
+    <div style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
+      <button class="bsm b-primary" onclick="fetchLogs(this)">🔍 Apply</button>
+      <button class="bsm b-ghost" onclick="resetFilters()">✕ Reset</button>
+    </div>
+  </div>
+  <div class="panel" style="padding:0">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th style="width:30px"></th><th>ID</th><th>Recipient</th><th>Subject</th><th>Status</th><th>Provider</th><th>From</th><th>Created</th></tr></thead>
+        <tbody id="logs-body"><tr><td colspan="8"><div class="empty-state">⏳ Loading…</div></td></tr></tbody>
+      </table>
+    </div>
+    <div class="pag">
+      <div class="pag-info" id="pag-info">—</div>
+      <div class="pag-btns">
+        <button class="pag-btn" id="btn-prev" onclick="changePage(-1)" disabled>← Prev</button>
+        <button class="pag-btn" id="btn-next" onclick="changePage(1)" disabled>Next →</button>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- Security comparison -->
-    <div class="panel" style="margin-bottom:24px;">
-      <div class="panel-title" style="margin-bottom:16px;">
-        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-        Security Level Comparison
-      </div>
-      <table class="compare-table">
-        <thead>
-          <tr>
-            <th>Protection</th>
-            <th>🔑 API Key Only</th>
-            <th>🔐 Signed</th>
-            <th>🛡️ Full ★</th>
-          </tr>
-        </thead>
+<!-- ══════════════ VIEW: API DOCS ══════════════ -->
+<div id="v-docs" class="view">
+  <div class="docs-section">
+    <div class="docs-hero">
+      <h2>📖 API Reference</h2>
+      <p>Secure queue-based email sending with multi-provider failover. Full HMAC request signing with optional per-call provider routing.</p>
+    </div>
+
+    <div class="docs-card">
+      <div class="docs-title">🔐 Authentication Comparison</div>
+      <table class="cmp-table">
+        <thead><tr><th>Feature</th><th>API Key</th><th>HMAC Signed</th></tr></thead>
         <tbody>
-          <tr>
-            <td>Identity verification</td>
-            <td><span class="check-yes">✓</span></td>
-            <td><span class="check-yes">✓</span></td>
-            <td><span class="check-yes">✓</span></td>
-          </tr>
-          <tr>
-            <td>Body tamper detection (HMAC)</td>
-            <td><span class="check-no">✗</span></td>
-            <td><span class="check-yes">✓</span></td>
-            <td><span class="check-yes">✓</span></td>
-          </tr>
-          <tr>
-            <td>Stale request rejection (±3 min)</td>
-            <td><span class="check-no">✗</span></td>
-            <td><span class="check-yes">✓</span></td>
-            <td><span class="check-yes">✓</span></td>
-          </tr>
-          <tr>
-            <td>Replay attack prevention (nonce)</td>
-            <td><span class="check-no">✗</span></td>
-            <td><span class="check-no">✗</span></td>
-            <td><span class="check-yes">✓</span></td>
-          </tr>
+          <tr><td>Replay Protection</td><td class="chk-no">✗</td><td class="chk-yes">✓ Timestamp + Nonce</td></tr>
+          <tr><td>Body Tampering Detection</td><td class="chk-no">✗</td><td class="chk-yes">✓ SHA-256 body hash</td></tr>
+          <tr><td>Provider Header MITM</td><td class="chk-no">✗</td><td class="chk-yes">✓ Headers bound into signature</td></tr>
+          <tr><td>Setup Complexity</td><td class="chk-yes">✓ Simple</td><td>Requires signing logic</td></tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Main docs grid -->
-    <div class="docs-grid">
+    <div class="docs-card">
+      <div class="docs-title"><span class="ep-badge ep-post">POST</span>&nbsp;/api/send</div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Queue an email. The cron worker picks it up and sends via configured providers with automatic failover.</p>
+      <pre><span class="hl-c">// Standard request (API Key auth)</span>
+POST /api/send
+<span class="hl-k">X-API-Key:</span> <span class="hl-s">sk-your-key</span>
+<span class="hl-k">Content-Type:</span> <span class="hl-v">application/json</span>
 
-      <!-- ── Left: Reference ─────────────────────── -->
-      <div style="display:flex;flex-direction:column;gap:20px;">
+<span class="hl-c">// Or HMAC auth — with optional provider routing headers:</span>
+<span class="hl-k">X-Timestamp:</span>    <span class="hl-v">1722000000</span>
+<span class="hl-k">X-Nonce:</span>        <span class="hl-v">abc123</span>
+<span class="hl-k">X-Signature:</span>    <span class="hl-v">sha256=…</span>
+<span class="hl-k">X-Provider-Id:</span>  <span class="hl-s">prov_smtp_01</span>   <span class="hl-c">// force specific provider</span>
+<span class="hl-k">X-Sender-Email:</span> <span class="hl-s">noreply@acme.com</span> <span class="hl-c">// or match by from_email</span>
 
-        <!-- Endpoint -->
-        <div class="panel">
-          <div class="section-title">Endpoint</div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-            <span class="tag tag-post">POST</span>
-            <code id="docs-endpoint" style="background:none;border:none;padding:0;font-size:13px;color:var(--text-main);">/api/send</code>
-          </div>
-          <p style="font-size:13px;color:var(--text-muted);line-height:1.7;">
-            Queues an email for delivery. The worker enqueues the job in D1 and returns immediately — actual SMTP dispatch runs asynchronously.
-          </p>
-        </div>
-
-        <!-- Request anatomy -->
-        <div class="panel">
-          <div class="section-title" style="margin-bottom:12px;">Request Structure</div>
-          <div class="req-block">
-            <div><span class="req-method">POST</span> <span class="req-path" id="req-path">/api/send</span></div>
-            <hr class="req-divider">
-            <div><span class="req-header-name">X-API-Key:&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="req-header-value">rpt_xxxxxxxxxxxx</span></div>
-            <div id="req-timestamp-line"><span class="req-header-name">X-Timestamp:&nbsp;</span><span class="req-header-value">1752948932</span></div>
-            <div id="req-nonce-line"><span class="req-header-name">X-Nonce:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="req-header-value">550e8400-e29b-41d4-a716-446655440000</span></div>
-            <div id="req-sig-line"><span class="req-header-name">X-Signature:&nbsp;</span><span class="req-header-value">6d4c8a3b…</span></div>
-            <div><span class="req-header-name">Content-Type:</span><span class="req-header-value"> application/json</span></div>
-            <hr class="req-divider">
-            <div class="req-body">{ "to": "…", "subject": "…", "body": "…" }</div>
-          </div>
-        </div>
-
-        <!-- Request headers table -->
-        <div class="panel">
-          <div class="section-title" style="margin-bottom:12px;">Request Headers</div>
-          <table class="compare-table">
-            <thead>
-              <tr><th>Header</th><th>Required</th><th>Description</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>X-API-Key</code></td>
-                <td><span class="tag tag-req">Required</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">Your API key. Identifies the caller.</td>
-              </tr>
-              <tr id="hdr-timestamp" style="display:none;">
-                <td><code>X-Timestamp</code></td>
-                <td><span class="tag tag-req">Required</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">Unix epoch seconds (UTC). Must be within ±3 minutes of server time (UTC).</td>
-              </tr>
-              <tr id="hdr-nonce" style="display:none;">
-                <td><code>X-Nonce</code></td>
-                <td><span class="tag tag-req">Required</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">Unique request ID (e.g. UUID v4). Rejected if seen before.</td>
-              </tr>
-              <tr id="hdr-sig" style="display:none;">
-                <td><code>X-Signature</code></td>
-                <td><span class="tag tag-req">Required</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">HMAC-SHA256 hex over the canonical message (see Signing Guide).</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Request body -->
-        <div class="panel">
-          <div class="section-title" style="margin-bottom:12px;">Request Body (JSON)</div>
-          <table class="compare-table">
-            <thead>
-              <tr><th>Field</th><th></th><th>Description</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>to</code></td>
-                <td><span class="tag tag-req">Required</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">Recipient(s). String, comma-separated string, or array.</td>
-              </tr>
-              <tr>
-                <td><code>subject</code></td>
-                <td><span class="tag tag-req">Required</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">Email subject line.</td>
-              </tr>
-              <tr>
-                <td><code>body</code></td>
-                <td><span class="tag tag-req">Required</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">Email body. Raw HTML is detected automatically.</td>
-              </tr>
-              <tr>
-                <td><code>cc</code></td>
-                <td><span class="tag tag-opt">Optional</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">CC recipients. Same formats as <code>to</code>.</td>
-              </tr>
-              <tr>
-                <td><code>bcc</code></td>
-                <td><span class="tag tag-opt">Optional</span></td>
-                <td style="color:var(--text-muted);font-size:12px;">BCC recipients. Same formats as <code>to</code>.</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Signing guide (hidden in api-key-only mode) -->
-        <div class="panel" id="signing-guide-panel">
-          <div class="section-title" style="margin-bottom:14px;">Signing Guide</div>
-
-          <div class="signing-steps">
-
-            <div class="step">
-              <div class="step-num">1</div>
-              <div class="step-content">
-                <div class="step-title">Get Unix timestamp (UTC)</div>
-                <div class="step-desc">Current UTC time in seconds since Unix epoch. Must be within ±3 minutes of server time (UTC).</div>
-              </div>
-            </div>
-
-            <div class="step" id="sign-step-nonce">
-              <div class="step-num">2</div>
-              <div class="step-content">
-                <div class="step-title">Generate a UUID nonce <span style="font-size:10px;color:var(--color-green);font-weight:700;margin-left:4px;">FULL MODE ONLY</span></div>
-                <div class="step-desc">A UUID v4 (or any unique random string). The server rejects any nonce it has seen before within the TTL window.</div>
-              </div>
-            </div>
-
-            <div class="step">
-              <div class="step-num" id="sign-step3-num">3</div>
-              <div class="step-content">
-                <div class="step-title">Compute SHA-256 of the raw request body</div>
-                <div class="step-desc">Hash the exact bytes of the JSON body you will send — before any encoding changes.</div>
-                <div class="step-code">
-                  <pre>body_hash = SHA256(raw_request_body)  → hex string</pre>
-                </div>
-              </div>
-            </div>
-
-            <div class="step">
-              <div class="step-num" id="sign-step4-num">4</div>
-              <div class="step-content">
-                <div class="step-title">Build the canonical message</div>
-                <div class="step-desc">Join the parts with literal newline characters. In <em>signed</em> mode the nonce is an empty string, giving two consecutive newlines.</div>
-                <div class="step-code">
-                  <pre id="sign-canonical-msg">canonical_message =
-  timestamp    + "\\n" +
-  nonce        + "\\n" +
-  body_hash</pre>
-                </div>
-              </div>
-            </div>
-
-            <div class="step">
-              <div class="step-num" id="sign-step5-num">5</div>
-              <div class="step-content">
-                <div class="step-title">Compute HMAC-SHA256</div>
-                <div class="step-desc">Sign the canonical message using your <strong>API Secret</strong> — the shared secret configured on both the Worker and your client. <em>Never sent in the request.</em></div>
-                <div class="step-code">
-                  <pre>X-Signature = HMAC_SHA256(API_SECRET, canonical_message)  → hex</pre>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-      </div><!-- /docs left -->
-
-      <!-- ── Right: Code Examples ────────────────── -->
-      <div style="display:flex;flex-direction:column;gap:20px;">
-
-        <div class="panel" style="padding:0;overflow:hidden;">
-          <!-- Language tab bar -->
-          <div class="lang-tabs-bar" style="padding:0 20px;background:rgba(11,15,25,0.3);">
-            <button class="lang-tab active" data-lang="curl"   onclick="setLang('curl')"  >cURL / Bash</button>
-            <button class="lang-tab"        data-lang="js"     onclick="setLang('js')"    >JavaScript</button>
-            <button class="lang-tab"        data-lang="python" onclick="setLang('python')">Python</button>
-          </div>
-
-          <div style="position:relative;">
-            <button class="copy-btn" onclick="copyCodeExample()" id="copy-code-btn">Copy</button>
-
-            <!-- ─── cURL panels ─── -->
-            <div id="lang-curl" class="lang-panel">
-              <div data-mode="api-key-only" class="code-ex-wrap">
-<pre>#!/bin/bash
-curl -X POST YOUR_WORKER_URL/api/send \\
-  -H "X-API-Key: rpt_your_api_key" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "to": "user@example.com",
-    "subject": "Hello from Reportary",
-    "body": "&lt;h1&gt;Hello!&lt;/h1&gt;&lt;p&gt;Test email.&lt;/p&gt;"
-  }'</pre>
-              </div>
-              <div data-mode="signed" class="code-ex-wrap" style="display:none;">
-<pre>#!/bin/bash
-API_KEY="rpt_your_api_key"
-API_SECRET="your_api_secret"
-
-BODY='{"to":"user@example.com","subject":"Hello","body":"&lt;h1&gt;Hello!&lt;/h1&gt;"}'
-TIMESTAMP=$(date +%s)
-
-# SHA-256 hash of the raw request body
-BODY_HASH=$(printf '%s' "$BODY" | openssl dgst -sha256 | awk '{print $2}')
-
-# Canonical message — signed mode uses empty nonce (two consecutive newlines)
-MESSAGE="$TIMESTAMP
-
-$BODY_HASH"
-
-# HMAC-SHA256 signature
-SIGNATURE=$(printf '%s' "$MESSAGE" | openssl dgst -sha256 -hmac "$API_SECRET" | awk '{print $2}')
-
-curl -X POST YOUR_WORKER_URL/api/send \\
-  -H "X-API-Key: $API_KEY" \\
-  -H "X-Timestamp: $TIMESTAMP" \\
-  -H "X-Signature: $SIGNATURE" \\
-  -H "Content-Type: application/json" \\
-  -d "$BODY"</pre>
-              </div>
-              <div data-mode="full" class="code-ex-wrap" style="display:none;">
-<pre>#!/bin/bash
-API_KEY="rpt_your_api_key"
-API_SECRET="your_api_secret"
-
-BODY='{"to":"user@example.com","subject":"Hello","body":"&lt;h1&gt;Hello!&lt;/h1&gt;"}'
-TIMESTAMP=$(date +%s)
-NONCE=$(uuidgen)   # or: cat /proc/sys/kernel/random/uuid
-
-# SHA-256 hash of the raw request body
-BODY_HASH=$(printf '%s' "$BODY" | openssl dgst -sha256 | awk '{print $2}')
-
-# Canonical message: timestamp + newline + nonce + newline + body_hash
-MESSAGE="$TIMESTAMP
-$NONCE
-$BODY_HASH"
-
-# HMAC-SHA256 signature
-SIGNATURE=$(printf '%s' "$MESSAGE" | openssl dgst -sha256 -hmac "$API_SECRET" | awk '{print $2}')
-
-curl -X POST YOUR_WORKER_URL/api/send \\
-  -H "X-API-Key: $API_KEY" \\
-  -H "X-Timestamp: $TIMESTAMP" \\
-  -H "X-Nonce: $NONCE" \\
-  -H "X-Signature: $SIGNATURE" \\
-  -H "Content-Type: application/json" \\
-  -d "$BODY"</pre>
-              </div>
-            </div><!-- /lang-curl -->
-
-            <!-- ─── JavaScript panels ─── -->
-            <div id="lang-js" class="lang-panel" style="display:none;">
-              <div data-mode="api-key-only" class="code-ex-wrap">
-<pre>const response = await fetch('YOUR_WORKER_URL/api/send', {
-  method: 'POST',
-  headers: {
-    'X-API-Key': 'rpt_your_api_key',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    to: 'user@example.com',
-    subject: 'Hello from Reportary',
-    body: '&lt;h1&gt;Hello!&lt;/h1&gt;&lt;p&gt;Test email.&lt;/p&gt;'
-  })
-});
-
-const data = await response.json();
-console.log(data); // { success: true, id: 42 }</pre>
-              </div>
-              <div data-mode="signed" class="code-ex-wrap" style="display:none;">
-<pre>async function sendEmail(apiKey, apiSecret, payload) {
-  const body = JSON.stringify(payload);
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-
-  // SHA-256 of request body
-  const bodyBytes = new TextEncoder().encode(body);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', bodyBytes);
-  const bodyHash = Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-
-  // Canonical message — signed mode: empty nonce → two newlines
-  const message = timestamp + "\\n" + "\\n" + bodyHash;
-
-  // HMAC-SHA256 signature
-  const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(apiSecret),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
-  const signature = Array.from(new Uint8Array(sig))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-
-  return fetch('YOUR_WORKER_URL/api/send', {
-    method: 'POST',
-    headers: {
-      'X-API-Key': apiKey,
-      'X-Timestamp': timestamp,
-      'X-Signature': signature,
-      'Content-Type': 'application/json'
-    },
-    body
-  });
-}
-
-// Usage
-sendEmail('rpt_your_api_key', 'your_api_secret', {
-  to: 'user@example.com',
-  subject: 'Hello',
-  body: '&lt;h1&gt;Hello!&lt;/h1&gt;'
-});</pre>
-              </div>
-              <div data-mode="full" class="code-ex-wrap" style="display:none;">
-<pre>async function sendEmail(apiKey, apiSecret, payload) {
-  const body = JSON.stringify(payload);
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = crypto.randomUUID(); // unique per request
-
-  // SHA-256 of request body
-  const bodyBytes = new TextEncoder().encode(body);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', bodyBytes);
-  const bodyHash = Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-
-  // Canonical message: timestamp + newline + nonce + newline + body_hash
-  const message = timestamp + "\\n" + nonce + "\\n" + bodyHash;
-
-  // HMAC-SHA256 signature
-  const key = await crypto.subtle.importKey(
-    'raw', new TextEncoder().encode(apiSecret),
-    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
-  const signature = Array.from(new Uint8Array(sig))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
-
-  return fetch('YOUR_WORKER_URL/api/send', {
-    method: 'POST',
-    headers: {
-      'X-API-Key': apiKey,
-      'X-Timestamp': timestamp,
-      'X-Nonce': nonce,
-      'X-Signature': signature,
-      'Content-Type': 'application/json'
-    },
-    body
-  });
-}
-
-// Usage
-sendEmail('rpt_your_api_key', 'your_api_secret', {
-  to: 'user@example.com',
-  subject: 'Hello',
-  body: '&lt;h1&gt;Hello!&lt;/h1&gt;'
-});</pre>
-              </div>
-            </div><!-- /lang-js -->
-
-            <!-- ─── Python panels ─── -->
-            <div id="lang-python" class="lang-panel" style="display:none;">
-              <div data-mode="api-key-only" class="code-ex-wrap">
-<pre>import requests
-import json
-
-body = json.dumps({
-    'to': 'user@example.com',
-    'subject': 'Hello from Reportary',
-    'body': '&lt;h1&gt;Hello!&lt;/h1&gt;&lt;p&gt;Test email.&lt;/p&gt;'
-})
-response = requests.post(
-    'YOUR_WORKER_URL/api/send',
-    headers={
-        'X-API-Key': 'rpt_your_api_key',
-        'Content-Type': 'application/json'
-    },
-    data=body
-)
-print(response.json())</pre>
-              </div>
-              <div data-mode="signed" class="code-ex-wrap" style="display:none;">
-<pre>import requests, hmac, hashlib, time, json
-
-API_KEY    = "rpt_your_api_key"
-API_SECRET = "your_api_secret"
-
-payload = {
-    'to': 'user@example.com',
-    'subject': 'Hello from Reportary',
-    'body': '&lt;h1&gt;Hello!&lt;/h1&gt;'
-}
-# Use compact JSON — whitespace changes the body hash
-body      = json.dumps(payload, separators=(',', ':'))
-timestamp = str(int(time.time()))
-
-# SHA-256 of request body
-body_hash = hashlib.sha256(body.encode()).hexdigest()
-
-# Canonical message — signed mode: empty nonce → two consecutive newlines
-message   = timestamp + "\\n" + "\\n" + body_hash
-signature = hmac.new(
-    API_SECRET.encode(), message.encode(), hashlib.sha256
-).hexdigest()
-
-response = requests.post(
-    'YOUR_WORKER_URL/api/send',
-    headers={
-        'X-API-Key':   API_KEY,
-        'X-Timestamp': timestamp,
-        'X-Signature': signature,
-        'Content-Type': 'application/json'
-    },
-    data=body
-)
-print(response.json())</pre>
-              </div>
-              <div data-mode="full" class="code-ex-wrap" style="display:none;">
-<pre>import requests, hmac, hashlib, time, uuid, json
-
-API_KEY    = "rpt_your_api_key"
-API_SECRET = "your_api_secret"
-
-payload = {
-    'to': 'user@example.com',
-    'subject': 'Hello from Reportary',
-    'body': '&lt;h1&gt;Hello!&lt;/h1&gt;'
-}
-# Use compact JSON — whitespace changes the body hash
-body      = json.dumps(payload, separators=(',', ':'))
-timestamp = str(int(time.time()))
-nonce     = str(uuid.uuid4())  # unique per request
-
-# SHA-256 of request body
-body_hash = hashlib.sha256(body.encode()).hexdigest()
-
-# Canonical message: timestamp + newline + nonce + newline + body_hash
-message   = timestamp + "\\n" + nonce + "\\n" + body_hash
-signature = hmac.new(
-    API_SECRET.encode(), message.encode(), hashlib.sha256
-).hexdigest()
-
-response = requests.post(
-    'YOUR_WORKER_URL/api/send',
-    headers={
-        'X-API-Key':   API_KEY,
-        'X-Timestamp': timestamp,
-        'X-Nonce':     nonce,
-        'X-Signature': signature,
-        'Content-Type': 'application/json'
-    },
-    data=body
-)
-print(response.json())</pre>
-              </div>
-            </div><!-- /lang-python -->
-
-          </div><!-- /position:relative -->
-        </div><!-- /code examples panel -->
-
-        <!-- Response -->
-        <div class="panel">
-          <div class="section-title" style="margin-bottom:12px;">Response</div>
-          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">On success, returns <code>202 Accepted</code>:</p>
-          <pre>{
-  "success": true,
-  "id": 42,
-  "message": "Email successfully queued for sending"
+{
+  <span class="hl-k">"to":</span>      <span class="hl-s">"alice@example.com"</span>,
+  <span class="hl-k">"subject":</span> <span class="hl-s">"Hello!"</span>,
+  <span class="hl-k">"html":</span>    <span class="hl-s">"&lt;p&gt;Hi&lt;/p&gt;"</span>,
+  <span class="hl-k">"text":</span>    <span class="hl-s">"Hi"</span>,            <span class="hl-c">// optional</span>
+  <span class="hl-k">"cc":</span>      <span class="hl-s">"bob@example.com"</span>, <span class="hl-c">// optional</span>
+  <span class="hl-k">"bcc":</span>     <span class="hl-s">"audit@acme.com"</span>  <span class="hl-c">// optional</span>
 }</pre>
+    </div>
+
+    <div class="docs-card">
+      <div class="docs-title">🔑 HMAC Signing (JavaScript)</div>
+      <pre><span class="hl-c">// Standard (no provider headers)</span>
+<span class="hl-k">const</span> ts       = Math.floor(Date.now()/1000).toString();
+<span class="hl-k">const</span> nonce    = crypto.randomUUID();
+<span class="hl-k">const</span> bodyHash = await sha256hex(JSON.stringify(body));
+<span class="hl-k">const</span> canon    = \`\${ts}\\n\${nonce}\\n\${bodyHash}\`;
+<span class="hl-k">const</span> sig      = await hmacSha256hex(secretKey, canon);
+
+<span class="hl-c">// With provider routing — headers bound into signature:</span>
+<span class="hl-k">const</span> qualifier = \`provider:\${providerId}\`;
+<span class="hl-c">// OR: const qualifier = \`email:noreply@acme.com\`;</span>
+<span class="hl-k">const</span> canon     = \`\${ts}\\n\${nonce}\\n\${qualifier}\\n\${bodyHash}\`;
+<span class="hl-k">const</span> sig       = await hmacSha256hex(secretKey, canon);</pre>
+    </div>
+
+    <div class="docs-card">
+      <div class="docs-title">🔀 Multi-Provider Routing &amp; Failover</div>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Three provider selection strategies, evaluated in order:</p>
+      <table class="cmp-table" style="margin-bottom:16px">
+        <thead><tr><th>Strategy</th><th>How to Use</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td><b>Explicit by ID</b></td><td><code>X-Provider-Id: &lt;id&gt;</code></td><td>Route to a specific provider</td></tr>
+          <tr><td><b>Explicit by Email</b></td><td><code>X-Sender-Email: &lt;email&gt;</code></td><td>Match provider by from_email</td></tr>
+          <tr><td><b>Auto Failover</b></td><td>No routing headers</td><td>Default → priority order → env SMTP</td></tr>
+        </tbody>
+      </table>
+      <div class="info-box" style="margin-bottom:16px">
+        <div class="info-icon">🛡️</div>
+        <div class="info-text"><b>MITM Protection:</b> When using HMAC, any <code>X-Provider-Id</code> or <code>X-Sender-Email</code> header is <b>bound into the request signature</b>. If an attacker modifies these headers in transit, signature verification fails and the server returns <code>401 Unauthorized</code>.</div>
+      </div>
+      <pre><span class="hl-c">// Failover priority chain:</span>
+1. Explicit provider_id  (X-Provider-Id header)
+2. Explicit from_email   (X-Sender-Email header)
+3. ⭐ Default provider   (is_default = true)
+4. Remaining active providers by priority ASC
+5. Environment variable SMTP fallback
+
+<span class="hl-c">// Providers that exceed daily_limit are skipped.
+// Failover history is recorded in the email record.</span></pre>
+    </div>
+
+    <div class="docs-card">
+      <div class="docs-title">🔌 Provider Management</div>
+      <div class="ep-row"><span class="ep-badge ep-get">GET</span><span class="ep-path">/api/providers</span><span class="ep-desc">List all providers (credentials masked)</span></div>
+      <div class="ep-row"><span class="ep-badge ep-post">POST</span><span class="ep-path">/api/providers</span><span class="ep-desc">Create a new provider</span></div>
+      <div class="ep-row"><span class="ep-badge ep-put">PUT</span><span class="ep-path">/api/providers</span><span class="ep-desc">Update provider (partial credentials merge)</span></div>
+      <div class="ep-row"><span class="ep-badge ep-delete">DELETE</span><span class="ep-path">/api/providers?id=&lt;id&gt;</span><span class="ep-desc">Delete a provider</span></div>
+      <div class="ep-row"><span class="ep-badge ep-post">POST</span><span class="ep-path">/api/providers/set-default</span><span class="ep-desc">Set provider as default</span></div>
+      <div class="ep-row"><span class="ep-badge ep-post">POST</span><span class="ep-path">/api/providers/test</span><span class="ep-desc">Send a test email via specific provider</span></div>
+      <pre style="margin-top:16px"><span class="hl-c">// POST /api/providers body (example: SMTP)</span>
+{
+  <span class="hl-k">"id":</span>          <span class="hl-s">"prov_smtp_01"</span>,  <span class="hl-c">// alphanumeric + _ -</span>
+  <span class="hl-k">"name":</span>        <span class="hl-s">"Main SMTP"</span>,
+  <span class="hl-k">"type":</span>        <span class="hl-s">"smtp"</span>,         <span class="hl-c">// smtp|resend|sendgrid|mailgun|postmark</span>
+  <span class="hl-k">"from_email":</span>  <span class="hl-s">"noreply@acme.com"</span>,
+  <span class="hl-k">"from_name":</span>   <span class="hl-s">"Acme"</span>,          <span class="hl-c">// optional</span>
+  <span class="hl-k">"priority":</span>    <span class="hl-v">1</span>,               <span class="hl-c">// lower = higher priority</span>
+  <span class="hl-k">"is_default":</span>  <span class="hl-v">true</span>,
+  <span class="hl-k">"daily_limit":</span> <span class="hl-v">500</span>,             <span class="hl-c">// 0 = unlimited</span>
+  <span class="hl-k">"credentials":</span> {
+    <span class="hl-k">"host":</span> <span class="hl-s">"smtp.gmail.com"</span>, <span class="hl-k">"port":</span> <span class="hl-v">587</span>,
+    <span class="hl-k">"username":</span> <span class="hl-s">"you@gmail.com"</span>, <span class="hl-k">"password":</span> <span class="hl-s">"app-password"</span>
+  }
+}</pre>
+    </div>
+
+    <div class="docs-card">
+      <div class="docs-title">📊 Other Endpoints</div>
+      <div class="ep-row"><span class="ep-badge ep-get">GET</span><span class="ep-path">/api/status</span><span class="ep-desc">Queue stats (counts by status)</span></div>
+      <div class="ep-row"><span class="ep-badge ep-get">GET</span><span class="ep-path">/api/emails</span><span class="ep-desc">List emails — ?status=&search=&limit=&offset=&from=&to=</span></div>
+      <div class="ep-row"><span class="ep-badge ep-get">GET</span><span class="ep-path">/api/emails/:id</span><span class="ep-desc">Get single email detail</span></div>
+      <div class="ep-row"><span class="ep-badge ep-delete">DELETE</span><span class="ep-path">/api/emails/:id</span><span class="ep-desc">Delete an email record</span></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- PROVIDER MODAL -->
+<div class="modal-overlay" id="prov-modal">
+  <div class="modal-card">
+    <div class="modal-title" id="prov-modal-title">➕ Add Provider</div>
+    <form id="prov-form" onsubmit="saveProv(event)">
+      <input type="hidden" id="prov-editing-id">
+      <div class="form-row">
+        <div class="ig"><label>Provider ID *</label><input class="ifield" type="text" id="pf-id" placeholder="prov_smtp_01" pattern="[a-zA-Z0-9_\\-]+" required></div>
+        <div class="ig"><label>Display Name *</label><input class="ifield" type="text" id="pf-name" placeholder="Main SMTP" required></div>
+      </div>
+      <div class="ig">
+        <label>Provider Type *</label>
+        <select class="ifield" id="pf-type" onchange="onTypeChange()" required>
+          <option value="">— Select type —</option>
+          <option value="smtp">SMTP</option>
+          <option value="resend">Resend</option>
+          <option value="sendgrid">SendGrid</option>
+          <option value="mailgun">Mailgun</option>
+          <option value="postmark">Postmark</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="ig"><label>From Email *</label><input class="ifield" type="email" id="pf-from-email" placeholder="noreply@acme.com" required></div>
+        <div class="ig"><label>From Name</label><input class="ifield" type="text" id="pf-from-name" placeholder="Acme Notifications"></div>
+      </div>
+      <div class="form-row">
+        <div class="ig"><label>Priority (lower = first)</label><input class="ifield" type="number" id="pf-priority" value="10" min="1"></div>
+        <div class="ig"><label>Daily Limit (0 = unlimited)</label><input class="ifield" type="number" id="pf-daily" value="0" min="0"></div>
+      </div>
+      <div class="cbrow"><input type="checkbox" id="pf-default"><label for="pf-default">⭐ Set as default provider</label></div>
+      <div class="cbrow"><input type="checkbox" id="pf-active" checked><label for="pf-active">✅ Provider is active</label></div>
+
+      <!-- SMTP -->
+      <div class="cred-section" id="cred-smtp" style="display:none">
+        <div class="cred-title">📧 SMTP Credentials</div>
+        <div class="form-row">
+          <div class="ig" style="margin-bottom:0"><label>Host *</label><input class="ifield" type="text" id="cs-host" placeholder="smtp.gmail.com"></div>
+          <div class="ig" style="margin-bottom:0"><label>Port</label><input class="ifield" type="number" id="cs-port" value="587"></div>
         </div>
-
-        <!-- Error reference -->
-        <div class="panel">
-          <div class="section-title" style="margin-bottom:12px;">Error Reference</div>
-          <table class="err-ref-table">
-            <thead>
-              <tr><th>HTTP</th><th>reason field</th><th>Cause</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><code>401</code></td>
-                <td class="err-code">Invalid API key</td>
-                <td class="err-reason">X-API-Key missing or does not match.</td>
-              </tr>
-              <tr>
-                <td><code>401</code></td>
-                <td class="err-code">Missing X-Timestamp header</td>
-                <td class="err-reason">Header required in signed / full modes.</td>
-              </tr>
-              <tr>
-                <td><code>401</code></td>
-                <td class="err-code">Timestamp out of range</td>
-                <td class="err-reason">Clock skew exceeds ±3 minutes. Ensure client timestamp is in UTC Unix epoch seconds.</td>
-              </tr>
-              <tr>
-                <td><code>401</code></td>
-                <td class="err-code">Missing X-Nonce header</td>
-                <td class="err-reason">Nonce required in full mode.</td>
-              </tr>
-              <tr>
-                <td><code>401</code></td>
-                <td class="err-code">Invalid signature</td>
-                <td class="err-reason">HMAC mismatch — body tampered or wrong API_SECRET.</td>
-              </tr>
-              <tr>
-                <td><code>401</code></td>
-                <td class="err-code">Nonce already used</td>
-                <td class="err-reason">Replay attack detected — nonce seen before.</td>
-              </tr>
-              <tr>
-                <td><code>400</code></td>
-                <td class="err-code">Missing "to" / "subject" / "body"</td>
-                <td class="err-reason">Required body fields not provided.</td>
-              </tr>
-            </tbody>
-          </table>
+        <div style="height:12px"></div>
+        <div class="form-row">
+          <div class="ig" style="margin-bottom:0"><label>Username *</label><input class="ifield" type="text" id="cs-user" placeholder="you@gmail.com"></div>
+          <div class="ig" style="margin-bottom:0"><label>Password *</label><input class="ifield" type="password" id="cs-pass" placeholder="app password"></div>
         </div>
+      </div>
 
-      </div><!-- /docs right -->
-    </div><!-- /docs-grid -->
+      <!-- Resend -->
+      <div class="cred-section" id="cred-resend" style="display:none">
+        <div class="cred-title">📨 Resend Credentials</div>
+        <div class="ig" style="margin-bottom:0"><label>API Key *</label><input class="ifield" type="password" id="cr-key" placeholder="re_…"></div>
+      </div>
 
-  </div><!-- /docs-main -->
-</div><!-- /view-docs -->
+      <!-- SendGrid -->
+      <div class="cred-section" id="cred-sendgrid" style="display:none">
+        <div class="cred-title">📤 SendGrid Credentials</div>
+        <div class="ig" style="margin-bottom:0"><label>API Key *</label><input class="ifield" type="password" id="csg-key" placeholder="SG.…"></div>
+      </div>
 
-<!-- ═══════════════════════════════════════════════════════════════ Footer -->
-<footer>
-  &copy; 2026 Reportary. Running on Cloudflare Workers &amp; D1 Serverless SQLite.
-</footer>
+      <!-- Mailgun -->
+      <div class="cred-section" id="cred-mailgun" style="display:none">
+        <div class="cred-title">📬 Mailgun Credentials</div>
+        <div class="form-row">
+          <div class="ig" style="margin-bottom:0"><label>API Key *</label><input class="ifield" type="password" id="cmg-key" placeholder="key-…"></div>
+          <div class="ig" style="margin-bottom:0"><label>Domain *</label><input class="ifield" type="text" id="cmg-domain" placeholder="mg.acme.com"></div>
+        </div>
+        <div style="height:12px"></div>
+        <div class="ig" style="margin-bottom:0"><label>Region</label><select class="ifield" id="cmg-region"><option value="us">US (api.mailgun.net)</option><option value="eu">EU (api.eu.mailgun.net)</option></select></div>
+      </div>
+
+      <!-- Postmark -->
+      <div class="cred-section" id="cred-postmark" style="display:none">
+        <div class="cred-title">📮 Postmark Credentials</div>
+        <div class="ig" style="margin-bottom:0"><label>Server Token *</label><input class="ifield" type="password" id="cpm-token" placeholder="xxxxxxxx-xxxx-…"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="bsm b-ghost" onclick="closeProv()">Cancel</button>
+        <button type="submit" class="bsm b-primary" id="prov-save-btn">💾 Save Provider</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- TEST PROVIDER MODAL -->
+<div class="modal-overlay" id="test-prov-modal">
+  <div class="modal-card" style="max-width:440px">
+    <div class="modal-title">🧪 Test Provider</div>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:20px" id="tp-desc">Send a test email immediately via this provider.</p>
+    <form onsubmit="execTest(event)">
+      <input type="hidden" id="tp-id">
+      <div class="ig"><label>Send To *</label><input class="ifield" type="email" id="tp-to" placeholder="recipient@example.com" required></div>
+      <div id="tp-result" style="display:none;padding:12px;border-radius:8px;font-size:13px;margin-bottom:12px"></div>
+      <div class="modal-footer">
+        <button type="button" class="bsm b-ghost" onclick="closeTestProv()">Close</button>
+        <button type="submit" class="bsm b-primary" id="tp-btn">📤 Send Test</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
 
 <script>
-  // ── Storage helpers ──────────────────────────────────────────────────────
-  function getApiKey()      { return localStorage.getItem('reportary_api_key') || ''; }
-  function getApiSecret()   { return localStorage.getItem('reportary_api_secret') || ''; }
-  function getSecurityMode(){ return localStorage.getItem('reportary_security_mode') || 'full'; }
+// ── State ──────────────────────────────────────────────────
+let authMode = 'apikey', authToken = '', authSecret = '';
+let logsPage = 0, logsPerPage = 20, logsTotal = 0;
+let provsCache = [];
 
-  // ── Auth overlay ─────────────────────────────────────────────────────────
-  var AUTH_MODE_HINTS = {
-    'api-key-only': '<b>API Key Only:</b> Sends only the <code>X-API-Key</code> header. Simple to integrate but provides no protection against interception, body tampering, or replay attacks.',
-    'signed':       '<b>Signed mode:</b> Attaches <code>X-Timestamp</code> and an HMAC signature. Protects against body tampering and stale captures. Requires <code>API_SECRET</code> on both sides.',
-    'full':         '<b>Full mode:</b> Maximum security. Adds a unique <code>X-Nonce</code> on every request. Fully prevents replay attacks in addition to all Signed-mode protections. Requires <code>API_SECRET</code>.'
-  };
+// ── Helpers ────────────────────────────────────────────────
+function toast(msg, ok=true){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(ok?'tok':'terr');
+  clearTimeout(el._t); el._t=setTimeout(()=>{el.className=''},3200);
+}
+async function sha256hex(s){
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function hmacHex(key,msg){
+  const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const s=await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(msg));
+  return 'sha256='+Array.from(new Uint8Array(s)).map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function buildHdrs(bodyStr, qual=''){
+  if(authMode==='apikey') return {'Content-Type':'application/json','X-API-Key':authToken};
+  const ts=Math.floor(Date.now()/1000).toString(), n=crypto.randomUUID();
+  const bh=await sha256hex(bodyStr);
+  const canon=(qual?[ts,n,qual,bh]:[ts,n,bh]).join(String.fromCharCode(10));
+  const sig=await hmacHex(authSecret,canon);
+  return {'Content-Type':'application/json','X-API-Key':authToken,'X-Timestamp':ts,'X-Nonce':n,'X-Signature':sig};
+}
+async function api(path,opts={}){
+  const method=opts.method||'GET';
+  const bodyStr=opts.body?JSON.stringify(opts.body):'';
+  const hdrs=await buildHdrs(bodyStr,opts.qual||'');
+  if(opts.provId) hdrs['X-Provider-Id']=opts.provId;
+  if(opts.senderEmail) hdrs['X-Sender-Email']=opts.senderEmail;
+  const res=await fetch(path,{method,headers:hdrs,body:bodyStr||undefined});
+  const ct=res.headers.get('content-type')||'';
+  if(ct.includes('application/json')) return res.json();
+  return {_status:res.status,_text:await res.text()};
+}
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').split(String.fromCharCode(92)).join('&#92;');
+const fmt=iso=>{if(!iso)return'—';const d=new Date(iso);return d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})};
+function sbadge(s){const m={queued:'b-queued',sending:'b-sending',sent:'b-sent',failed:'b-failed'};return '<span class="badge '+(m[s]||'')+'">'+esc(s)+'</span>';}
+function tbadge(t){return '<span class="tbadge t-'+esc(t)+'">'+esc(t)+'</span>';}
+function qbar(sent,lim){
+  if(!lim)return'<span class="qbar-text">Unlimited</span>';
+  const p=Math.min(100,Math.round(sent/lim*100));
+  const c=p>=90?'danger':p>=70?'warn':'';
+  return '<div class="qbar-wrap"><div class="qbar-track"><div class="qbar-fill '+c+'" style="width:'+p+'%"></div></div><span class="qbar-text">'+sent+'/'+lim+'</span></div>';
+}
 
-  function selectAuthMode(mode) {
-    ['apikey','signed','full'].forEach(function(m) {
-      var b = document.getElementById('mode-btn-' + m);
-      if (b) b.classList.remove('active');
-    });
-    var key = mode === 'api-key-only' ? 'apikey' : mode;
-    var btn = document.getElementById('mode-btn-' + key);
-    if (btn) btn.classList.add('active');
-
-    document.getElementById('auth-secret-row').style.display =
-      (mode === 'api-key-only') ? 'none' : '';
-    document.getElementById('auth-mode-hint').innerHTML =
-      AUTH_MODE_HINTS[mode] || '';
-
-    localStorage.setItem('reportary_security_mode', mode);
-    updateQuickRef();
+// ── Auth ───────────────────────────────────────────────────
+function setAuthMode(m){
+  authMode=m;
+  if(m==='hmac'&&document.getElementById('ak-input').value&&!document.getElementById('ak-input-hmac').value){
+    document.getElementById('ak-input-hmac').value=document.getElementById('ak-input').value;
+  }else if(m==='apikey'&&document.getElementById('ak-input-hmac').value&&!document.getElementById('ak-input').value){
+    document.getElementById('ak-input').value=document.getElementById('ak-input-hmac').value;
   }
-
-  function authenticate() {
-    var apiKey    = (document.getElementById('dashboard-api-key').value || '').trim();
-    var apiSecret = (document.getElementById('dashboard-api-secret').value || '').trim();
-    var mode      = getSecurityMode();
-    var errEl     = document.getElementById('auth-error');
-
-    errEl.style.display = 'none';
-
-    if (!apiKey) {
-      errEl.textContent = 'API Key is required.';
-      errEl.style.display = 'block'; return;
-    }
-    if (mode !== 'api-key-only' && !apiSecret) {
-      errEl.textContent = 'API Secret is required for Signed and Full modes.';
-      errEl.style.display = 'block'; return;
-    }
-
-    localStorage.setItem('reportary_api_key', apiKey);
-    localStorage.setItem('reportary_api_secret', apiSecret);
-    checkAuth();
+  document.getElementById('auth-apikey-form').style.display=m==='apikey'?'':'none';
+  document.getElementById('auth-hmac-form').style.display=m==='hmac'?'':'none';
+  document.getElementById('mbtn-apikey').classList.toggle('active',m==='apikey');
+  document.getElementById('mbtn-hmac').classList.toggle('active',m==='hmac');
+}
+async function doAuth(){
+  const errEl=document.getElementById('auth-err'); errEl.style.display='none';
+  if(authMode==='apikey'){
+    authToken=document.getElementById('ak-input').value.trim();
+    if(!authToken){errEl.textContent='Enter API Key';errEl.style.display='';return;}
+  }else{
+    authToken=document.getElementById('ak-input-hmac').value.trim()||document.getElementById('ak-input').value.trim();
+    authSecret=document.getElementById('sk-input').value.trim();
+    if(!authToken){errEl.textContent='Enter API Key';errEl.style.display='';return;}
+    if(!authSecret){errEl.textContent='Enter Secret Key';errEl.style.display='';return;}
   }
-
-  function logout() {
-    localStorage.removeItem('reportary_api_key');
-    localStorage.removeItem('reportary_api_secret');
-    document.getElementById('auth-overlay').style.display = 'flex';
-  }
-
-  async function checkAuth() {
-    var key = getApiKey();
-    if (!key) { document.getElementById('auth-overlay').style.display = 'flex'; return; }
-    document.getElementById('auth-overlay').style.display = 'none';
-    var ok = await fetchDashboardData();
-    if (!ok) {
-      document.getElementById('auth-overlay').style.display = 'flex';
-      document.getElementById('auth-error').textContent = 'Authentication failed. Check your API Key.';
-      document.getElementById('auth-error').style.display = 'block';
-    } else {
-      fetchDetailedLogsData();
-    }
-  }
-
-  // ── Crypto signing ───────────────────────────────────────────────────────
-  async function signRequest(apiSecret, rawBody, mode) {
-    var timestamp = Math.floor(Date.now() / 1000).toString();
-    var nonce     = (mode === 'full') ? crypto.randomUUID() : '';
-
-    var bodyBytes   = new TextEncoder().encode(rawBody);
-    var hashBuffer  = await crypto.subtle.digest('SHA-256', bodyBytes);
-    var bodyHash    = Array.from(new Uint8Array(hashBuffer))
-      .map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-
-    var message = timestamp + '\\n' + nonce + '\\n' + bodyHash;
-
-    var keyMaterial = await crypto.subtle.importKey(
-      'raw', new TextEncoder().encode(apiSecret),
-      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-    );
-    var sigBuffer = await crypto.subtle.sign(
-      'HMAC', keyMaterial, new TextEncoder().encode(message)
-    );
-    var signature = Array.from(new Uint8Array(sigBuffer))
-      .map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-
-    return { timestamp: timestamp, nonce: nonce, signature: signature };
-  }
-
-  function buildAuthHeaders(mode, apiKey, sigResult) {
-    var h = { 'X-API-Key': apiKey };
-    if (mode === 'signed' || mode === 'full') {
-      h['X-Timestamp'] = sigResult.timestamp;
-      h['X-Signature'] = sigResult.signature;
-      if (mode === 'full') { h['X-Nonce'] = sigResult.nonce; }
-    }
-    return h;
-  }
-
-  // ── Expandable table helper ──────────────────────────────────────────────
-  function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#039;');
-  }
-
-  function toggleExpand(rowId, prefix) {
-    var caret = document.getElementById(prefix + 'caret-' + rowId);
-    var details = document.getElementById(prefix + 'detail-' + rowId);
-    if (caret && details) {
-      var isHidden = details.style.display === 'none';
-      details.style.display = isHidden ? '' : 'none';
-      if (isHidden) {
-        caret.classList.add('rotated');
-      } else {
-        caret.classList.remove('rotated');
-      }
-    }
-  }
-
-  function switchDetailBodyTab(prefix, id, tab) {
-    var previewTab = document.getElementById(prefix + 'tab-preview-' + id);
-    var rawTab = document.getElementById(prefix + 'tab-raw-' + id);
-    var previewEl = document.getElementById(prefix + 'body-preview-' + id);
-    var rawEl = document.getElementById(prefix + 'body-raw-' + id);
-    
-    if (previewTab && rawTab && previewEl && rawEl) {
-      if (tab === 'preview') {
-        previewTab.classList.add('active');
-        rawTab.classList.remove('active');
-        previewEl.style.display = '';
-        rawEl.style.display = 'none';
-      } else {
-        previewTab.classList.remove('active');
-        rawTab.classList.add('active');
-        previewEl.style.display = 'none';
-        rawEl.style.display = '';
-      }
-    }
-  }
-
-  function renderLogRow(tbody, log, prefix) {
-    var date = new Date(log.updated_at);
-    var timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
-                  ' ' + date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-                  
-    var createdDate = new Date(log.created_at || log.updated_at);
-    var createdTimeStr = createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) +
-                        ' ' + createdDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-
-    var toDisp = '';
-    var ccDisp = '';
-    var bccDisp = '';
-    
-    try {
-      var toObj = JSON.parse(log.to_json);
-      if (Array.isArray(toObj))       toDisp = toObj.map(function(o) { return typeof o === 'string' ? o : o.email; }).join(', ');
-      else if (typeof toObj === 'object') toDisp = toObj.email || JSON.stringify(toObj);
-      else                            toDisp = String(toObj);
-    } catch(_) { toDisp = log.to_json; }
-
-    try {
-      if (log.cc_json) {
-        var ccObj = JSON.parse(log.cc_json);
-        if (Array.isArray(ccObj))       ccDisp = ccObj.map(function(o) { return typeof o === 'string' ? o : o.email; }).join(', ');
-        else if (typeof ccObj === 'object') ccDisp = ccObj.email || JSON.stringify(ccObj);
-        else                            ccDisp = String(ccObj);
-      }
-    } catch(_) { ccDisp = log.cc_json; }
-
-    try {
-      if (log.bcc_json) {
-        var bccObj = JSON.parse(log.bcc_json);
-        if (Array.isArray(bccObj))       bccDisp = bccObj.map(function(o) { return typeof o === 'string' ? o : o.email; }).join(', ');
-        else if (typeof bccObj === 'object') bccDisp = bccObj.email || JSON.stringify(bccObj);
-        else                            bccDisp = String(bccObj);
-      }
-    } catch(_) { bccDisp = log.bcc_json; }
-
-    var tr = document.createElement('tr');
-    tr.className = 'log-row';
-    tr.onclick = function(e) {
-      if (e.target.closest('.detail-container') || e.target.closest('button') || e.target.closest('a')) return;
-      toggleExpand(log.id, prefix);
-    };
-
-    tr.innerHTML =
-      '<td style="text-align:center; padding:10px 0;"><svg id="' + prefix + 'caret-' + log.id + '" class="expand-caret" width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:var(--text-muted);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"/></svg></td>' +
-      '<td style="color:var(--text-muted);font-weight:600;">#' + log.id + '</td>' +
-      '<td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + toDisp + '">' + toDisp + '</td>' +
-      '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + log.subject + '">' + log.subject + '</td>' +
-      '<td><span class="status-badge badge-' + log.status + '">' + log.status + '</span></td>' +
-      '<td style="text-align:center;">' + log.attempts + '</td>' +
-      '<td style="color:var(--text-muted);font-size:12px;">' + timeStr + '</td>';
-
-    tbody.appendChild(tr);
-
-    // Detail row rendering
-    var detTr = document.createElement('tr');
-    detTr.id = prefix + 'detail-' + log.id;
-    detTr.className = 'detail-row';
-    detTr.style.display = 'none';
-
-    var ccHtml = ccDisp ? '<div><span style="font-weight:600; color:var(--color-orange);">CC:</span> ' + escapeHtml(ccDisp) + '</div>' : '';
-    var bccHtml = bccDisp ? '<div><span style="font-weight:600; color:var(--color-purple);">BCC:</span> ' + escapeHtml(bccDisp) + '</div>' : '';
-    
-    var errHtml = log.error ? 
-      '<div class="detail-block">' +
-        '<div class="detail-label" style="color:var(--color-red);">Error Log</div>' +
-        '<div class="detail-val-mono" style="border-color:rgba(239, 68, 68, 0.3); color:#fca5a5;">' + escapeHtml(log.error) + '</div>' +
-      '</div>' : '';
-
-    detTr.innerHTML = 
-      '<td colspan="7">' +
-        '<div class="detail-container">' +
-          '<div class="detail-grid">' +
-            '<div class="detail-block">' +
-              '<div class="detail-label">Recipients</div>' +
-              '<div class="detail-val">' +
-                '<div><span style="font-weight:600; color:var(--color-cyan);">To:</span> ' + escapeHtml(toDisp) + '</div>' +
-                ccHtml +
-                bccHtml +
-              '</div>' +
-            '</div>' +
-            '<div class="detail-block">' +
-              '<div class="detail-label">Timestamps (UTC)</div>' +
-              '<div class="detail-val">' +
-                '<strong>Created:</strong> ' + createdTimeStr + '<br>' +
-                '<strong>Updated:</strong> ' + timeStr +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-          errHtml +
-          '<div class="detail-block">' +
-            '<div class="detail-label">Email Body Content</div>' +
-            '<div class="detail-tabs-bar">' +
-              '<button class="detail-tab active" id="' + prefix + 'tab-preview-' + log.id + '" onclick="switchDetailBodyTab(\\\'' + prefix + '\\\', ' + log.id + ', \\\'preview\\\')">Visual Preview</button>' +
-              '<button class="detail-tab" id="' + prefix + 'tab-raw-' + log.id + '" onclick="switchDetailBodyTab(\\\'' + prefix + '\\\', ' + log.id + ', \\\'raw\\\')">Raw Content</button>' +
-            '</div>' +
-            '<div id="' + prefix + 'body-preview-' + log.id + '">' +
-              '<iframe class="body-preview-iframe" srcdoc="' + escapeHtml(log.body) + '"></iframe>' +
-            '</div>' +
-            '<div id="' + prefix + 'body-raw-' + log.id + '" style="display:none;">' +
-              '<div class="detail-val-mono">' + escapeHtml(log.body) + '</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-      '</td>';
-
-    tbody.appendChild(detTr);
-  }
-
-  // ── Dashboard data (Last 10 emails) ──────────────────────────────────────
-  async function fetchDashboardData(btn) {
-    var key = getApiKey();
-    if (!key) return false;
-
-    if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
-    try {
-      var headers = { 'X-API-Key': key };
-
-      var statsRes = await fetch('/api/status', { headers: headers });
-      if (statsRes.status === 401) return false;
-      var stats = await statsRes.json();
-      document.getElementById('stats-queued').textContent  = stats.queued  || 0;
-      document.getElementById('stats-sending').textContent = stats.sending || 0;
-      document.getElementById('stats-sent').textContent    = stats.sent    || 0;
-      document.getElementById('stats-failed').textContent  = stats.failed  || 0;
-
-      // Limit to 10 logs on main dashboard
-      var logsRes = await fetch('/api/logs?limit=10', { headers: headers });
-      var data    = await logsRes.json();
-      var logs    = data.results || [];
-      var tbody   = document.getElementById('logs-body');
-
-      if (!logs || logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No recent emails queued or sent.</td></tr>';
-      } else {
-        tbody.innerHTML = '';
-        logs.forEach(function(log) {
-          renderLogRow(tbody, log, 'dash-');
-        });
-      }
-      return true;
-    } catch(err) {
-      console.error('Fetch dashboard error:', err); return false;
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = 'Refresh Queue'; }
-    }
-  }
-
-  // ── Detailed Logs page state & data ──────────────────────────────────────
-  var logsFilterStatus = '';
-  var logsSortOrder    = 'updated_at_desc';
-  var logsSearchQuery  = '';
-  var logsPageOffset   = 0;
-  var logsPageLimit    = 100;
-  var searchTimeout    = null;
-
-  function onLogFilterChange() {
-    logsFilterStatus = document.getElementById('log-filter-status').value;
-    logsSortOrder    = document.getElementById('log-filter-sort').value;
-    logsPageOffset   = 0; 
-    fetchDetailedLogsData();
-  }
-
-  function onLogSearchInput() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(function() {
-      logsSearchQuery = document.getElementById('log-filter-search').value.trim();
-      logsPageOffset   = 0; 
-      fetchDetailedLogsData();
-    }, 450);
-  }
-
-  function resetLogFilters() {
-    document.getElementById('log-filter-status').value = '';
-    document.getElementById('log-filter-sort').value = 'updated_at_desc';
-    document.getElementById('log-filter-search').value = '';
-    logsFilterStatus = '';
-    logsSortOrder    = 'updated_at_desc';
-    logsSearchQuery  = '';
-    logsPageOffset   = 0;
-    fetchDetailedLogsData();
-  }
-
-  function changeLogsPage(dir) {
-    if (dir === -1) {
-      logsPageOffset = Math.max(0, logsPageOffset - logsPageLimit);
-    } else {
-      logsPageOffset += logsPageLimit;
-    }
-    fetchDetailedLogsData();
-  }
-
-  async function fetchDetailedLogsData(btn) {
-    var key = getApiKey();
-    if (!key) return false;
-
-    if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
-    try {
-      var headers = { 'X-API-Key': key };
-      var url = '/api/logs?limit=' + logsPageLimit + '&offset=' + logsPageOffset;
-      if (logsFilterStatus) url += '&status=' + encodeURIComponent(logsFilterStatus);
-      if (logsSortOrder)    url += '&sort=' + encodeURIComponent(logsSortOrder);
-      if (logsSearchQuery)  url += '&q=' + encodeURIComponent(logsSearchQuery);
-
-      var res = await fetch(url, { headers: headers });
-      var data = await res.json();
-      var tbody = document.getElementById('detailed-logs-body');
-
-      // Update pagination info
-      var total = data.total || 0;
-      var start = total === 0 ? 0 : logsPageOffset + 1;
-      var end = Math.min(total, logsPageOffset + logsPageLimit);
-      document.getElementById('logs-pagination-info').textContent = 
-        'Showing ' + start + ' - ' + end + ' of ' + total + ' entries';
-
-      // Update button disabled state
-      document.getElementById('btn-prev-page').disabled = (logsPageOffset === 0);
-      document.getElementById('btn-next-page').disabled = (logsPageOffset + logsPageLimit >= total);
-
-      var results = data.results || [];
-      if (results.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No matching logs found.</td></tr>';
-      } else {
-        tbody.innerHTML = '';
-        results.forEach(function(log) {
-          renderLogRow(tbody, log, 'det-');
-        });
-      }
-      return true;
-    } catch(err) {
-      console.error('Fetch detailed logs error:', err);
-      return false;
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = 'Sync Table'; }
-    }
-  }
-
-  // ── Test email ───────────────────────────────────────────────────────────
-  async function sendTestEmail(event) {
-    event.preventDefault();
-    var key    = getApiKey();
-    var secret = getApiSecret();
-    var mode   = getSecurityMode();
-    if (!key) return;
-
-    var toField      = document.getElementById('test-to').value.trim();
-    var ccField      = document.getElementById('test-cc').value.trim();
-    var bccField     = document.getElementById('test-bcc').value.trim();
-    var subjectField = document.getElementById('test-subject').value.trim();
-    var bodyField    = document.getElementById('test-body').value.trim();
-    var submitBtn    = document.getElementById('send-test-btn');
-    var resultDiv    = document.getElementById('test-result');
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Enqueuing…';
-    resultDiv.style.display = 'none';
-
-    var cc  = ccField  ? ccField.split(',').map(function(s){return s.trim();}).filter(Boolean)  : undefined;
-    var bcc = bccField ? bccField.split(',').map(function(s){return s.trim();}).filter(Boolean) : undefined;
-    var to;
-    if (toField.startsWith('[') || toField.startsWith('{')) {
-      try { to = JSON.parse(toField); } catch(_) { to = toField.split(',').map(function(s){return s.trim();}).filter(Boolean); }
-    } else { to = toField.split(',').map(function(s){return s.trim();}).filter(Boolean); }
-
-    var payload = { to: to, subject: subjectField, body: bodyField };
-    if (cc)  payload.cc  = cc;
-    if (bcc) payload.bcc = bcc;
-    var rawBody = JSON.stringify(payload);
-
-    try {
-      var headers = { 'Content-Type': 'application/json' };
-
-      if (mode === 'api-key-only') {
-        headers['X-API-Key'] = key;
-      } else {
-        if (!secret) {
-          resultDiv.style.display = 'block';
-          resultDiv.style.color   = 'var(--color-red)';
-          resultDiv.textContent   = 'API Secret is required for ' + mode + ' mode. Please re-authenticate.';
-          submitBtn.disabled = false; submitBtn.textContent = 'Enqueue Test Email'; return;
-        }
-        var sigResult = await signRequest(secret, rawBody, mode);
-        var authHeaders = buildAuthHeaders(mode, key, sigResult);
-        Object.assign(headers, authHeaders);
-      }
-
-      var res  = await fetch('/api/send', { method: 'POST', headers: headers, body: rawBody });
-      var data = await res.json();
-      resultDiv.style.display = 'block';
-
-      if (res.status === 200 || res.status === 202) {
-        resultDiv.style.color   = 'var(--color-green)';
-        resultDiv.textContent   = 'Success! Email queued (ID: ' + data.id + '). Background job started.';
-        document.getElementById('test-subject').value = '';
-        document.getElementById('test-body').value    = '';
-        setTimeout(function(){ fetchDashboardData(); fetchDetailedLogsData(); }, 1000);
-      } else {
-        resultDiv.style.color = 'var(--color-red)';
-        resultDiv.textContent = 'Error: ' + (data.reason || data.error || 'Unknown error');
-      }
-    } catch(err) {
-      resultDiv.style.display = 'block';
-      resultDiv.style.color   = 'var(--color-red)';
-      resultDiv.textContent   = 'Network error: ' + err.message;
-    } finally {
-      submitBtn.disabled = false; submitBtn.textContent = 'Enqueue Test Email';
-    }
-  }
-
-  // ── Navigation ───────────────────────────────────────────────────────────
-  function switchView(view) {
-    document.getElementById('view-dashboard').style.display = (view === 'dashboard') ? '' : 'none';
-    document.getElementById('view-logs').style.display      = (view === 'logs') ? '' : 'none';
-    document.getElementById('view-docs').style.display      = (view === 'docs') ? '' : 'none';
-    
-    document.querySelectorAll('.nav-tab').forEach(function(t) {
-      t.classList.toggle('active', t.dataset.view === view);
-    });
-
-    if (view === 'logs') {
-      fetchDetailedLogsData();
-    } else if (view === 'dashboard') {
-      fetchDashboardData();
-    }
-  }
-
-  // ── Docs page ────────────────────────────────────────────────────────────
-  var currentDocsMode = 'full';
-  var currentLang     = 'curl';
-
-  var MODE_DESCS = {
-    'api-key-only': 'Basic authentication via the X-API-Key header. Simplest to integrate but provides no protection against interception, body tampering, or replay attacks.',
-    'signed':       'API key + HMAC-SHA256 signature + timestamp. Protects against body tampering and stale captured requests (clock window ±3 min). Does not prevent replay of a request within the window.',
-    'full':         'Maximum security. Verifies API key, HMAC signature, timestamp (±3 min), and a unique per-request nonce stored in D1. Fully prevents tampering, replay attacks, and stale captures.'
-  };
-  var MODE_ICONS = { 'api-key-only': '🔑', 'signed': '🔐', 'full': '🛡️' };
-
-  function setDocsMode(mode) {
-    currentDocsMode = mode;
-
-    // Mode pill active state
-    document.querySelectorAll('.mode-pill').forEach(function(b) {
-      b.classList.toggle('active', b.dataset.mode === mode);
-    });
-
-    // Mode description
-    document.getElementById('mode-desc-text').textContent = MODE_DESCS[mode] || '';
-    document.getElementById('mode-desc-box').firstChild.textContent = MODE_ICONS[mode] + ' ';
-
-    // Show/hide header rows in reference table
-    var needSig = (mode === 'signed' || mode === 'full');
-    document.getElementById('hdr-timestamp').style.display = needSig ? '' : 'none';
-    document.getElementById('hdr-nonce').style.display     = (mode === 'full') ? '' : 'none';
-    document.getElementById('hdr-sig').style.display       = needSig ? '' : 'none';
-
-    // Show/hide request anatomy lines
-    document.getElementById('req-timestamp-line').style.display = needSig ? '' : 'none';
-    document.getElementById('req-nonce-line').style.display      = (mode === 'full') ? '' : 'none';
-    document.getElementById('req-sig-line').style.display        = needSig ? '' : 'none';
-
-    // Show/hide signing guide
-    document.getElementById('signing-guide-panel').style.display = needSig ? '' : 'none';
-    var nonceStep = document.getElementById('sign-step-nonce');
-    if (nonceStep) nonceStep.style.display = (mode === 'full') ? '' : 'none';
-
-    // Renumber signing steps
-    if (needSig) {
-      var s3 = mode === 'full' ? 3 : 2;
-      document.getElementById('sign-step3-num').textContent = s3;
-      document.getElementById('sign-step4-num').textContent = s3 + 1;
-      document.getElementById('sign-step5-num').textContent = s3 + 2;
-    }
-
-    // Canonical message display
-    var msg = document.getElementById('sign-canonical-msg');
-    if (msg) {
-      if (mode === 'full') {
-        msg.textContent = 'canonical_message =\\n  timestamp    + "\\n" +\\n  nonce        + "\\n" +\\n  body_hash';
-      } else {
-        msg.textContent = 'canonical_message =\\n  timestamp    + "\\n\\n" +\\n  body_hash  (empty nonce)';
-      }
-    }
-
-    // Code examples
-    document.querySelectorAll('.code-ex-wrap').forEach(function(el) {
-      el.style.display = (el.dataset.mode === mode) ? '' : 'none';
-    });
-  }
-
-  function setLang(lang) {
-    currentLang = lang;
-    document.querySelectorAll('.lang-tab').forEach(function(t) {
-      t.classList.toggle('active', t.dataset.lang === lang);
-    });
-    var panels = { curl: 'lang-curl', js: 'lang-js', python: 'lang-python' };
-    Object.keys(panels).forEach(function(k) {
-      document.getElementById(panels[k]).style.display = (k === lang) ? '' : 'none';
-    });
-  }
-
-  function copyCodeExample() {
-    var activeLang  = document.getElementById('lang-' + currentLang);
-    var activeWrap  = activeLang ? activeLang.querySelector('.code-ex-wrap[data-mode="' + currentDocsMode + '"]') : null;
-    var pre         = activeWrap ? activeWrap.querySelector('pre') : null;
-    if (!pre) return;
-    var btn = document.getElementById('copy-code-btn');
-    navigator.clipboard.writeText(pre.textContent || '').then(function() {
-      btn.textContent = 'Copied!'; btn.classList.add('copied');
-      setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
-    });
-  }
-
-  // ── Quick reference panel ────────────────────────────────────────────────
-  function updateQuickRef() {
-    var mode = getSecurityMode();
-    var modeLabels = { 'api-key-only': '🔑 API Key Only', 'signed': '🔐 Signed', 'full': '🛡️ Full' };
-    var modeClass  = { 'api-key-only': 'mode-apikey', 'signed': 'mode-signed', 'full': 'mode-full' };
-    var badge = document.getElementById('qr-mode-badge');
-    if (badge) badge.innerHTML = '<span class="mode-indicator ' + (modeClass[mode] || 'mode-full') + '">' + (modeLabels[mode] || mode) + '</span>';
-    var hdrs = document.getElementById('qr-headers');
-    if (hdrs) {
-      if (mode === 'api-key-only') hdrs.textContent = 'X-API-Key';
-      else if (mode === 'signed')  hdrs.textContent = 'X-API-Key, X-Timestamp, X-Signature';
-      else                         hdrs.textContent = 'X-API-Key, X-Timestamp, X-Nonce, X-Signature';
-    }
-  }
-
-  // ── Clipboard util ───────────────────────────────────────────────────────
-  function copyText(elementId) {
-    var text = document.getElementById(elementId);
-    if (!text) return;
-    navigator.clipboard.writeText(text.textContent || '').then(function() {
-      alert('Copied!');
-    });
-  }
-
-  // ── Init ──────────────────────────────────────────────────────────────────
-  // Update endpoint URLs in docs
-  document.querySelectorAll('pre, code').forEach(function(el) {
-    if (el.textContent && el.textContent.indexOf('YOUR_WORKER_URL') !== -1) {
-      el.textContent = el.textContent.replace(/YOUR_WORKER_URL/g, window.location.origin);
-    }
+  try{
+    const r=await api('/api/status');
+    if(r.error){errEl.textContent='Auth failed: '+(r.reason||r.error);errEl.style.display='';return;}
+    document.getElementById('auth-overlay').style.display='none';
+    document.getElementById('qr-base').textContent=window.location.origin;
+    document.getElementById('qr-auth').textContent=authMode==='apikey'?'API Key (X-API-Key)':'HMAC-SHA256';
+    fetchDash(); fetchProviders();
+  }catch(e){errEl.textContent='Connection error: '+e.message;errEl.style.display='';}
+}
+function logout(){authToken='';authSecret='';document.getElementById('auth-overlay').style.display='';}
+
+// ── Nav ────────────────────────────────────────────────────
+function switchView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const m={'v-dash':'tab-dash','v-prov':'tab-prov','v-logs':'tab-logs','v-docs':'tab-docs'};
+  document.getElementById(m[id]).classList.add('active');
+  if(id==='v-logs') fetchLogs();
+  if(id==='v-prov') fetchProviders();
+}
+
+// ── Dashboard ──────────────────────────────────────────────
+async function fetchDash(btn){
+  if(btn){btn.textContent='⏳';btn.disabled=true;}
+  try{
+    const[st,em]=await Promise.all([api('/api/status'),api('/api/emails?limit=10')]);
+    document.getElementById('st-queued').textContent=st.queued??'—';
+    document.getElementById('st-sending').textContent=st.sending??'—';
+    document.getElementById('st-sent').textContent=st.sent??'—';
+    document.getElementById('st-failed').textContent=st.failed??'—';
+    const tb=document.getElementById('dash-emails');
+    const emails=em.emails||[];
+    if(!emails.length){tb.innerHTML='<tr><td colspan="5"><div class="empty-state">📭 No emails yet</div></td></tr>';return;}
+    tb.innerHTML=emails.map(e=>{
+      const to=Array.isArray(e.to)?e.to[0]:e.to;
+      return '<tr><td class="mono">'+esc(to)+'</td><td>'+esc(e.subject||'(no subject)')+'</td><td>'+sbadge(e.status)+'</td><td class="mono" style="font-size:11px;color:var(--muted)">'+esc(e.provider_used||'—')+'</td><td class="mono" style="font-size:11px;color:var(--muted)">'+fmt(e.created_at)+'</td></tr>';
+    }).join('');
+  }catch(e){toast('Dashboard error: '+e.message,false);}
+  finally{if(btn){btn.textContent='↻ Refresh';btn.disabled=false;}}
+}
+
+// ── Test Email ─────────────────────────────────────────────
+async function sendTest(ev){
+  ev.preventDefault();
+  const btn=document.getElementById('te-btn');btn.textContent='⏳ Sending…';btn.disabled=true;
+  const to=document.getElementById('te-to').value.trim();
+  const subj=document.getElementById('te-subj').value.trim()||'Test from ESET Mail';
+  const html=document.getElementById('te-body').value.trim()||'<p>Test email from ESET Mail dashboard.</p>';
+  const provId=document.getElementById('te-prov').value;
+  try{
+    const payload={to,subject:subj,html};
+    if(provId) payload.provider_id=provId;
+    const qual=provId?'provider:'+provId:'';
+    const opts={method:'POST',body:payload,qual};
+    if(provId) opts.provId=provId;
+    const r=await api('/api/send',opts);
+    if(r.error) toast('Error: '+r.error,false); else toast('✓ Email queued!');
+  }catch(e){toast('Failed: '+e.message,false);}
+  finally{btn.textContent='📤 Send Test Email';btn.disabled=false;}
+}
+
+// ── Providers ──────────────────────────────────────────────
+async function fetchProviders(btn){
+  if(btn){btn.textContent='⏳';btn.disabled=true;}
+  try{
+    const r=await api('/api/providers');
+    provsCache=r.providers||[];
+    renderProvs(provsCache);
+    fillTestSelect(provsCache);
+    document.getElementById('qr-provs').textContent=provsCache.filter(p=>p.is_active).length+' active';
+  }catch(e){toast('Providers error: '+e.message,false);}
+  finally{if(btn){btn.textContent='↻ Refresh';btn.disabled=false;}}
+}
+
+function renderProvs(provs){
+  const tb=document.getElementById('prov-body');
+  if(!provs.length){tb.innerHTML='<tr><td colspan="7"><div class="empty-state">🔌 No providers. Click "+ Add Provider" to get started.</div></td></tr>';return;}
+  tb.innerHTML=provs.map((p,i)=>{
+    const star=p.is_default?'<span class="def-star" title="Default">⭐</span>':'';
+    const ab=p.is_active?'<span class="badge b-active">Active</span>':'<span class="badge b-disabled">Disabled</span>';
+    const setDefBtn=!p.is_default?'<button class="bsm b-warn" title="Set default" onclick="setDefault(&#39;'+esc(p.id)+'&#39;)">⭐</button>':'';
+    return '<tr>'
+      +'<td style="text-align:center;font-weight:600;color:var(--muted)">'+(i+1)+'</td>'
+      +'<td><b>'+esc(p.name)+'</b> '+star+'<br><span class="mono" style="font-size:10px;color:var(--muted)">'+esc(p.id)+'</span></td>'
+      +'<td>'+tbadge(p.type)+'</td>'
+      +'<td class="mono" style="font-size:12px">'+esc(p.from_email||'—')+'</td>'
+      +'<td>'+qbar(p.daily_sent_count||0,p.daily_limit||0)+'</td>'
+      +'<td>'+ab+'</td>'
+      +'<td><div class="row-actions">'
+        +setDefBtn
+        +'<button class="bsm b-green" onclick="openTestProvById(&#39;'+esc(p.id)+'&#39;)">🧪</button>'
+        +'<button class="bsm b-ghost" onclick="openEditProv(&#39;'+esc(p.id)+'&#39;)">✏️</button>'
+        +'<button class="bsm b-danger" onclick="delProvById(&#39;'+esc(p.id)+'&#39;)">🗑️</button>'
+      +'</div></td>'
+    +'</tr>';
+  }).join('');
+}
+
+function fillTestSelect(provs){
+  const sel=document.getElementById('te-prov');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Auto (priority order) —</option>';
+  provs.filter(p=>p.is_active).forEach(p=>{
+    const o=document.createElement('option');
+    o.value=p.id;o.textContent=(p.is_default?'⭐ ':'')+p.name+' ('+p.type+')';
+    sel.appendChild(o);
   });
-  document.getElementById('qr-endpoint').textContent = window.location.origin + '/api/send';
-  document.getElementById('docs-endpoint').textContent = window.location.origin + '/api/send';
-  document.getElementById('req-path').textContent = window.location.origin + '/api/send';
+  if(cur) sel.value=cur;
+}
 
-  // Restore saved auth mode in overlay
-  var savedMode = getSecurityMode();
-  selectAuthMode(savedMode);
-  if (savedMode !== 'api-key-only') {
-    var secretInput = document.getElementById('dashboard-api-secret');
-    if (secretInput && getApiSecret()) secretInput.value = getApiSecret();
-  }
+function openAddProv(){
+  document.getElementById('prov-modal-title').textContent='➕ Add Provider';
+  document.getElementById('prov-editing-id').value='';
+  document.getElementById('prov-form').reset();
+  document.getElementById('pf-active').checked=true;
+  document.getElementById('pf-id').readOnly=false;
+  onTypeChange();
+  document.getElementById('prov-modal').classList.add('open');
+}
 
-  // Init docs page to full mode
-  setDocsMode('full');
+function openEditProv(id){
+  const p=provsCache.find(x=>x.id===id);if(!p){toast('Not found',false);return;}
+  document.getElementById('prov-modal-title').textContent='✏️ Edit Provider';
+  document.getElementById('prov-editing-id').value=id;
+  document.getElementById('pf-id').value=p.id;
+  document.getElementById('pf-id').readOnly=true;
+  document.getElementById('pf-name').value=p.name;
+  document.getElementById('pf-type').value=p.type;
+  document.getElementById('pf-from-email').value=p.from_email||'';
+  document.getElementById('pf-from-name').value=p.from_name||'';
+  document.getElementById('pf-priority').value=p.priority||10;
+  document.getElementById('pf-daily').value=p.daily_limit||0;
+  document.getElementById('pf-default').checked=!!p.is_default;
+  document.getElementById('pf-active').checked=!!p.is_active;
+  onTypeChange();
+  const c=p.credentials||{};
+  if(p.type==='smtp'){document.getElementById('cs-host').value=c.host||'';document.getElementById('cs-port').value=c.port||587;document.getElementById('cs-user').value=c.username||'';document.getElementById('cs-pass').placeholder=c.password||'unchanged';}
+  else if(p.type==='resend') document.getElementById('cr-key').placeholder=c.api_key||'unchanged';
+  else if(p.type==='sendgrid') document.getElementById('csg-key').placeholder=c.api_key||'unchanged';
+  else if(p.type==='mailgun'){document.getElementById('cmg-key').placeholder=c.api_key||'unchanged';document.getElementById('cmg-domain').value=c.domain||'';document.getElementById('cmg-region').value=c.region||'us';}
+  else if(p.type==='postmark') document.getElementById('cpm-token').placeholder=c.server_token||'unchanged';
+  document.getElementById('prov-modal').classList.add('open');
+}
 
-  // Auto-refresh every 8 seconds
-  setInterval(function() {
-    if (getApiKey() && document.getElementById('view-dashboard').style.display !== 'none') {
-      fetchDashboardData();
-    }
-  }, 8000);
+function closeProv(){document.getElementById('prov-modal').classList.remove('open');}
 
-  // Initial auth check
-  checkAuth();
-  updateQuickRef();
+function onTypeChange(){
+  const t=document.getElementById('pf-type').value;
+  ['smtp','resend','sendgrid','mailgun','postmark'].forEach(x=>{
+    document.getElementById('cred-'+x).style.display=x===t?'':'none';
+  });
+}
+
+async function saveProv(ev){
+  ev.preventDefault();
+  const btn=document.getElementById('prov-save-btn');btn.textContent='⏳';btn.disabled=true;
+  const isEdit=!!document.getElementById('prov-editing-id').value;
+  const t=document.getElementById('pf-type').value;
+  let creds={};
+  if(t==='smtp'){
+    creds={host:document.getElementById('cs-host').value.trim(),port:parseInt(document.getElementById('cs-port').value)||587,username:document.getElementById('cs-user').value.trim()};
+    const pw=document.getElementById('cs-pass').value;if(pw)creds.password=pw;
+  }else if(t==='resend'){const k=document.getElementById('cr-key').value;if(k)creds.api_key=k;}
+  else if(t==='sendgrid'){const k=document.getElementById('csg-key').value;if(k)creds.api_key=k;}
+  else if(t==='mailgun'){const k=document.getElementById('cmg-key').value;if(k)creds.api_key=k;creds.domain=document.getElementById('cmg-domain').value.trim();creds.region=document.getElementById('cmg-region').value;}
+  else if(t==='postmark'){const k=document.getElementById('cpm-token').value;if(k)creds.server_token=k;}
+  const payload={id:document.getElementById('pf-id').value.trim(),name:document.getElementById('pf-name').value.trim(),type:t,from_email:document.getElementById('pf-from-email').value.trim(),from_name:document.getElementById('pf-from-name').value.trim(),priority:parseInt(document.getElementById('pf-priority').value)||10,daily_limit:parseInt(document.getElementById('pf-daily').value)||0,is_default:document.getElementById('pf-default').checked,is_active:document.getElementById('pf-active').checked,credentials:creds};
+  try{
+    const r=await api('/api/providers',{method:isEdit?'PUT':'POST',body:payload});
+    if(r.error){toast('Error: '+r.error,false);return;}
+    toast(isEdit?'Provider updated ✓':'Provider added ✓');
+    closeProv();fetchProviders();
+  }catch(e){toast('Failed: '+e.message,false);}
+  finally{btn.textContent='💾 Save Provider';btn.disabled=false;}
+}
+
+function openTestProvById(id){
+  const p=provsCache.find(x=>x.id===id);
+  if(p) openTestProv(p.id, p.name, p.from_email||'');
+}
+function delProvById(id){
+  const p=provsCache.find(x=>x.id===id);
+  delProv(id, p?p.name:id);
+}
+
+async function delProv(id,name){
+  if(!confirm('Delete provider "'+name+'"? This cannot be undone.'))return;
+  try{
+    const r=await api('/api/providers?id='+encodeURIComponent(id),{method:'DELETE'});
+    if(r.error){toast('Error: '+r.error,false);return;}
+    toast('Provider deleted');fetchProviders();
+  }catch(e){toast('Failed: '+e.message,false);}
+}
+
+async function setDefault(id){
+  try{
+    const r=await api('/api/providers/set-default',{method:'POST',body:{id}});
+    if(r.error){toast('Error: '+r.error,false);return;}
+    toast('Default provider updated ⭐');fetchProviders();
+  }catch(e){toast('Failed: '+e.message,false);}
+}
+
+function openTestProv(id,name,fromEmail){
+  document.getElementById('tp-id').value=id;
+  document.getElementById('tp-desc').textContent='Send a test email immediately via "'+name+'" ('+fromEmail+').';
+  document.getElementById('tp-result').style.display='none';
+  document.getElementById('tp-to').value='';
+  document.getElementById('test-prov-modal').classList.add('open');
+}
+function closeTestProv(){document.getElementById('test-prov-modal').classList.remove('open');}
+async function execTest(ev){
+  ev.preventDefault();
+  const btn=document.getElementById('tp-btn');btn.textContent='⏳';btn.disabled=true;
+  const re=document.getElementById('tp-result');re.style.display='none';
+  try{
+    const r=await api('/api/providers/test',{method:'POST',body:{provider_id:document.getElementById('tp-id').value,to:document.getElementById('tp-to').value.trim()}});
+    if(r.error||!r.success){re.style.cssText='display:block;padding:12px;border-radius:8px;font-size:13px;margin-bottom:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red)';re.textContent='✗ '+(r.error||r.message||'Test failed');}
+    else{re.style.cssText='display:block;padding:12px;border-radius:8px;font-size:13px;margin-bottom:12px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green)';re.textContent='✓ Test email sent!';}
+  }catch(e){re.style.cssText='display:block;padding:12px;border-radius:8px;font-size:13px;margin-bottom:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red)';re.textContent='✗ '+e.message;}
+  finally{btn.textContent='📤 Send Test';btn.disabled=false;}
+}
+
+// ── Logs ───────────────────────────────────────────────────
+function resetFilters(){['fl-status','fl-search','fl-from','fl-to'].forEach(id=>{document.getElementById(id).value='';});logsPage=0;fetchLogs();}
+function changePage(d){logsPage=Math.max(0,logsPage+d);fetchLogs();}
+
+async function fetchLogs(btn){
+  if(btn){btn.textContent='⏳';btn.disabled=true;}
+  const st=document.getElementById('fl-status').value;
+  const se=document.getElementById('fl-search').value;
+  const fr=document.getElementById('fl-from').value;
+  const to=document.getElementById('fl-to').value;
+  const p=new URLSearchParams({limit:logsPerPage,offset:logsPage*logsPerPage});
+  if(st)p.set('status',st);if(se)p.set('search',se);if(fr)p.set('from',fr);if(to)p.set('to',to);
+  try{
+    const r=await api('/api/emails?'+p);
+    const emails=r.emails||[];logsTotal=r.total||emails.length;
+    renderLogs(emails);
+    const start=logsPage*logsPerPage+1,end=Math.min(start+emails.length-1,logsTotal);
+    document.getElementById('pag-info').textContent=emails.length?'Showing '+start+'–'+end+' of '+logsTotal:'No results';
+    document.getElementById('btn-prev').disabled=logsPage===0;
+    document.getElementById('btn-next').disabled=end>=logsTotal;
+  }catch(e){toast('Logs error: '+e.message,false);}
+  finally{if(btn){btn.textContent='🔍 Apply';btn.disabled=false;}}
+}
+
+function renderLogs(emails){
+  const tb=document.getElementById('logs-body');
+  if(!emails.length){tb.innerHTML='<tr><td colspan="8"><div class="empty-state">📭 No emails found</div></td></tr>';return;}
+  tb.innerHTML=emails.map(e=>renderLogRow(e)).join('');
+}
+
+function renderLogRow(e){
+  const to=Array.isArray(e.to)?e.to[0]:e.to;
+  const errHtml=e.error_message?'<span class="err-text" title="'+esc(e.error_message)+'">'+esc(e.error_message)+'</span>':'';
+  return '<tr class="log-row" onclick="toggleDetail(&#39;'+esc(e.id)+'&#39;)" id="row-'+esc(e.id)+'">'
+    +'<td><span class="expand-caret" id="caret-'+esc(e.id)+'">▶</span></td>'
+    +'<td class="mono" style="font-size:11px;color:var(--muted)">#'+esc(e.id)+'</td>'
+    +'<td class="mono" style="font-size:12px">'+esc(to)+'</td>'
+    +'<td>'+esc(e.subject||'(no subject)')+'</td>'
+    +'<td>'+sbadge(e.status)+' '+errHtml+'</td>'
+    +'<td class="mono" style="font-size:11px;color:var(--muted)">'+esc(e.provider_used||'—')+'</td>'
+    +'<td class="mono" style="font-size:11px;color:var(--muted)">'+esc(e.from_email||'—')+'</td>'
+    +'<td class="mono" style="font-size:11px;color:var(--muted)">'+fmt(e.created_at)+'</td>'
+  +'</tr>'
+  +'<tr class="detail-row" id="detail-'+esc(e.id)+'" style="display:none">'
+    +'<td colspan="8">'+renderDetail(e)+'</td>'
+  +'</tr>';
+}
+
+function renderDetail(e){
+  let fhHtml='';
+  try{
+    const fh=typeof e.failover_history==='string'?JSON.parse(e.failover_history):e.failover_history;
+    if(fh&&fh.length) fhHtml=fh.map((f,i)=>(i+1)+'. '+esc(f.provider||f.provider_id||f.name||'?')+' — '+esc(f.error||f.reason||'unknown')).join(String.fromCharCode(10));
+  }catch(_){fhHtml=esc(String(e.failover_history||''));}
+  const bid='body-'+e.id;
+  return '<div class="detail-box">'
+    +'<div class="detail-grid">'
+      +'<div class="detail-blk"><div class="detail-lbl">Email ID</div><div class="detail-val mono">'+esc(e.id)+'</div></div>'
+      +'<div class="detail-blk"><div class="detail-lbl">Status</div><div class="detail-val">'+sbadge(e.status)+(e.error_message?' — <span style="color:var(--red);font-size:12px">'+esc(e.error_message)+'</span>':'')+'</div></div>'
+      +'<div class="detail-blk"><div class="detail-lbl">To</div><div class="detail-val mono">'+esc(Array.isArray(e.to)?e.to.join(', '):e.to)+'</div></div>'
+      +'<div class="detail-blk"><div class="detail-lbl">From</div><div class="detail-val mono">'+esc(e.from_email||'—')+(e.from_name?' ('+esc(e.from_name)+')':'')+'</div></div>'
+      +'<div class="detail-blk"><div class="detail-lbl">Provider Used</div><div class="detail-val mono">'+esc(e.provider_used||'—')+'</div></div>'
+      +'<div class="detail-blk"><div class="detail-lbl">Created</div><div class="detail-val mono">'+fmt(e.created_at)+'</div></div>'
+      +(e.cc?'<div class="detail-blk"><div class="detail-lbl">CC</div><div class="detail-val mono">'+esc(Array.isArray(e.cc)?e.cc.join(', '):e.cc)+'</div></div>':'')
+      +(e.bcc?'<div class="detail-blk"><div class="detail-lbl">BCC</div><div class="detail-val mono">'+esc(Array.isArray(e.bcc)?e.bcc.join(', '):e.bcc)+'</div></div>':'')
+    +'</div>'
+    +(fhHtml?'<div class="detail-blk"><div class="detail-lbl">⚠️ Failover History</div><div class="detail-mono" style="color:var(--orange)">'+fhHtml+'</div></div>':'')
+    +'<div class="detail-blk">'
+      +'<div class="detail-lbl">Email Body</div>'
+      +'<div class="dtabs">'
+        +'<button class="dtab active" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;html&#39;)">HTML Preview</button>'
+        +'<button class="dtab" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;raw&#39;)">Raw</button>'
+      +'</div>'
+      +'<div id="'+bid+'-html"><iframe class="preview-iframe" sandbox="" referrerpolicy="no-referrer" srcdoc="'+esc(e.html_body||e.text_body||'(empty)')+'"></iframe></div>'
+      +'<div id="'+bid+'-raw" style="display:none"><div class="detail-mono">'+esc(e.html_body||e.text_body||'(empty)')+'</div></div>'
+    +'</div>'
+  +'</div>';
+}
+
+function switchBodyTab(ev,bid,tab){
+  ev.target.closest('.detail-blk').querySelectorAll('.dtab').forEach(t=>t.classList.remove('active'));
+  ev.target.classList.add('active');
+  document.getElementById(bid+'-html').style.display=tab==='html'?'':'none';
+  document.getElementById(bid+'-raw').style.display=tab==='raw'?'':'none';
+}
+
+function toggleDetail(id){
+  const dr=document.getElementById('detail-'+id),cr=document.getElementById('caret-'+id);
+  const hidden=dr.style.display==='none';
+  dr.style.display=hidden?'':'none';
+  cr.classList.toggle('rotated',hidden);
+}
+
+// ── Init ───────────────────────────────────────────────────
+['ak-input','ak-input-hmac','sk-input'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('keydown',ev=>{if(ev.key==='Enter')doAuth();});
+});
 </script>
 </body>
 </html>`;
