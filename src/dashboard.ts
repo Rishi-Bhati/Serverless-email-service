@@ -57,8 +57,10 @@ export function renderDashboard(): string {
     .hdr-right{display:flex;align-items:center;gap:14px}
     .status-pill{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:var(--green);padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
     .status-dot{width:7px;height:7px;background:var(--green);border-radius:50%;box-shadow:0 0 7px var(--green)}
-    .ghost-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:7px 13px;border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--ff-body);transition:all .2s}
+    .ghost-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:7px 13px;border-radius:8px;cursor:pointer;font-size:13px;font-family:var(--ff-body);transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
     .ghost-btn:hover{border-color:var(--red);color:var(--red)}
+    .report-btn{color:var(--orange);border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08)}
+    .report-btn:hover{border-color:var(--orange);background:rgba(245,158,11,.18);color:#fff}
 
     /* MAIN */
     main{flex:1;padding:36px 40px;max-width:1400px;width:100%;margin:0 auto;display:grid;gap:28px}
@@ -250,6 +252,7 @@ export function renderDashboard(): string {
   </nav>
   <div class="hdr-right">
     <div class="status-pill"><div class="status-dot"></div> Live</div>
+    <a href="https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/" target="_blank" rel="noopener noreferrer" class="ghost-btn report-btn">🐛 Report Issue</a>
     <button class="ghost-btn" onclick="logout()">↩ Logout</button>
   </div>
 </header>
@@ -272,8 +275,8 @@ export function renderDashboard(): string {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Recipient</th><th>Subject</th><th>Status</th><th>Provider</th><th>Time</th></tr></thead>
-          <tbody id="dash-emails"><tr><td colspan="5"><div class="empty-state">⏳ Loading…</div></td></tr></tbody>
+          <thead><tr><th style="width:30px"></th><th>Recipient</th><th>Subject</th><th>Status</th><th>Provider</th><th>Time</th></tr></thead>
+          <tbody id="dash-emails"><tr><td colspan="6"><div class="empty-state">⏳ Loading…</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -695,11 +698,8 @@ async function fetchDash(btn){
     document.getElementById('st-failed').textContent=st.failed??'—';
     const tb=document.getElementById('dash-emails');
     const emails=em.emails||[];
-    if(!emails.length){tb.innerHTML='<tr><td colspan="5"><div class="empty-state">📭 No emails yet</div></td></tr>';return;}
-    tb.innerHTML=emails.map(e=>{
-      const to=Array.isArray(e.to)?e.to[0]:e.to;
-      return '<tr><td class="mono">'+esc(to)+'</td><td>'+esc(e.subject||'(no subject)')+'</td><td>'+sbadge(e.status)+'</td><td class="mono" style="font-size:11px;color:var(--muted)">'+esc(e.provider_used||'—')+'</td><td class="mono" style="font-size:11px;color:var(--muted)">'+fmt(e.created_at)+'</td></tr>';
-    }).join('');
+    if(!emails.length){tb.innerHTML='<tr><td colspan="6"><div class="empty-state">📭 No emails yet</div></td></tr>';return;}
+    tb.innerHTML=emails.map(e=>renderLogRow(e,'dash-',6)).join('');
   }catch(e){toast('Dashboard error: '+e.message,false);}
   finally{if(btn){btn.textContent='↻ Refresh';btn.disabled=false;}}
 }
@@ -912,34 +912,37 @@ async function fetchLogs(btn){
 function renderLogs(emails){
   const tb=document.getElementById('logs-body');
   if(!emails.length){tb.innerHTML='<tr><td colspan="8"><div class="empty-state">📭 No emails found</div></td></tr>';return;}
-  tb.innerHTML=emails.map(e=>renderLogRow(e)).join('');
+  tb.innerHTML=emails.map(e=>renderLogRow(e,'logs-',8)).join('');
 }
 
-function renderLogRow(e){
+function renderLogRow(e, pfx='', colspan=8){
   const to=Array.isArray(e.to)?e.to[0]:e.to;
   const errHtml=e.error_message?'<span class="err-text" title="'+esc(e.error_message)+'">'+esc(e.error_message)+'</span>':'';
-  return '<tr class="log-row" onclick="toggleDetail(&#39;'+esc(e.id)+'&#39;)" id="row-'+esc(e.id)+'">'
-    +'<td><span class="expand-caret" id="caret-'+esc(e.id)+'">▶</span></td>'
-    +'<td class="mono" style="font-size:11px;color:var(--muted)">#'+esc(e.id)+'</td>'
-    +'<td class="mono" style="font-size:12px">'+esc(to)+'</td>'
-    +'<td>'+esc(e.subject||'(no subject)')+'</td>'
+  const rowId='row-'+pfx+esc(e.id);
+  const detailId='detail-'+pfx+esc(e.id);
+  const caretId='caret-'+pfx+esc(e.id);
+  return '<tr class="log-row" onclick="toggleDetail(&#39;'+esc(e.id)+'&#39;,&#39;'+pfx+'&#39;)" id="'+rowId+'">'
+    +'<td><span class="expand-caret" id="'+caretId+'">▶</span></td>'
+    +(colspan===8?'<td class="mono" style="font-size:11px;color:var(--muted)">#'+esc(e.id)+'</td>':'')
+    +'<td class="mono" style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(to)+'">'+esc(to)+'</td>'
+    +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(e.subject||'')+'">'+esc(e.subject||'(no subject)')+'</td>'
     +'<td>'+sbadge(e.status)+' '+errHtml+'</td>'
     +'<td class="mono" style="font-size:11px;color:var(--muted)">'+esc(e.provider_used||'—')+'</td>'
-    +'<td class="mono" style="font-size:11px;color:var(--muted)">'+esc(e.from_email||'—')+'</td>'
+    +(colspan===8?'<td class="mono" style="font-size:11px;color:var(--muted)">'+esc(e.from_email||'—')+'</td>':'')
     +'<td class="mono" style="font-size:11px;color:var(--muted)">'+fmt(e.created_at)+'</td>'
   +'</tr>'
-  +'<tr class="detail-row" id="detail-'+esc(e.id)+'" style="display:none">'
-    +'<td colspan="8">'+renderDetail(e)+'</td>'
+  +'<tr class="detail-row" id="'+detailId+'" style="display:none">'
+    +'<td colspan="'+colspan+'">'+renderDetail(e, pfx)+'</td>'
   +'</tr>';
 }
 
-function renderDetail(e){
+function renderDetail(e, pfx=''){
   let fhHtml='';
   try{
     const fh=typeof e.failover_history==='string'?JSON.parse(e.failover_history):e.failover_history;
     if(fh&&fh.length) fhHtml=fh.map((f,i)=>(i+1)+'. '+esc(f.provider||f.provider_id||f.name||'?')+' — '+esc(f.error||f.reason||'unknown')).join(String.fromCharCode(10));
   }catch(_){fhHtml=esc(String(e.failover_history||''));}
-  const bid='body-'+e.id;
+  const bid='body-'+pfx+e.id;
   return '<div class="detail-box">'
     +'<div class="detail-grid">'
       +'<div class="detail-blk"><div class="detail-lbl">Email ID</div><div class="detail-val mono">'+esc(e.id)+'</div></div>'
@@ -953,7 +956,7 @@ function renderDetail(e){
     +'</div>'
     +(fhHtml?'<div class="detail-blk"><div class="detail-lbl">⚠️ Failover History</div><div class="detail-mono" style="color:var(--orange)">'+fhHtml+'</div></div>':'')
     +'<div class="detail-blk">'
-      +'<div class="detail-lbl">Email Body</div>'
+      +'<div class="detail-lbl">Email Body Preview</div>'
       +'<div class="dtabs">'
         +'<button class="dtab active" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;html&#39;)">HTML Preview</button>'
         +'<button class="dtab" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;raw&#39;)">Raw</button>'
@@ -971,11 +974,12 @@ function switchBodyTab(ev,bid,tab){
   document.getElementById(bid+'-raw').style.display=tab==='raw'?'':'none';
 }
 
-function toggleDetail(id){
-  const dr=document.getElementById('detail-'+id),cr=document.getElementById('caret-'+id);
+function toggleDetail(id, pfx=''){
+  const dr=document.getElementById('detail-'+pfx+id),cr=document.getElementById('caret-'+pfx+id);
+  if(!dr) return;
   const hidden=dr.style.display==='none';
   dr.style.display=hidden?'':'none';
-  cr.classList.toggle('rotated',hidden);
+  if(cr) cr.classList.toggle('rotated',hidden);
 }
 
 // ── Init ───────────────────────────────────────────────────
