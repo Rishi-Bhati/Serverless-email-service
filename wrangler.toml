@@ -3,12 +3,12 @@ main = "src/index.ts"
 compatibility_date = "2024-05-29"
 compatibility_flags = [ "nodejs_compat" ]
 
-account_id = "1d0a59bc26e32db54bcf6509ddae66c8"
+account_id = "1a03d3cc2ce43f055e1019c46aa677cf"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "reportary-email-db"
-database_id = "f4d49eb9-5cbc-4532-897c-e6e4ef604ba6"
+database_id = "55dc6ca6-e905-4913-9c49-ac71acfdfe5d"
 
 [triggers]
 crons = [ "* * * * *" ]
