@@ -5,8 +5,8 @@ import {
   getActiveProviderByEmail,
   sendEmailViaProvider,
   incrementProviderDailySent,
-  ProviderRecord,
-  EmailMessage,
+  type ProviderRecord,
+  type EmailMessage,
 } from './providers';
 
 export interface Env {

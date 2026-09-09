@@ -1,5 +1,5 @@
-import { Env } from './queue';
-import { getActiveProviders, getProviderById, getActiveProviderByEmail, ProviderRecord } from './providers';
+import type { Env } from './queue';
+import { getActiveProviders, getProviderById, getActiveProviderByEmail, type ProviderRecord } from './providers';
 
 import {
   bufToHex,

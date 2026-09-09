@@ -1,4 +1,4 @@
-import { Env, processQueue } from './queue';
+import { type Env, processQueue } from './queue';
 import { renderDashboard } from './dashboard';
 import { verifyRequest, verifyApiKey, validateSenderAuthorization } from './auth';
 import { encryptCredentials, decryptCredentials } from './crypto';
@@ -8,8 +8,8 @@ import {
   sanitizeProvider,
   sendEmailViaProvider,
   getTodayUtc,
-  ProviderRecord,
-  ProviderType,
+  type ProviderRecord,
+  type ProviderType,
 } from './providers';
 
 // Helper to parse recipients into normalized JSON string for D1 storage
@@ -74,6 +74,16 @@ export default {
     // 2. CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS_HEADERS });
+    }
+
+    // 2b. GET /api/health — Telemetry and uptime probe
+    if (url.pathname === '/api/health' && request.method === 'GET') {
+      return jsonResponse({
+        status: 'ok',
+        runtime: 'cf_worker',
+        d1: 'bound',
+        timestamp: Date.now(),
+      });
     }
 
     // 3. POST /api/send — Queue an email for sending
