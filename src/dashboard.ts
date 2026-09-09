@@ -1352,7 +1352,7 @@ export function renderDashboard(): string {
         <label>Service API Key</label>
         <input class="mono" type="password" id="ak-input" placeholder="Enter API key" autocomplete="off" />
       </div>
-      <button class="btn-action-primary" style="margin-top:16px;" onclick="doAuth()">Sign In</button>
+      <button class="btn-action-primary" id="btn-signin-apikey" style="margin-top:16px;" onclick="doAuth()">Sign In</button>
     </div>
 
     <div id="auth-hmac-form" style="display:none">
@@ -1364,7 +1364,7 @@ export function renderDashboard(): string {
         <label>HMAC Secret Key</label>
         <input class="mono" type="password" id="sk-input" placeholder="Enter secret key" autocomplete="off" />
       </div>
-      <button class="btn-action-primary" style="margin-top:16px;" onclick="doAuth()">Sign In with HMAC</button>
+      <button class="btn-action-primary" id="btn-signin-hmac" style="margin-top:16px;" onclick="doAuth()">Sign In with HMAC</button>
     </div>
 
     <p id="auth-err" style="color:var(--status-failed);margin-top:14px;font-size:12.5px;display:none"></p>
@@ -1950,6 +1950,9 @@ function setAuthMode(m) {
 async function doAuth() {
   const errEl = document.getElementById('auth-err');
   errEl.style.display = 'none';
+  const btn = authMode === 'apikey' ? document.getElementById('btn-signin-apikey') : document.getElementById('btn-signin-hmac');
+  const origText = btn ? btn.textContent : '';
+
   if (authMode === 'apikey') {
     authToken = document.getElementById('ak-input').value.trim();
     if (!authToken) { errEl.textContent = 'Please enter your API Key'; errEl.style.display = ''; return; }
@@ -1959,6 +1962,12 @@ async function doAuth() {
     if (!authToken) { errEl.textContent = 'Please enter your API Key'; errEl.style.display = ''; return; }
     if (!authSecret) { errEl.textContent = 'Please enter your Secret Key'; errEl.style.display = ''; return; }
   }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Verifying…';
+  }
+
   try {
     const r = await api('/api/status');
     if (r.error) {
@@ -1978,6 +1987,11 @@ async function doAuth() {
   } catch (e) {
     errEl.textContent = 'Connection error: ' + e.message;
     errEl.style.display = '';
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = origText;
+    }
   }
 }
 
@@ -2755,6 +2769,7 @@ function renderDocCodeSnippets() {
   const sec = hasCreds && (serverApiSecret || authSecret) ? (serverApiSecret || authSecret) : 'YOUR_HMAC_SECRET';
   const url = hasCreds ? (serverBaseUrl || window.location.origin) : 'https://reportary-email-service.nagger.workers.dev';
 
+  const NL = String.fromCharCode(10);
   let html = '';
 
   if (activeLangTab === 'curl') {
@@ -2763,42 +2778,48 @@ function renderDocCodeSnippets() {
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Queue an email directly with essential fields (recipient, subject, body).</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>cURL (Minimal)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>curl -X POST ' + esc(url) + '/api/send \\\n' +
-        '  -H "Content-Type: application/json" \\\n' +
-        '  -H "X-API-Key: ' + esc(key) + '" \\\n' +
-        '  -d \'{\n' +
-        '    "to": "customer@example.com",\n' +
-        '    "subject": "Quick Notification",\n' +
-        '    "body": "&lt;h2&gt;Hello from Unsent&lt;/h2&gt;&lt;p&gt;Your background worker processed this message.&lt;/p&gt;"\n' +
-        '  }\'</code></pre>' +
+        '<pre><code>' + [
+          'curl -X POST ' + esc(url) + '/api/send \\\\',
+          '  -H "Content-Type: application/json" \\\\',
+          '  -H "X-API-Key: ' + esc(key) + '" \\\\',
+          '  -d &#39;{',
+          '    "to": "customer@example.com",',
+          '    "subject": "Quick Notification",',
+          '    "body": "&lt;h2&gt;Hello from Unsent&lt;/h2&gt;&lt;p&gt;Your background worker processed this message.&lt;/p&gt;"',
+          '  }&#39;'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
 
       '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">2. Full-Featured Payload (CC, BCC, Reply-To &amp; Specific Provider)</h3>' +
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Target a specific provider (e.g. Resend, SendGrid, SMTP) and attach audit metadata.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>cURL (Full Payload)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>curl -X POST ' + esc(url) + '/api/send \\\n' +
-        '  -H "Content-Type: application/json" \\\n' +
-        '  -H "X-API-Key: ' + esc(key) + '" \\\n' +
-        '  -d \'{\n' +
-        '    "to": ["customer@example.com", "billing@example.com"],\n' +
-        '    "cc": ["manager@example.com"],\n' +
-        '    "reply_to": "support@example.com",\n' +
-        '    "from_name": "Acme Billing",\n' +
-        '    "subject": "Invoice #ORD-9402 Ready",\n' +
-        '    "html": "&lt;p&gt;Your invoice is ready for download.&lt;/p&gt;",\n' +
-        '    "text": "Your invoice is ready for download.",\n' +
-        '    "provider_id": "smtp_primary",\n' +
-        '    "metadata": { "order_id": 9402, "tier": "enterprise" }\n' +
-        '  }\'</code></pre>' +
+        '<pre><code>' + [
+          'curl -X POST ' + esc(url) + '/api/send \\\\',
+          '  -H "Content-Type: application/json" \\\\',
+          '  -H "X-API-Key: ' + esc(key) + '" \\\\',
+          '  -d &#39;{',
+          '    "to": ["customer@example.com", "billing@example.com"],',
+          '    "cc": ["manager@example.com"],',
+          '    "reply_to": "support@example.com",',
+          '    "from_name": "Acme Billing",',
+          '    "subject": "Invoice #ORD-9402 Ready",',
+          '    "html": "&lt;p&gt;Your invoice is ready for download.&lt;/p&gt;",',
+          '    "text": "Your invoice is ready for download.",',
+          '    "provider_id": "smtp_primary",',
+          '    "metadata": { "order_id": 9402, "tier": "enterprise" }',
+          '  }&#39;'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
 
       '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">3. Queue Status &amp; Telemetry Probe</h3>' +
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Query the live queue statistics and status breakdown.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>cURL (Queue Status)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>curl -X GET ' + esc(url) + '/api/status \\\n' +
-        '  -H "X-API-Key: ' + esc(key) + '"</code></pre>' +
+        '<pre><code>' + [
+          'curl -X GET ' + esc(url) + '/api/status \\\\',
+          '  -H "X-API-Key: ' + esc(key) + '"'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
     '</div>';
   } else if (activeLangTab === 'ts') {
@@ -2807,61 +2828,69 @@ function renderDocCodeSnippets() {
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Direct HTTP call using native fetch with zero third-party dependencies.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>TypeScript (fetch)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code><span class="ckw">interface</span> <span class="cfn">SendEmailResponse</span> {\n' +
-        '  id: <span class="cfn">number</span>;\n' +
-        '  status: <span class="cstr">\'queued\'</span> | <span class="cstr">\'sent\'</span>;\n' +
-        '  message: <span class="cfn">string</span>;\n' +
-        '}\n\n' +
-        '<span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">\'' + esc(url) + '/api/send\'</span>, {\n' +
-        '  method: <span class="cstr">\'POST\'</span>,\n' +
-        '  headers: {\n' +
-        '    <span class="cstr">\'Content-Type\'</span>: <span class="cstr">\'application/json\'</span>,\n' +
-        '    <span class="cstr">\'X-API-Key\'</span>: <span class="cstr">\'' + esc(key) + '\'</span>\n' +
-        '  },\n' +
-        '  body: JSON.<span class="cfn">stringify</span>({\n' +
-        '    to: <span class="cstr">\'user@example.com\'</span>,\n' +
-        '    subject: <span class="cstr">\'Welcome to the Platform\'</span>,\n' +
-        '    html: <span class="cstr">\'&lt;h1&gt;Welcome!&lt;/h1&gt;&lt;p&gt;Your account has been activated.&lt;/p&gt;\'</span>,\n' +
-        '    from_name: <span class="cstr">\'Acme Team\'</span>\n' +
-        '  })\n' +
-        '});\n\n' +
-        '<span class="ckw">if</span> (!res.ok) {\n' +
-        '  <span class="ckw">const</span> error = <span class="cfn">await</span> res.<span class="cfn">json</span>();\n' +
-        '  <span class="ckw">throw new</span> <span class="cfn">Error</span>(<span class="cstr">&#96;Failed to send email: &#36;{error.error || res.statusText}&#96;</span>);\n' +
-        '}\n\n' +
-        '<span class="ckw">const</span> data: <span class="cfn">SendEmailResponse</span> = <span class="cfn">await</span> res.<span class="cfn">json</span>();\n' +
-        'console.<span class="cfn">log</span>(<span class="cstr">\'Email enqueued with ID:\'</span>, data.id);</code></pre>' +
+        '<pre><code>' + [
+          '<span class="ckw">interface</span> <span class="cfn">SendEmailResponse</span> {',
+          '  id: <span class="cfn">number</span>;',
+          '  status: <span class="cstr">&#39;queued&#39;</span> | <span class="cstr">&#39;sent&#39;</span>;',
+          '  message: <span class="cfn">string</span>;',
+          '}',
+          '',
+          '<span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, {',
+          '  method: <span class="cstr">&#39;POST&#39;</span>,',
+          '  headers: {',
+          '    <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
+          '    <span class="cstr">&#39;X-API-Key&#39;</span>: <span class="cstr">&#39;' + esc(key) + '&#39;</span>',
+          '  },',
+          '  body: JSON.<span class="cfn">stringify</span>({',
+          '    to: <span class="cstr">&#39;user@example.com&#39;</span>,',
+          '    subject: <span class="cstr">&#39;Welcome to the Platform&#39;</span>,',
+          '    html: <span class="cstr">&#39;&lt;h1&gt;Welcome!&lt;/h1&gt;&lt;p&gt;Your account has been activated.&lt;/p&gt;&#39;</span>,',
+          '    from_name: <span class="cstr">&#39;Acme Team&#39;</span>',
+          '  })',
+          '});',
+          '',
+          '<span class="ckw">if</span> (!res.ok) {',
+          '  <span class="ckw">const</span> error = <span class="cfn">await</span> res.<span class="cfn">json</span>();',
+          '  <span class="ckw">throw new</span> <span class="cfn">Error</span>(<span class="cstr">&#96;Failed to send email: &#36;{error.error || res.statusText}&#96;</span>);',
+          '}',
+          '',
+          '<span class="ckw">const</span> data: <span class="cfn">SendEmailResponse</span> = <span class="cfn">await</span> res.<span class="cfn">json</span>();',
+          'console.<span class="cfn">log</span>(<span class="cstr">&#39;Email enqueued with ID:&#39;</span>, data.id);'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
 
       '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">2. Reusable Type-Safe Client Helper</h3>' +
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Drop this lightweight helper function directly into your utility library.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>sendEmail.ts</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code><span class="ckw">export interface</span> <span class="cfn">EmailOptions</span> {\n' +
-        '  to: <span class="cfn">string</span> | <span class="cfn">string</span>[];\n' +
-        '  subject: <span class="cfn">string</span>;\n' +
-        '  html?: <span class="cfn">string</span>;\n' +
-        '  text?: <span class="cfn">string</span>;\n' +
-        '  from_name?: <span class="cfn">string</span>;\n' +
-        '  from_email?: <span class="cfn">string</span>;\n' +
-        '  reply_to?: <span class="cfn">string</span>;\n' +
-        '  cc?: <span class="cfn">string</span> | <span class="cfn">string</span>[];\n' +
-        '  bcc?: <span class="cfn">string</span> | <span class="cfn">string</span>[];\n' +
-        '  provider_id?: <span class="cfn">string</span>;\n' +
-        '  metadata?: <span class="cfn">Record</span>&lt;<span class="cfn">string</span>, <span class="cfn">any</span>&gt;;\n' +
-        '}\n\n' +
-        '<span class="ckw">export async function</span> <span class="cfn">sendEmail</span>(opts: <span class="cfn">EmailOptions</span>) {\n' +
-        '  <span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">\'' + esc(url) + '/api/send\'</span>, {\n' +
-        '    method: <span class="cstr">\'POST\'</span>,\n' +
-        '    headers: {\n' +
-        '      <span class="cstr">\'Content-Type\'</span>: <span class="cstr">\'application/json\'</span>,\n' +
-        '      <span class="cstr">\'X-API-Key\'</span>: process.env.UNSENT_API_KEY || <span class="cstr">\'' + esc(key) + '\'</span>\n' +
-        '    },\n' +
-        '    body: JSON.<span class="cfn">stringify</span>(opts)\n' +
-        '  });\n' +
-        '  <span class="ckw">if</span> (!res.ok) <span class="ckw">throw new</span> <span class="cfn">Error</span>(<span class="cstr">&#96;Unsent error: &#36;{res.status} &#36;{await res.text()}&#96;</span>);\n' +
-        '  <span class="ckw">return</span> res.<span class="cfn">json</span>();\n' +
-        '}</code></pre>' +
+        '<pre><code>' + [
+          '<span class="ckw">export interface</span> <span class="cfn">EmailOptions</span> {',
+          '  to: <span class="cfn">string</span> | <span class="cfn">string</span>[];',
+          '  subject: <span class="cfn">string</span>;',
+          '  html?: <span class="cfn">string</span>;',
+          '  text?: <span class="cfn">string</span>;',
+          '  from_name?: <span class="cfn">string</span>;',
+          '  from_email?: <span class="cfn">string</span>;',
+          '  reply_to?: <span class="cfn">string</span>;',
+          '  cc?: <span class="cfn">string</span> | <span class="cfn">string</span>[];',
+          '  bcc?: <span class="cfn">string</span> | <span class="cfn">string</span>[];',
+          '  provider_id?: <span class="cfn">string</span>;',
+          '  metadata?: <span class="cfn">Record</span>&lt;<span class="cfn">string</span>, <span class="cfn">any</span>&gt;;',
+          '}',
+          '',
+          '<span class="ckw">export async function</span> <span class="cfn">sendEmail</span>(opts: <span class="cfn">EmailOptions</span>) {',
+          '  <span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, {',
+          '    method: <span class="cstr">&#39;POST&#39;</span>,',
+          '    headers: {',
+          '      <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
+          '      <span class="cstr">&#39;X-API-Key&#39;</span>: process.env.UNSENT_API_KEY || <span class="cstr">&#39;' + esc(key) + '&#39;</span>',
+          '    },',
+          '    body: JSON.<span class="cfn">stringify</span>(opts)',
+          '  });',
+          '  <span class="ckw">if</span> (!res.ok) <span class="ckw">throw new</span> <span class="cfn">Error</span>(<span class="cstr">&#96;Unsent error: &#36;{res.status} &#36;{await res.text()}&#96;</span>);',
+          '  <span class="ckw">return</span> res.<span class="cfn">json</span>();',
+          '}'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
     '</div>';
   } else if (activeLangTab === 'nextjs') {
@@ -2870,51 +2899,59 @@ function renderDocCodeSnippets() {
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Place in <code>app/api/contact/route.ts</code> to handle form submissions securely on the server.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>app/api/contact/route.ts</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code><span class="ckw">import</span> { NextResponse } <span class="ckw">from</span> <span class="cstr">\'next/server\'</span>;\n\n' +
-        '<span class="ckw">export async function</span> <span class="cfn">POST</span>(request: <span class="cfn">Request</span>) {\n' +
-        '  <span class="ckw">try</span> {\n' +
-        '    <span class="ckw">const</span> { name, email, message } = <span class="cfn">await</span> request.<span class="cfn">json</span>();\n\n' +
-        '    <span class="ckw">const</span> response = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">\'' + esc(url) + '/api/send\'</span>, {\n' +
-        '      method: <span class="cstr">\'POST\'</span>,\n' +
-        '      headers: {\n' +
-        '        <span class="cstr">\'Content-Type\'</span>: <span class="cstr">\'application/json\'</span>,\n' +
-        '        <span class="cstr">\'X-API-Key\'</span>: process.env.UNSENT_API_KEY || <span class="cstr">\'' + esc(key) + '\'</span>\n' +
-        '      },\n' +
-        '      body: JSON.<span class="cfn">stringify</span>({\n' +
-        '        to: <span class="cstr">\'support@yourdomain.com\'</span>,\n' +
-        '        reply_to: email,\n' +
-        '        subject: <span class="cstr">&#96;New Contact Message from &#36;{name}&#96;</span>,\n' +
-        '        html: <span class="cstr">&#96;&lt;p&gt;&lt;strong&gt;From:&lt;/strong&gt; &#36;{name} (&#36;{email})&lt;/p&gt;&lt;p&gt;&#36;{message}&lt;/p&gt;&#96;</span>\n' +
-        '      })\n' +
-        '    });\n\n' +
-        '    <span class="ckw">if</span> (!response.ok) <span class="ckw">throw new</span> <span class="cfn">Error</span>(<span class="cstr">\'Delivery dispatch failed\'</span>);\n' +
-        '    <span class="ckw">return</span> NextResponse.<span class="cfn">json</span>({ ok: <span class="ckw">true</span> });\n' +
-        '  } <span class="ckw">catch</span> (err: <span class="cfn">any</span>) {\n' +
-        '    <span class="ckw">return</span> NextResponse.<span class="cfn">json</span>({ error: err.message }, { status: <span class="cnum">500</span> });\n' +
-        '  }\n' +
-        '}</code></pre>' +
+        '<pre><code>' + [
+          '<span class="ckw">import</span> { NextResponse } <span class="ckw">from</span> <span class="cstr">&#39;next/server&#39;</span>;',
+          '',
+          '<span class="ckw">export async function</span> <span class="cfn">POST</span>(request: <span class="cfn">Request</span>) {',
+          '  <span class="ckw">try</span> {',
+          '    <span class="ckw">const</span> { name, email, message } = <span class="cfn">await</span> request.<span class="cfn">json</span>();',
+          '',
+          '    <span class="ckw">const</span> response = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, {',
+          '      method: <span class="cstr">&#39;POST&#39;</span>,',
+          '      headers: {',
+          '        <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
+          '        <span class="cstr">&#39;X-API-Key&#39;</span>: process.env.UNSENT_API_KEY || <span class="cstr">&#39;' + esc(key) + '&#39;</span>',
+          '      },',
+          '      body: JSON.<span class="cfn">stringify</span>({',
+          '        to: <span class="cstr">&#39;support@yourdomain.com&#39;</span>,',
+          '        reply_to: email,',
+          '        subject: <span class="cstr">&#96;New Contact Message from &#36;{name}&#96;</span>,',
+          '        html: <span class="cstr">&#96;&lt;p&gt;&lt;strong&gt;From:&lt;/strong&gt; &#36;{name} (&#36;{email})&lt;/p&gt;&lt;p&gt;&#36;{message}&lt;/p&gt;&#96;</span>',
+          '      })',
+          '    });',
+          '',
+          '    <span class="ckw">if</span> (!response.ok) <span class="ckw">throw new</span> <span class="cfn">Error</span>(<span class="cstr">&#39;Delivery dispatch failed&#39;</span>);',
+          '    <span class="ckw">return</span> NextResponse.<span class="cfn">json</span>({ ok: <span class="ckw">true</span> });',
+          '  } <span class="ckw">catch</span> (err: <span class="cfn">any</span>) {',
+          '    <span class="ckw">return</span> NextResponse.<span class="cfn">json</span>({ error: err.message }, { status: <span class="cnum">500</span> });',
+          '  }',
+          '}'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
 
       '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">2. Next.js Server Action</h3>' +
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Execute directly from React Server Components or forms.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>actions/sendEmail.ts</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code><span class="cstr">\'use server\'</span>;\n\n' +
-        '<span class="ckw">export async function</span> <span class="cfn">sendWelcomeEmail</span>(to: <span class="cfn">string</span>, userName: <span class="cfn">string</span>) {\n' +
-        '  <span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">\'' + esc(url) + '/api/send\'</span>, {\n' +
-        '    method: <span class="cstr">\'POST\'</span>,\n' +
-        '    headers: {\n' +
-        '      <span class="cstr">\'Content-Type\'</span>: <span class="cstr">\'application/json\'</span>,\n' +
-        '      <span class="cstr">\'X-API-Key\'</span>: process.env.UNSENT_API_KEY || <span class="cstr">\'' + esc(key) + '\'</span>\n' +
-        '    },\n' +
-        '    body: JSON.<span class="cfn">stringify</span>({\n' +
-        '      to,\n' +
-        '      subject: <span class="cstr">&#96;Welcome to the team, &#36;{userName}!&#96;</span>,\n' +
-        '      html: <span class="cstr">&#96;&lt;p&gt;Hi &#36;{userName}, we are thrilled to have you.&lt;/p&gt;&#96;</span>\n' +
-        '    })\n' +
-        '  });\n' +
-        '  <span class="ckw">return</span> res.<span class="cfn">json</span>();\n' +
-        '}</code></pre>' +
+        '<pre><code>' + [
+          '<span class="cstr">&#39;use server&#39;</span>;',
+          '',
+          '<span class="ckw">export async function</span> <span class="cfn">sendWelcomeEmail</span>(to: <span class="cfn">string</span>, userName: <span class="cfn">string</span>) {',
+          '  <span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, {',
+          '    method: <span class="cstr">&#39;POST&#39;</span>,',
+          '    headers: {',
+          '      <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
+          '      <span class="cstr">&#39;X-API-Key&#39;</span>: process.env.UNSENT_API_KEY || <span class="cstr">&#39;' + esc(key) + '&#39;</span>',
+          '    },',
+          '    body: JSON.<span class="cfn">stringify</span>({',
+          '      to,',
+          '      subject: <span class="cstr">&#96;Welcome to the team, &#36;{userName}!&#96;</span>,',
+          '      html: <span class="cstr">&#96;&lt;p&gt;Hi &#36;{userName}, we are thrilled to have you.&lt;/p&gt;&#96;</span>',
+          '    })',
+          '  });',
+          '  <span class="ckw">return</span> res.<span class="cfn">json</span>();',
+          '}'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
     '</div>';
   } else if (activeLangTab === 'python') {
@@ -2923,40 +2960,50 @@ function renderDocCodeSnippets() {
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Synchronous delivery using the popular requests library.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>Python (requests)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code><span class="ckw">import</span> requests\n\n' +
-        'UNSENT_URL = <span class="cstr">"' + esc(url) + '/api/send"</span>\n' +
-        'API_KEY = <span class="cstr">"' + esc(key) + '"</span>\n\n' +
-        'payload = {\n' +
-        '    <span class="cstr">"to"</span>: <span class="cstr">"developer@example.com"</span>,\n' +
-        '    <span class="cstr">"subject"</span>: <span class="cstr">"Python Dispatch Test"</span>,\n' +
-        '    <span class="cstr">"html"</span>: <span class="cstr">"&lt;h2&gt;Dispatched from Python&lt;/h2&gt;&lt;p&gt;Delivery handled by Unsent edge worker.&lt;/p&gt;"</span>,\n' +
-        '    <span class="cstr">"from_name"</span>: <span class="cstr">"Python Worker"</span>\n' +
-        '}\n\n' +
-        'headers = {\n' +
-        '    <span class="cstr">"Content-Type"</span>: <span class="cstr">"application/json"</span>,\n' +
-        '    <span class="cstr">"X-API-Key"</span>: API_KEY\n' +
-        '}\n\n' +
-        'response = requests.post(UNSENT_URL, json=payload, headers=headers)\n' +
-        'response.raise_for_status()\n' +
-        'print(<span class="cstr">"Enqueued:"</span>, response.json())</code></pre>' +
+        '<pre><code>' + [
+          '<span class="ckw">import</span> requests',
+          '',
+          'UNSENT_URL = <span class="cstr">&quot;' + esc(url) + '/api/send&quot;</span>',
+          'API_KEY = <span class="cstr">&quot;' + esc(key) + '&quot;</span>',
+          '',
+          'payload = {',
+          '    <span class="cstr">&quot;to&quot;</span>: <span class="cstr">&quot;developer@example.com&quot;</span>,',
+          '    <span class="cstr">&quot;subject&quot;</span>: <span class="cstr">&quot;Python Dispatch Test&quot;</span>,',
+          '    <span class="cstr">&quot;html&quot;</span>: <span class="cstr">&quot;&lt;h2&gt;Dispatched from Python&lt;/h2&gt;&lt;p&gt;Delivery handled by Unsent edge worker.&lt;/p&gt;&quot;</span>,',
+          '    <span class="cstr">&quot;from_name&quot;</span>: <span class="cstr">&quot;Python Worker&quot;</span>',
+          '}',
+          '',
+          'headers = {',
+          '    <span class="cstr">&quot;Content-Type&quot;</span>: <span class="cstr">&quot;application/json&quot;</span>,',
+          '    <span class="cstr">&quot;X-API-Key&quot;</span>: API_KEY',
+          '}',
+          '',
+          'response = requests.post(UNSENT_URL, json=payload, headers=headers)',
+          'response.raise_for_status()',
+          'print(<span class="cstr">&quot;Enqueued:&quot;</span>, response.json())'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
 
       '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">2. Asynchronous Python (HTTPX / FastAPI / Celery)</h3>' +
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">High-throughput async execution for FastAPI or background tasks.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>Python (httpx)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code><span class="ckw">import</span> httpx\n' +
-        '<span class="ckw">import</span> asyncio\n\n' +
-        '<span class="ckw">async def</span> <span class="cfn">send_async_email</span>(recipient: <span class="cfn">str</span>, subject: <span class="cfn">str</span>, body_html: <span class="cfn">str</span>):\n' +
-        '    <span class="ckw">async with</span> httpx.AsyncClient() <span class="ckw">as</span> client:\n' +
-        '        resp = <span class="ckw">await</span> client.post(\n' +
-        '            <span class="cstr">"' + esc(url) + '/api/send"</span>,\n' +
-        '            headers={<span class="cstr">"X-API-Key"</span>: <span class="cstr">"' + esc(key) + '"</span>},\n' +
-        '            json={<span class="cstr">"to"</span>: recipient, <span class="cstr">"subject"</span>: subject, <span class="cstr">"html"</span>: body_html}\n' +
-        '        )\n' +
-        '        resp.raise_for_status()\n' +
-        '        <span class="ckw">return</span> resp.json()\n\n' +
-        'asyncio.run(send_async_email(<span class="cstr">"user@example.com"</span>, <span class="cstr">"Async Alert"</span>, <span class="cstr">"&lt;p&gt;Async delivery completed.&lt;/p&gt;"</span>))</code></pre>' +
+        '<pre><code>' + [
+          '<span class="ckw">import</span> httpx',
+          '<span class="ckw">import</span> asyncio',
+          '',
+          '<span class="ckw">async def</span> <span class="cfn">send_async_email</span>(recipient: <span class="cfn">str</span>, subject: <span class="cfn">str</span>, body_html: <span class="cfn">str</span>):',
+          '    <span class="ckw">async with</span> httpx.AsyncClient() <span class="ckw">as</span> client:',
+          '        resp = <span class="ckw">await</span> client.post(',
+          '            <span class="cstr">&quot;' + esc(url) + '/api/send&quot;</span>,',
+          '            headers={<span class="cstr">&quot;X-API-Key&quot;</span>: <span class="cstr">&quot;' + esc(key) + '&quot;</span>},',
+          '            json={<span class="cstr">&quot;to&quot;</span>: recipient, <span class="cstr">&quot;subject&quot;</span>: subject, <span class="cstr">&quot;html&quot;</span>: body_html}',
+          '        )',
+          '        resp.raise_for_status()',
+          '        <span class="ckw">return</span> resp.json()',
+          '',
+          'asyncio.run(send_async_email(<span class="cstr">&quot;user@example.com&quot;</span>, <span class="cstr">&quot;Async Alert&quot;</span>, <span class="cstr">&quot;&lt;p&gt;Async delivery completed.&lt;/p&gt;&quot;</span>))'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
     '</div>';
   } else if (activeLangTab === 'go') {
@@ -2965,37 +3012,46 @@ function renderDocCodeSnippets() {
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Idiomatic Go with typed structs and context cancellation support.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>main.go</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code><span class="ckw">package</span> main\n\n' +
-        '<span class="ckw">import</span> (\n' +
-        '    <span class="cstr">"bytes"</span>\n' +
-        '    <span class="cstr">"context"</span>\n' +
-        '    <span class="cstr">"encoding/json"</span>\n' +
-        '    <span class="cstr">"fmt"</span>\n' +
-        '    <span class="cstr">"net/http"</span>\n' +
-        '    <span class="cstr">"time"</span>\n' +
-        ')\n\n' +
-        '<span class="ckw">type</span> <span class="cfn">EmailPayload</span> <span class="ckw">struct</span> {\n' +
-        '    To      <span class="cfn">string</span> <span class="cstr">&#96;json:"to"&#96;</span>\n' +
-        '    Subject <span class="cfn">string</span> <span class="cstr">&#96;json:"subject"&#96;</span>\n' +
-        '    HTML    <span class="cfn">string</span> <span class="cstr">&#96;json:"html"&#96;</span>\n' +
-        '}\n\n' +
-        '<span class="ckw">func</span> <span class="cfn">main</span>() {\n' +
-        '    payload := <span class="cfn">EmailPayload</span>{\n' +
-        '        To:      <span class="cstr">"client@domain.com"</span>,\n' +
-        '        Subject: <span class="cstr">"Go Service Notification"</span>,\n' +
-        '        HTML:    <span class="cstr">"&lt;p&gt;Sent directly from Go standard library&lt;/p&gt;"</span>,\n' +
-        '    }\n' +
-        '    bodyBytes, _ := json.<span class="cfn">Marshal</span>(payload)\n\n' +
-        '    ctx, cancel := context.<span class="cfn">WithTimeout</span>(context.<span class="cfn">Background</span>(), 5*time.Second)\n' +
-        '    <span class="ckw">defer</span> cancel()\n\n' +
-        '    req, _ := http.<span class="cfn">NewRequestWithContext</span>(ctx, <span class="cstr">"POST"</span>, <span class="cstr">"' + esc(url) + '/api/send"</span>, bytes.<span class="cfn">NewReader</span>(bodyBytes))\n' +
-        '    req.Header.<span class="cfn">Set</span>(<span class="cstr">"Content-Type"</span>, <span class="cstr">"application/json"</span>)\n' +
-        '    req.Header.<span class="cfn">Set</span>(<span class="cstr">"X-API-Key"</span>, <span class="cstr">"' + esc(key) + '"</span>)\n\n' +
-        '    resp, err := http.DefaultClient.<span class="cfn">Do</span>(req)\n' +
-        '    <span class="ckw">if</span> err != nil { panic(err) }\n' +
-        '    <span class="ckw">defer</span> resp.Body.<span class="cfn">Close</span>()\n\n' +
-        '    fmt.<span class="cfn">Println</span>(<span class="cstr">"Status:"</span>, resp.Status)\n' +
-        '}</code></pre>' +
+        '<pre><code>' + [
+          '<span class="ckw">package</span> main',
+          '',
+          '<span class="ckw">import</span> (',
+          '    <span class="cstr">&quot;bytes&quot;</span>',
+          '    <span class="cstr">&quot;context&quot;</span>',
+          '    <span class="cstr">&quot;encoding/json&quot;</span>',
+          '    <span class="cstr">&quot;fmt&quot;</span>',
+          '    <span class="cstr">&quot;net/http&quot;</span>',
+          '    <span class="cstr">&quot;time&quot;</span>',
+          ')',
+          '',
+          '<span class="ckw">type</span> <span class="cfn">EmailPayload</span> <span class="ckw">struct</span> {',
+          '    To      <span class="cfn">string</span> <span class="cstr">&#96;json:&quot;to&quot;&#96;</span>',
+          '    Subject <span class="cfn">string</span> <span class="cstr">&#96;json:&quot;subject&quot;&#96;</span>',
+          '    HTML    <span class="cfn">string</span> <span class="cstr">&#96;json:&quot;html&quot;&#96;</span>',
+          '}',
+          '',
+          '<span class="ckw">func</span> <span class="cfn">main</span>() {',
+          '    payload := <span class="cfn">EmailPayload</span>{',
+          '        To:      <span class="cstr">&quot;client@domain.com&quot;</span>,',
+          '        Subject: <span class="cstr">&quot;Go Service Notification&quot;</span>,',
+          '        HTML:    <span class="cstr">&quot;&lt;p&gt;Sent directly from Go standard library&lt;/p&gt;&quot;</span>,',
+          '    }',
+          '    bodyBytes, _ := json.<span class="cfn">Marshal</span>(payload)',
+          '',
+          '    ctx, cancel := context.<span class="cfn">WithTimeout</span>(context.<span class="cfn">Background</span>(), 5*time.Second)',
+          '    <span class="ckw">defer</span> cancel()',
+          '',
+          '    req, _ := http.<span class="cfn">NewRequestWithContext</span>(ctx, <span class="cstr">&quot;POST&quot;</span>, <span class="cstr">&quot;' + esc(url) + '/api/send&quot;</span>, bytes.<span class="cfn">NewReader</span>(bodyBytes))',
+          '    req.Header.<span class="cfn">Set</span>(<span class="cstr">&quot;Content-Type&quot;</span>, <span class="cstr">&quot;application/json&quot;</span>)',
+          '    req.Header.<span class="cfn">Set</span>(<span class="cstr">&quot;X-API-Key&quot;</span>, <span class="cstr">&quot;' + esc(key) + '&quot;</span>)',
+          '',
+          '    resp, err := http.DefaultClient.<span class="cfn">Do</span>(req)',
+          '    <span class="ckw">if</span> err != nil { panic(err) }',
+          '    <span class="ckw">defer</span> resp.Body.<span class="cfn">Close</span>()',
+          '',
+          '    fmt.<span class="cfn">Println</span>(<span class="cstr">&quot;Status:&quot;</span>, resp.Status)',
+          '}'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
     '</div>';
   } else if (activeLangTab === 'php') {
@@ -3004,30 +3060,35 @@ function renderDocCodeSnippets() {
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Native PHP integration with robust error handling and HTTP status verification.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>send.php</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>&lt;?php\n' +
-        '$payload = [\n' +
-        '    <span class="cstr">"to"</span> =&gt; <span class="cstr">"customer@example.com"</span>,\n' +
-        '    <span class="cstr">"subject"</span> =&gt; <span class="cstr">"PHP Dispatch Order"</span>,\n' +
-        '    <span class="cstr">"html"</span> =&gt; <span class="cstr">"&lt;h1&gt;Invoice Ready&lt;/h1&gt;&lt;p&gt;Your payment was confirmed.&lt;/p&gt;"</span>\n' +
-        '];\n\n' +
-        '$ch = <span class="cfn">curl_init</span>(<span class="cstr">\'' + esc(url) + '/api/send\'</span>);\n' +
-        '<span class="cfn">curl_setopt_array</span>($ch, [\n' +
-        '    CURLOPT_POST =&gt; <span class="ckw">true</span>,\n' +
-        '    CURLOPT_RETURNTRANSFER =&gt; <span class="ckw">true</span>,\n' +
-        '    CURLOPT_HTTPHEADER =&gt; [\n' +
-        '        <span class="cstr">\'Content-Type: application/json\'</span>,\n' +
-        '        <span class="cstr">\'X-API-Key: ' + esc(key) + '\'</span>\n' +
-        '    ],\n' +
-        '    CURLOPT_POSTFIELDS =&gt; <span class="cfn">json_encode</span>($payload)\n' +
-        ']);\n\n' +
-        '$response = <span class="cfn">curl_exec</span>($ch);\n' +
-        '$statusCode = <span class="cfn">curl_getinfo</span>($ch, CURLINFO_HTTP_CODE);\n' +
-        '<span class="cfn">curl_close</span>($ch);\n\n' +
-        '<span class="ckw">if</span> ($statusCode === <span class="cnum">200</span>) {\n' +
-        '    echo <span class="cstr">"Enqueued: "</span> . $response;\n' +
-        '} <span class="ckw">else</span> {\n' +
-        '    echo <span class="cstr">"Error: "</span> . $response;\n' +
-        '}</code></pre>' +
+        '<pre><code>' + [
+          '&lt;?php',
+          '$payload = [',
+          '    <span class="cstr">&quot;to&quot;</span> =&gt; <span class="cstr">&quot;customer@example.com&quot;</span>,',
+          '    <span class="cstr">&quot;subject&quot;</span> =&gt; <span class="cstr">&quot;PHP Dispatch Order&quot;</span>,',
+          '    <span class="cstr">&quot;html&quot;</span> =&gt; <span class="cstr">&quot;&lt;h1&gt;Invoice Ready&lt;/h1&gt;&lt;p&gt;Your payment was confirmed.&lt;/p&gt;&quot;</span>',
+          '];',
+          '',
+          '$ch = <span class="cfn">curl_init</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>);',
+          '<span class="cfn">curl_setopt_array</span>($ch, [',
+          '    CURLOPT_POST =&gt; <span class="ckw">true</span>,',
+          '    CURLOPT_RETURNTRANSFER =&gt; <span class="ckw">true</span>,',
+          '    CURLOPT_HTTPHEADER =&gt; [',
+          '        <span class="cstr">&#39;Content-Type: application/json&#39;</span>,',
+          '        <span class="cstr">&#39;X-API-Key: ' + esc(key) + '&#39;</span>',
+          '    ],',
+          '    CURLOPT_POSTFIELDS =&gt; <span class="cfn">json_encode</span>($payload)',
+          ']);',
+          '',
+          '$response = <span class="cfn">curl_exec</span>($ch);',
+          '$statusCode = <span class="cfn">curl_getinfo</span>($ch, CURLINFO_HTTP_CODE);',
+          '<span class="cfn">curl_close</span>($ch);',
+          '',
+          '<span class="ckw">if</span> ($statusCode === <span class="cnum">200</span>) {',
+          '    echo <span class="cstr">&quot;Enqueued: &quot;</span> . $response;',
+          '} <span class="ckw">else</span> {',
+          '    echo <span class="cstr">&quot;Error: &quot;</span> . $response;',
+          '}'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
     '</div>';
   } else if (activeLangTab === 'hmac') {
@@ -3036,33 +3097,43 @@ function renderDocCodeSnippets() {
       '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Protect requests against replay attacks and tampering in <code>signed</code> or <code>full</code> security modes.</p>' +
       '<div class="code-panel">' +
         '<div class="code-panel-header"><span>JavaScript (Node.js / Web Crypto)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code><span class="ckw">import</span> crypto <span class="ckw">from</span> <span class="cstr">\'node:crypto\'</span>;\n\n' +
-        '<span class="ckw">const</span> API_KEY = <span class="cstr">\'' + esc(key) + '\'</span>;\n' +
-        '<span class="ckw">const</span> API_SECRET = <span class="cstr">\'' + esc(sec) + '\'</span>;\n\n' +
-        '<span class="ckw">const</span> timestamp = Math.<span class="cfn">floor</span>(Date.<span class="cfn">now</span>() / <span class="cnum">1000</span>).<span class="cfn">toString</span>();\n' +
-        '<span class="ckw">const</span> nonce = crypto.<span class="cfn">randomUUID</span>();\n' +
-        '<span class="ckw">const</span> bodyStr = JSON.<span class="cfn">stringify</span>({ to: <span class="cstr">\'user@example.com\'</span>, subject: <span class="cstr">\'Signed Request\'</span>, body: <span class="cstr">\'Secure message\'</span> });\n\n' +
-        '<span class="ccm">// 1. Compute SHA-256 of the raw body</span>\n' +
-        '<span class="ckw">const</span> bodyHash = crypto.<span class="cfn">createHash</span>(<span class="cstr">\'sha256\'</span>).<span class="cfn">update</span>(bodyStr).<span class="cfn">digest</span>(<span class="cstr">\'hex\'</span>);\n\n' +
-        '<span class="ccm">// 2. Build canonical message: timestamp + newline + nonce + newline + bodyHash</span>\n' +
-        '<span class="ckw">const</span> canonical = [timestamp, nonce, bodyHash].<span class="cfn">join</span>(<span class="cstr">\'\\n\'</span>);\n\n' +
-        '<span class="ccm">// 3. Compute HMAC-SHA256 signature</span>\n' +
-        '<span class="ckw">const</span> signature = <span class="cstr">\'sha256=\'</span> + crypto.<span class="cfn">createHmac</span>(<span class="cstr">\'sha256\'</span>, API_SECRET).<span class="cfn">update</span>(canonical).<span class="cfn">digest</span>(<span class="cstr">\'hex\'</span>);\n\n' +
-        '<span class="ccm">// 4. Attach authentication headers</span>\n' +
-        '<span class="ckw">const</span> headers = {\n' +
-        '  <span class="cstr">\'Content-Type\'</span>: <span class="cstr">\'application/json\'</span>,\n' +
-        '  <span class="cstr">\'X-API-Key\'</span>: API_KEY,\n' +
-        '  <span class="cstr">\'X-Timestamp\'</span>: timestamp,\n' +
-        '  <span class="cstr">\'X-Nonce\'</span>: nonce,\n' +
-        '  <span class="cstr">\'X-Signature\'</span>: signature\n' +
-        '};\n\n' +
-        '<span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">\'' + esc(url) + '/api/send\'</span>, { method: <span class="cstr">\'POST\'</span>, headers, body: bodyStr });</code></pre>' +
+        '<pre><code>' + [
+          '<span class="ckw">import</span> crypto <span class="ckw">from</span> <span class="cstr">&#39;node:crypto&#39;</span>;',
+          '',
+          '<span class="ckw">const</span> API_KEY = <span class="cstr">&#39;' + esc(key) + '&#39;</span>;',
+          '<span class="ckw">const</span> API_SECRET = <span class="cstr">&#39;' + esc(sec) + '&#39;</span>;',
+          '',
+          '<span class="ckw">const</span> timestamp = Math.<span class="cfn">floor</span>(Date.<span class="cfn">now</span>() / <span class="cnum">1000</span>).<span class="cfn">toString</span>();',
+          '<span class="ckw">const</span> nonce = crypto.<span class="cfn">randomUUID</span>();',
+          '<span class="ckw">const</span> bodyStr = JSON.<span class="cfn">stringify</span>({ to: <span class="cstr">&#39;user@example.com&#39;</span>, subject: <span class="cstr">&#39;Signed Request&#39;</span>, body: <span class="cstr">&#39;Secure message&#39;</span> });',
+          '',
+          '<span class="ccm">// 1. Compute SHA-256 of the raw body</span>',
+          '<span class="ckw">const</span> bodyHash = crypto.<span class="cfn">createHash</span>(<span class="cstr">&#39;sha256&#39;</span>).<span class="cfn">update</span>(bodyStr).<span class="cfn">digest</span>(<span class="cstr">&#39;hex&#39;</span>);',
+          '',
+          '<span class="ccm">// 2. Build canonical message: timestamp + newline + nonce + newline + bodyHash</span>',
+          '<span class="ckw">const</span> canonical = [timestamp, nonce, bodyHash].<span class="cfn">join</span>(String.fromCharCode(10));',
+          '',
+          '<span class="ccm">// 3. Compute HMAC-SHA256 signature</span>',
+          '<span class="ckw">const</span> signature = <span class="cstr">&#39;sha256=&#39;</span> + crypto.<span class="cfn">createHmac</span>(<span class="cstr">&#39;sha256&#39;</span>, API_SECRET).<span class="cfn">update</span>(canonical).<span class="cfn">digest</span>(<span class="cstr">&#39;hex&#39;</span>);',
+          '',
+          '<span class="ccm">// 4. Attach authentication headers</span>',
+          '<span class="ckw">const</span> headers = {',
+          '  <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
+          '  <span class="cstr">&#39;X-API-Key&#39;</span>: API_KEY,',
+          '  <span class="cstr">&#39;X-Timestamp&#39;</span>: timestamp,',
+          '  <span class="cstr">&#39;X-Nonce&#39;</span>: nonce,',
+          '  <span class="cstr">&#39;X-Signature&#39;</span>: signature',
+          '};',
+          '',
+          '<span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, { method: <span class="cstr">&#39;POST&#39;</span>, headers, body: bodyStr });'
+        ].join(NL) + '</code></pre>' +
       '</div>' +
     '</div>';
   }
 
   container.innerHTML = html;
 }
+
 
 // ── HTML Email Templates ───────────────────────────────────
 const EMAIL_TEMPLATES = [
@@ -3071,28 +3142,196 @@ const EMAIL_TEMPLATES = [
     title: 'Minimalist Welcome & Onboarding',
     desc: 'Clean onboarding email with modern brand badge, value highlights, and primary CTA button.',
     subject: 'Welcome to the platform — Your account is ready',
-    html: '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Welcome</title>\n</head>\n<body style="margin:0;padding:0;background-color:#F4F4F6;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#0F172A;">\n  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F4F4F6;padding:40px 16px;">\n    <tr>\n      <td align="center">\n        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:560px;background-color:#FFFFFF;border-radius:12px;border:1px solid #E1E2E7;overflow:hidden;">\n          <tr>\n            <td style="padding:32px 36px 20px;border-bottom:1px solid #F1F3F5;">\n              <span style="font-family:monospace;font-weight:700;font-size:16px;letter-spacing:-0.02em;color:#0F172A;">UN<span style="color:#64748B;">●</span>SENT</span>\n            </td>\n          </tr>\n          <tr>\n            <td style="padding:32px 36px;">\n              <h1 style="margin:0 0 16px;font-size:22px;font-weight:600;color:#0F172A;">Welcome aboard</h1>\n              <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#475569;">Your account is ready. Unsent gives you high-throughput, edge-accelerated transactional email dispatch with automatic multi-provider failover.</p>\n              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin:28px 0;">\n                <tr>\n                  <td align="center" style="border-radius:6px;background-color:#0F172A;">\n                    <a href="https://example.com" target="_blank" style="display:inline-block;padding:12px 28px;font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:6px;">Open Developer Console</a>\n                  </td>\n                </tr>\n              </table>\n              <p style="margin:0;font-size:13px;line-height:1.5;color:#94A3B8;">If you did not request this account, you can safely disregard this message.</p>\n            </td>\n          </tr>\n          <tr>\n            <td style="padding:18px 36px;background-color:#F8F9FA;border-top:1px solid #E1E2E7;text-align:center;">\n              <p style="margin:0;font-size:12px;color:#94A3B8;">© 2026 Unsent Infrastructure. All rights reserved.</p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>'
+    html: [
+      '<!DOCTYPE html>',
+      '<html>',
+      '<head>',
+      '  <meta charset="utf-8">',
+      '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      '  <title>Welcome</title>',
+      '</head>',
+      '<body style="margin:0;padding:0;background-color:#F4F4F6;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#0F172A;">',
+      '  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F4F4F6;padding:40px 16px;">',
+      '    <tr>',
+      '      <td align="center">',
+      '        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:560px;background-color:#FFFFFF;border-radius:12px;border:1px solid #E1E2E7;overflow:hidden;">',
+      '          <tr>',
+      '            <td style="padding:32px 36px 20px;border-bottom:1px solid #F1F3F5;">',
+      '              <span style="font-family:monospace;font-weight:700;font-size:16px;letter-spacing:-0.02em;color:#0F172A;">UN<span style="color:#64748B;">●</span>SENT</span>',
+      '            </td>',
+      '          </tr>',
+      '          <tr>',
+      '            <td style="padding:32px 36px;">',
+      '              <h1 style="margin:0 0 16px;font-size:22px;font-weight:600;color:#0F172A;">Welcome aboard</h1>',
+      '              <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#475569;">Your account is ready. Unsent gives you high-throughput, edge-accelerated transactional email dispatch with automatic multi-provider failover.</p>',
+      '              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin:28px 0;">',
+      '                <tr>',
+      '                  <td align="center" style="border-radius:6px;background-color:#0F172A;">',
+      '                    <a href="https://example.com" target="_blank" style="display:inline-block;padding:12px 28px;font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:6px;">Open Developer Console</a>',
+      '                  </td>',
+      '                </tr>',
+      '              </table>',
+      '              <p style="margin:0;font-size:13px;line-height:1.5;color:#94A3B8;">If you did not request this account, you can safely disregard this message.</p>',
+      '            </td>',
+      '          </tr>',
+      '          <tr>',
+      '            <td style="padding:18px 36px;background-color:#F8F9FA;border-top:1px solid #E1E2E7;text-align:center;">',
+      '              <p style="margin:0;font-size:12px;color:#94A3B8;">© 2026 Unsent Infrastructure. All rights reserved.</p>',
+      '            </td>',
+      '          </tr>',
+      '        </table>',
+      '      </td>',
+      '    </tr>',
+      '  </table>',
+      '</body>',
+      '</html>'
+    ].join(String.fromCharCode(10))
   },
   {
     id: 'otp',
     title: 'One-Time Passcode (OTP) Verification',
     desc: 'High-security 6-digit authentication token with prominent spacing and 10-minute expiry notice.',
     subject: 'Your authentication passcode: 492018',
-    html: '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Security Code</title>\n</head>\n<body style="margin:0;padding:0;background-color:#F4F4F6;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#0F172A;">\n  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F4F4F6;padding:40px 16px;">\n    <tr>\n      <td align="center">\n        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:500px;background-color:#FFFFFF;border-radius:12px;border:1px solid #E1E2E7;overflow:hidden;">\n          <tr>\n            <td style="padding:32px 36px;text-align:center;">\n              <div style="font-family:monospace;font-weight:700;font-size:15px;color:#0F172A;margin-bottom:18px;">UN<span style="color:#64748B;">●</span>SENT</div>\n              <h2 style="margin:0 0 10px;font-size:20px;font-weight:600;color:#0F172A;">Verification Code</h2>\n              <p style="margin:0 0 24px;font-size:14px;color:#64748B;line-height:1.5;">Enter the security code below to complete sign in. This code expires in 10 minutes.</p>\n              <div style="background-color:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;padding:16px 24px;margin:0 auto 24px;display:inline-block;">\n                <span style="font-family:monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:#0F172A;">492018</span>\n              </div>\n              <p style="margin:0;font-size:12.5px;color:#94A3B8;line-height:1.5;">Never share this passcode with anyone. Support representatives will never ask for your verification code.</p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>'
+    html: [
+      '<!DOCTYPE html>',
+      '<html>',
+      '<head>',
+      '  <meta charset="utf-8">',
+      '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      '  <title>Security Code</title>',
+      '</head>',
+      '<body style="margin:0;padding:0;background-color:#F4F4F6;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#0F172A;">',
+      '  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F4F4F6;padding:40px 16px;">',
+      '    <tr>',
+      '      <td align="center">',
+      '        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:500px;background-color:#FFFFFF;border-radius:12px;border:1px solid #E1E2E7;overflow:hidden;">',
+      '          <tr>',
+      '            <td style="padding:32px 36px;text-align:center;">',
+      '              <div style="font-family:monospace;font-weight:700;font-size:15px;color:#0F172A;margin-bottom:18px;">UN<span style="color:#64748B;">●</span>SENT</div>',
+      '              <h2 style="margin:0 0 10px;font-size:20px;font-weight:600;color:#0F172A;">Verification Code</h2>',
+      '              <p style="margin:0 0 24px;font-size:14px;color:#64748B;line-height:1.5;">Enter the security code below to complete sign in. This code expires in 10 minutes.</p>',
+      '              <div style="background-color:#F8FAFC;border:1px dashed #CBD5E1;border-radius:8px;padding:16px 24px;margin:0 auto 24px;display:inline-block;">',
+      '                <span style="font-family:monospace;font-size:32px;font-weight:700;letter-spacing:8px;color:#0F172A;">492018</span>',
+      '              </div>',
+      '              <p style="margin:0;font-size:12.5px;color:#94A3B8;line-height:1.5;">Never share this passcode with anyone. Support representatives will never ask for your verification code.</p>',
+      '            </td>',
+      '          </tr>',
+      '        </table>',
+      '      </td>',
+      '    </tr>',
+      '  </table>',
+      '</body>',
+      '</html>'
+    ].join(String.fromCharCode(10))
   },
   {
     id: 'reset',
     title: 'Password Reset & Security Alert',
     desc: 'Critical action notice with high-contrast alert styling, timestamp context, and safety advice.',
     subject: 'Password reset request for your account',
-    html: '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Password Reset</title>\n</head>\n<body style="margin:0;padding:0;background-color:#F4F4F6;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#0F172A;">\n  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F4F4F6;padding:40px 16px;">\n    <tr>\n      <td align="center">\n        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:540px;background-color:#FFFFFF;border-radius:12px;border:1px solid #E1E2E7;overflow:hidden;">\n          <tr>\n            <td style="padding:28px 32px 0;">\n              <span style="font-family:monospace;font-weight:700;font-size:15px;color:#0F172A;">UN<span style="color:#64748B;">●</span>SENT</span>\n            </td>\n          </tr>\n          <tr>\n            <td style="padding:24px 32px 32px;">\n              <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#0F172A;">Password Reset Request</h2>\n              <p style="margin:0 0 20px;font-size:14.5px;line-height:1.6;color:#475569;">A request was received to reset your password. Click below to establish a new password.</p>\n              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin:24px 0;">\n                <tr>\n                  <td align="center" style="border-radius:6px;background-color:#DC2626;">\n                    <a href="https://example.com/reset" target="_blank" style="display:inline-block;padding:12px 28px;font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:6px;">Reset Password</a>\n                  </td>\n                </tr>\n              </table>\n              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F8F9FA;border-radius:6px;padding:12px 16px;margin:16px 0;font-size:12.5px;color:#64748B;">\n                <tr><td style="padding:3px 0;"><strong>Timestamp:</strong> Sep 9, 2026 — 10:14 UTC</td></tr>\n                <tr><td style="padding:3px 0;"><strong>Location:</strong> Singapore (Edge Node)</td></tr>\n              </table>\n              <p style="margin:0;font-size:12.5px;line-height:1.5;color:#94A3B8;">If you did not initiate this change, your credentials may be compromised. Please sign in and update your security settings immediately.</p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>'
+    html: [
+      '<!DOCTYPE html>',
+      '<html>',
+      '<head>',
+      '  <meta charset="utf-8">',
+      '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      '  <title>Password Reset</title>',
+      '</head>',
+      '<body style="margin:0;padding:0;background-color:#F4F4F6;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#0F172A;">',
+      '  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F4F4F6;padding:40px 16px;">',
+      '    <tr>',
+      '      <td align="center">',
+      '        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:540px;background-color:#FFFFFF;border-radius:12px;border:1px solid #E1E2E7;overflow:hidden;">',
+      '          <tr>',
+      '            <td style="padding:28px 32px 0;">',
+      '              <span style="font-family:monospace;font-weight:700;font-size:15px;color:#0F172A;">UN<span style="color:#64748B;">●</span>SENT</span>',
+      '            </td>',
+      '          </tr>',
+      '          <tr>',
+      '            <td style="padding:24px 32px 32px;">',
+      '              <h2 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#0F172A;">Password Reset Request</h2>',
+      '              <p style="margin:0 0 20px;font-size:14.5px;line-height:1.6;color:#475569;">A request was received to reset your password. Click below to establish a new password.</p>',
+      '              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin:24px 0;">',
+      '                <tr>',
+      '                  <td align="center" style="border-radius:6px;background-color:#DC2626;">',
+      '                    <a href="https://example.com/reset" target="_blank" style="display:inline-block;padding:12px 28px;font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:6px;">Reset Password</a>',
+      '                  </td>',
+      '                </tr>',
+      '              </table>',
+      '              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F8F9FA;border-radius:6px;padding:12px 16px;margin:16px 0;font-size:12.5px;color:#64748B;">',
+      '                <tr><td style="padding:3px 0;"><strong>Timestamp:</strong> Sep 9, 2026 — 10:14 UTC</td></tr>',
+      '                <tr><td style="padding:3px 0;"><strong>Location:</strong> Singapore (Edge Node)</td></tr>',
+      '              </table>',
+      '              <p style="margin:0;font-size:12.5px;line-height:1.5;color:#94A3B8;">If you did not initiate this change, your credentials may be compromised. Please sign in and update your security settings immediately.</p>',
+      '            </td>',
+      '          </tr>',
+      '        </table>',
+      '      </td>',
+      '    </tr>',
+      '  </table>',
+      '</body>',
+      '</html>'
+    ].join(String.fromCharCode(10))
   },
   {
     id: 'receipt',
     title: 'Order Confirmation & Payment Receipt',
     desc: 'Itemized transaction receipt with line items, tax breakdown, and clear reference numbering.',
     subject: 'Receipt for Order #ORD-9041',
-    html: '<!DOCTYPE html>\n<html>\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Payment Receipt</title>\n</head>\n<body style="margin:0;padding:0;background-color:#F4F4F6;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif;color:#0F172A;">\n  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F4F4F6;padding:40px 16px;">\n    <tr>\n      <td align="center">\n        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:580px;background-color:#FFFFFF;border-radius:12px;border:1px solid #E1E2E7;overflow:hidden;">\n          <tr>\n            <td style="padding:28px 32px;border-bottom:1px solid #E1E2E7;display:flex;justify-content:space-between;align-items:center;">\n              <span style="font-family:monospace;font-weight:700;font-size:15px;color:#0F172A;">UN<span style="color:#64748B;">●</span>SENT</span>\n              <span style="font-family:monospace;font-size:12px;color:#64748B;">#REC-2026-9041</span>\n            </td>\n          </tr>\n          <tr>\n            <td style="padding:28px 32px;">\n              <h2 style="margin:0 0 6px;font-size:20px;font-weight:600;color:#0F172A;">Payment Confirmed</h2>\n              <p style="margin:0 0 24px;font-size:14px;color:#64748B;">Thank you for your business. Here is your transaction summary.</p>\n              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="8" style="font-size:13.5px;border-collapse:collapse;margin-bottom:20px;">\n                <tr style="border-bottom:1px solid #E1E2E7;color:#64748B;font-size:12px;text-transform:uppercase;">\n                  <th align="left" style="padding:8px 0;">Description</th>\n                  <th align="center" style="padding:8px 0;">Qty</th>\n                  <th align="right" style="padding:8px 0;">Amount</th>\n                </tr>\n                <tr style="border-bottom:1px solid #F1F3F5;">\n                  <td style="padding:12px 0;">Developer Pro (Monthly)</td>\n                  <td align="center" style="padding:12px 0;">1</td>\n                  <td align="right" style="padding:12px 0;">$29.00</td>\n                </tr>\n                <tr style="border-bottom:1px solid #F1F3F5;">\n                  <td style="padding:12px 0;">Dedicated IP Relay</td>\n                  <td align="center" style="padding:12px 0;">1</td>\n                  <td align="right" style="padding:12px 0;">$15.00</td>\n                </tr>\n                <tr>\n                  <td colspan="2" style="padding:14px 0 4px;font-weight:600;color:#0F172A;">Total Paid</td>\n                  <td align="right" style="padding:14px 0 4px;font-weight:700;font-size:16px;color:#059669;">$44.00</td>\n                </tr>\n              </table>\n              <p style="margin:0;font-size:12.5px;color:#94A3B8;">Charged to card ending in •••• 4242 · Sep 9, 2026</p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>'
+    html: [
+      '<!DOCTYPE html>',
+      '<html>',
+      '<head>',
+      '  <meta charset="utf-8">',
+      '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      '  <title>Payment Receipt</title>',
+      '</head>',
+      '<body style="margin:0;padding:0;background-color:#F4F4F6;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;color:#0F172A;">',
+      '  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#F4F4F6;padding:40px 16px;">',
+      '    <tr>',
+      '      <td align="center">',
+      '        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:580px;background-color:#FFFFFF;border-radius:12px;border:1px solid #E1E2E7;overflow:hidden;">',
+      '          <tr>',
+      '            <td style="padding:28px 32px;border-bottom:1px solid #E1E2E7;display:flex;justify-content:space-between;align-items:center;">',
+      '              <span style="font-family:monospace;font-weight:700;font-size:15px;color:#0F172A;">UN<span style="color:#64748B;">●</span>SENT</span>',
+      '              <span style="font-family:monospace;font-size:12px;color:#64748B;">#REC-2026-9041</span>',
+      '            </td>',
+      '          </tr>',
+      '          <tr>',
+      '            <td style="padding:28px 32px;">',
+      '              <h2 style="margin:0 0 6px;font-size:20px;font-weight:600;color:#0F172A;">Payment Confirmed</h2>',
+      '              <p style="margin:0 0 24px;font-size:14px;color:#64748B;">Thank you for your business. Here is your transaction summary.</p>',
+      '              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="8" style="font-size:13.5px;border-collapse:collapse;margin-bottom:20px;">',
+      '                <tr style="border-bottom:1px solid #E1E2E7;color:#64748B;font-size:12px;text-transform:uppercase;">',
+      '                  <th align="left" style="padding:8px 0;">Description</th>',
+      '                  <th align="center" style="padding:8px 0;">Qty</th>',
+      '                  <th align="right" style="padding:8px 0;">Amount</th>',
+      '                </tr>',
+      '                <tr style="border-bottom:1px solid #F1F3F5;">',
+      '                  <td style="padding:12px 0;">Developer Pro (Monthly)</td>',
+      '                  <td align="center" style="padding:12px 0;">1</td>',
+      '                  <td align="right" style="padding:12px 0;">$29.00</td>',
+      '                </tr>',
+      '                <tr style="border-bottom:1px solid #F1F3F5;">',
+      '                  <td style="padding:12px 0;">Dedicated IP Relay</td>',
+      '                  <td align="center" style="padding:12px 0;">1</td>',
+      '                  <td align="right" style="padding:12px 0;">$15.00</td>',
+      '                </tr>',
+      '                <tr>',
+      '                  <td colspan="2" style="padding:14px 0 4px;font-weight:600;color:#0F172A;">Total Paid</td>',
+      '                  <td align="right" style="padding:14px 0 4px;font-weight:700;font-size:16px;color:#059669;">$44.00</td>',
+      '                </tr>',
+      '              </table>',
+      '              <p style="margin:0;font-size:12.5px;color:#94A3B8;">Charged to card ending in •••• 4242 · Sep 9, 2026</p>',
+      '            </td>',
+      '          </tr>',
+      '        </table>',
+      '      </td>',
+      '    </tr>',
+      '  </table>',
+      '</body>',
+      '</html>'
+    ].join(String.fromCharCode(10))
   }
 ];
 
@@ -3215,7 +3454,13 @@ function renderApiReference() {
 
       '<h4 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin:16px 0 8px;">Response Format (200 OK)</h4>' +
       '<div class="code-panel" style="margin-bottom:20px;">' +
-        '<pre><code>{\n  "id": 142,\n  "status": "queued",\n  "message": "Email enqueued for sending"\n}</code></pre>' +
+        '<pre><code>' + [
+          '{',
+          '  "id": 142,',
+          '  "status": "queued",',
+          '  "message": "Email enqueued for sending"',
+          '}'
+        ].join(String.fromCharCode(10)) + '</code></pre>' +
       '</div>' +
     '</div>' +
 
@@ -3226,7 +3471,14 @@ function renderApiReference() {
       '</div>' +
       '<p style="font-size:13.5px;color:var(--text-muted);margin-bottom:12px;">Query aggregate transmission counts categorized by queue state.</p>' +
       '<div class="code-panel">' +
-        '<pre><code>{\n  "queued": 0,\n  "sending": 0,\n  "sent": 284,\n  "failed": 2\n}</code></pre>' +
+        '<pre><code>' + [
+          '{',
+          '  "queued": 0,',
+          '  "sending": 0,',
+          '  "sent": 284,',
+          '  "failed": 2',
+          '}'
+        ].join(String.fromCharCode(10)) + '</code></pre>' +
       '</div>' +
     '</div>' +
 
