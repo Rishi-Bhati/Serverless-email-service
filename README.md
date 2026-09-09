@@ -1,5 +1,7 @@
 # Serverless Email Queue Service
 
+[![Report Issues Here](https://img.shields.io/badge/Report-Issues%20Here-orange?style=for-the-badge)](https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/)
+
 A serverless email queuing and delivery service built on Cloudflare Workers and Cloudflare D1 (SQLite).
 
 ## What Is It
@@ -117,3 +119,8 @@ All outbound network calls validate destination hosts and IP ranges against loop
 
 5. Header and Body Injection Prevention
 Recipient, subject, and sender fields are sanitized against carriage return/newline (`CRLF`) characters to prevent email header injection. Secrets returned to the administration dashboard are masked (`••••••••`) before transmission.
+
+## Report Issues
+
+If you run into any issues or have feedback, please report them here:
+[Report Issues & Feedback](https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/)
