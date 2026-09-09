@@ -1994,16 +1994,128 @@ function logout() {
   document.getElementById('auth-overlay').style.display = '';
 }
 
-// ── Nav ────────────────────────────────────────────────────
-function switchView(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+// ── Nav & View Routing ─────────────────────────────────────
+const VIEW_SLUGS = {
+  'v-dash': 'dashboard',
+  'v-prov': 'providers',
+  'v-logs': 'logs',
+  'v-docs': 'docs'
+};
+
+const SLUG_TO_VIEW = {
+  'dash': 'v-dash',
+  'dashboard': 'v-dash',
+  'prov': 'v-prov',
+  'providers': 'v-prov',
+  'logs': 'v-logs',
+  'log': 'v-logs',
+  'docs': 'v-docs',
+  'doc': 'v-docs',
+  'api': 'v-docs',
+  'api-docs': 'v-docs',
+  'sdks': 'v-docs',
+  'templates': 'v-docs',
+  'reference': 'v-docs'
+};
+
+function resolveCurrentRoute() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const qv = urlParams.get('view');
+
+  let rawHash = window.location.hash || '';
+  if (rawHash.startsWith('#')) rawHash = rawHash.substring(1);
+  if (rawHash.startsWith('/')) rawHash = rawHash.substring(1);
+  rawHash = rawHash.toLowerCase();
+
+  const parts = rawHash.split('/');
+  const mainSlug = parts[0] || '';
+  const subSlug = parts[1] || '';
+
+  let targetView = null;
+  let targetDocsSubTab = null;
+
+  if (qv && SLUG_TO_VIEW[qv]) {
+    targetView = SLUG_TO_VIEW[qv];
+  } else if (mainSlug && SLUG_TO_VIEW[mainSlug]) {
+    targetView = SLUG_TO_VIEW[mainSlug];
+    if (['sdks', 'templates', 'reference'].indexOf(mainSlug) !== -1) {
+      targetDocsSubTab = mainSlug;
+    } else if (subSlug && ['sdks', 'templates', 'reference'].indexOf(subSlug) !== -1) {
+      targetDocsSubTab = subSlug;
+    }
+  } else {
+    try {
+      const saved = localStorage.getItem('unsent_active_view');
+      if (saved && document.getElementById(saved)) targetView = saved;
+    } catch (e) {}
+  }
+
+  if (!targetView || !document.getElementById(targetView)) {
+    targetView = 'v-dash';
+  }
+
+  if (!targetDocsSubTab) {
+    try {
+      const savedSub = localStorage.getItem('unsent_docs_subtab');
+      if (savedSub && ['sdks', 'templates', 'reference'].indexOf(savedSub) !== -1) {
+        targetDocsSubTab = savedSub;
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const savedLang = localStorage.getItem('unsent_active_lang');
+    if (savedLang && ['curl', 'ts', 'nextjs', 'python', 'go', 'php', 'hmac'].indexOf(savedLang) !== -1) {
+      activeLangTab = savedLang;
+      document.querySelectorAll('.lang-tab').forEach(function(b) {
+        b.classList.toggle('active', b.id === 'ltab-' + savedLang);
+      });
+    }
+  } catch (e) {}
+
+  return { viewId: targetView, docsSubTab: targetDocsSubTab || 'sdks' };
+}
+
+function switchView(id, updateHistory) {
+  if (typeof updateHistory === 'undefined') updateHistory = true;
+  if (!document.getElementById(id)) return;
+
+  document.querySelectorAll('.view').forEach(function(v) { v.classList.remove('active'); });
+  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
+
   const m = { 'v-dash': 'tab-dash', 'v-prov': 'tab-prov', 'v-logs': 'tab-logs', 'v-docs': 'tab-docs' };
-  if (m[id]) document.getElementById(m[id]).classList.add('active');
-  if (id === 'v-logs') fetchLogs();
-  if (id === 'v-prov') fetchProviders();
-  if (id === 'v-docs') {
+  if (m[id] && document.getElementById(m[id])) {
+    document.getElementById(m[id]).classList.add('active');
+  }
+
+  try {
+    localStorage.setItem('unsent_active_view', id);
+  } catch (e) {}
+
+  const slug = VIEW_SLUGS[id] || 'dashboard';
+  let targetHash = '#' + slug;
+  if (id === 'v-docs' && activeDocsSubTab && activeDocsSubTab !== 'sdks') {
+    targetHash = '#' + slug + '/' + activeDocsSubTab;
+  }
+
+  if (updateHistory) {
+    if (window.location.hash !== targetHash) {
+      history.pushState({ viewId: id, docsSubTab: activeDocsSubTab }, '', targetHash);
+    }
+  } else {
+    if (window.location.hash !== targetHash && window.location.search.indexOf('view=') === -1) {
+      history.replaceState({ viewId: id, docsSubTab: activeDocsSubTab }, '', targetHash);
+    }
+  }
+
+  if (id === 'v-dash') {
+    if (authToken) fetchDash();
+  } else if (id === 'v-logs') {
+    if (authToken) fetchLogs();
+  } else if (id === 'v-prov') {
+    if (authToken) fetchProviders();
+  } else if (id === 'v-docs') {
     renderCredentialsCard();
     renderDocCodeSnippets();
     renderEmailTemplates();
@@ -2597,9 +2709,14 @@ function toggleKeyInjection(checked) {
   renderDocCodeSnippets();
 }
 
-function switchDocsSubTab(tab) {
+function switchDocsSubTab(tab, updateHistory) {
+  if (typeof updateHistory === 'undefined') updateHistory = true;
   activeDocsSubTab = tab;
-  ['sdks', 'templates', 'reference'].forEach(t => {
+  try {
+    localStorage.setItem('unsent_docs_subtab', tab);
+  } catch (e) {}
+
+  ['sdks', 'templates', 'reference'].forEach(function(t) {
     const b = document.getElementById('dtab-' + t);
     const s = document.getElementById('docs-sec-' + t);
     if (b) b.classList.toggle('active', t === tab);
@@ -2608,11 +2725,24 @@ function switchDocsSubTab(tab) {
   if (tab === 'sdks') renderDocCodeSnippets();
   if (tab === 'templates') renderEmailTemplates();
   if (tab === 'reference') renderApiReference();
+
+  const docsEl = document.getElementById('v-docs');
+  if (updateHistory && docsEl && docsEl.classList.contains('active')) {
+    const targetHash = tab === 'sdks' ? '#docs' : '#docs/' + tab;
+    if (window.location.hash !== targetHash) {
+      history.pushState({ viewId: 'v-docs', docsSubTab: tab }, '', targetHash);
+    }
+  }
 }
 
 function switchLangTab(lang) {
   activeLangTab = lang;
-  document.querySelectorAll('.lang-tab').forEach(b => b.classList.toggle('active', b.id === 'ltab-' + lang));
+  try {
+    localStorage.setItem('unsent_active_lang', lang);
+  } catch (e) {}
+  document.querySelectorAll('.lang-tab').forEach(function(b) {
+    b.classList.toggle('active', b.id === 'ltab-' + lang);
+  });
   renderDocCodeSnippets();
 }
 
@@ -3142,6 +3272,28 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
   if (h) h.style.display = 'block';
 }
 
+window.addEventListener('popstate', function() {
+  const route = resolveCurrentRoute();
+  if (route.docsSubTab && route.docsSubTab !== activeDocsSubTab) {
+    switchDocsSubTab(route.docsSubTab, false);
+  }
+  switchView(route.viewId, false);
+});
+
+window.addEventListener('hashchange', function() {
+  const route = resolveCurrentRoute();
+  if (route.docsSubTab && route.docsSubTab !== activeDocsSubTab) {
+    switchDocsSubTab(route.docsSubTab, false);
+  }
+  switchView(route.viewId, false);
+});
+
+const initialRoute = resolveCurrentRoute();
+if (initialRoute.docsSubTab) {
+  switchDocsSubTab(initialRoute.docsSubTab, false);
+}
+switchView(initialRoute.viewId, false);
+
 const urlParams = new URLSearchParams(window.location.search);
 const queryKey = urlParams.get('key');
 const savedKey = queryKey || sessionStorage.getItem('unsent_api_key');
@@ -3156,11 +3308,17 @@ if (savedKey) {
   if (document.getElementById('ak-input-hmac')) document.getElementById('ak-input-hmac').value = savedKey;
   if (document.getElementById('sk-input') && savedSecret) document.getElementById('sk-input').value = savedSecret;
   setAuthMode(authMode);
-  doAuth().then(() => {
-    const queryView = urlParams.get('view');
-    const tabMap = { prov: 'v-prov', logs: 'v-logs', docs: 'v-docs', dash: 'v-dash' };
-    if (queryView && tabMap[queryView]) switchView(tabMap[queryView]);
+  doAuth().then(function() {
+    const route = resolveCurrentRoute();
+    switchView(route.viewId, false);
   });
+} else {
+  if (initialRoute.viewId === 'v-docs') {
+    renderCredentialsCard();
+    renderDocCodeSnippets();
+    renderEmailTemplates();
+    renderApiReference();
+  }
 }
 </script>
 </body>
