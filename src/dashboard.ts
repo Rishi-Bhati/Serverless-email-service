@@ -1091,6 +1091,11 @@ export function renderDashboard(): string {
       <button class="btn" onclick="doAuth()">Sign In</button>
     </div>
     <p id="auth-err" style="color:var(--red);margin-top:14px;font-size:13px;display:none"></p>
+    <div id="local-dev-hint" style="display:none;margin-top:16px;padding:12px;background:rgba(79,70,229,0.08);border:1px solid rgba(79,70,229,0.2);border-radius:8px;font-size:12px;text-align:left;">
+      <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Local Development Detected</div>
+      <div style="color:var(--muted);margin-bottom:8px;">Running on localhost. Sign in with the dev key from <code>.dev.vars</code>:</div>
+      <button type="button" class="bsm b-primary" style="width:100%;justify-content:center;" onclick="useDevKey()">Sign In with Local Dev Key</button>
+    </div>
   </div>
 </div>
 
@@ -1340,7 +1345,7 @@ export function renderDashboard(): string {
     <form id="prov-form" onsubmit="saveProv(event)">
       <input type="hidden" id="prov-editing-id">
       <div class="form-row">
-        <div class="ig"><label>Provider ID *</label><input class="ifield" type="text" id="pf-id" placeholder="e.g. smtp_main" pattern="[a-zA-Z0-9_\\-]+" required></div>
+        <div class="ig"><label>Provider ID *</label><input class="ifield" type="text" id="pf-id" placeholder="e.g. smtp_main" pattern="[a-zA-Z0-9_-]+" required></div>
         <div class="ig"><label>Display Name *</label><input class="ifield" type="text" id="pf-name" placeholder="e.g. Primary SMTP" required></div>
       </div>
       <div class="ig">
@@ -1513,13 +1518,22 @@ async function doAuth(){
   try{
     const r=await api('/api/status');
     if(r.error){errEl.textContent='Authentication failed: '+(r.reason||r.error);errEl.style.display='';return;}
+    sessionStorage.setItem('unsent_api_key', authToken);
+    if(authSecret) sessionStorage.setItem('unsent_api_secret', authSecret);
+    sessionStorage.setItem('unsent_auth_mode', authMode);
     document.getElementById('auth-overlay').style.display='none';
     document.getElementById('qr-base').textContent=window.location.origin;
     document.getElementById('qr-auth').textContent=authMode==='apikey'?'API Key':'Signed (HMAC)';
     fetchDash(); fetchProviders();
   }catch(e){errEl.textContent='Unable to connect: '+e.message;errEl.style.display='';}
 }
-function logout(){authToken='';authSecret='';document.getElementById('auth-overlay').style.display='';}
+function logout(){
+  authToken='';authSecret='';
+  sessionStorage.removeItem('unsent_api_key');
+  sessionStorage.removeItem('unsent_api_secret');
+  sessionStorage.removeItem('unsent_auth_mode');
+  document.getElementById('auth-overlay').style.display='';
+}
 
 // ── Nav ────────────────────────────────────────────────────
 function switchView(id){
@@ -1776,7 +1790,8 @@ async function fetchLogs(btn){
 function sanitizeCsvCell(val){
   if(val===null||val===undefined)return '""';
   let str=typeof val==='object'?JSON.stringify(val):String(val);
-  if(/^[=+\-@\t\r]/.test(str))str="'"+str;
+  const dangerous=['=', '+', '-', '@', String.fromCharCode(9), String.fromCharCode(13)];
+  if(str.length>0 && dangerous.indexOf(str.charAt(0))!==-1) str="'"+str;
   return '"'+str.replace(/"/g,'""')+'"';
 }
 
@@ -1798,7 +1813,9 @@ function exportCsv(emails){
       sanitizeCsvCell(e.error_message||e.error||'')
     ].join(',');
   });
-  const blob=new Blob(['\uFEFF'+[headerRow,...rows].join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const newline = String.fromCharCode(13, 10);
+  const bom = String.fromCharCode(0xFEFF);
+  const blob=new Blob([bom+[headerRow,...rows].join(newline)],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
@@ -1812,7 +1829,8 @@ function exportCsv(emails){
 
 function exportJsonl(emails){
   if(!emails||!emails.length){toast('No logs available to export',false);return;}
-  const content=emails.map(e=>JSON.stringify(e)).join('\n')+'\n';
+  const nl = String.fromCharCode(10);
+  const content=emails.map(e=>JSON.stringify(e)).join(nl)+nl;
   const blob=new Blob([content],{type:'application/x-ndjson;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -1903,11 +1921,37 @@ function toggleDetail(id, pfx=''){
   if(cr) cr.classList.toggle('rotated',hidden);
 }
 
+function useDevKey(){
+  document.getElementById('ak-input').value='Ddj1ZHJYculiA34hussZFzLdgDupBzIE';
+  if(document.getElementById('ak-input-hmac')) document.getElementById('ak-input-hmac').value='Ddj1ZHJYculiA34hussZFzLdgDupBzIE';
+  if(document.getElementById('sk-input')) document.getElementById('sk-input').value='zuLydZWeDvZXk5t230UDWrqaeqtTwQ3K';
+  doAuth();
+}
+
 // ── Init ───────────────────────────────────────────────────
 ['ak-input','ak-input-hmac','sk-input'].forEach(id=>{
   const el=document.getElementById(id);
   if(el) el.addEventListener('keydown',ev=>{if(ev.key==='Enter')doAuth();});
 });
+
+if(window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'){
+  const h=document.getElementById('local-dev-hint');
+  if(h) h.style.display='block';
+}
+
+const savedKey=sessionStorage.getItem('unsent_api_key');
+const savedSecret=sessionStorage.getItem('unsent_api_secret');
+const savedMode=sessionStorage.getItem('unsent_auth_mode')||'apikey';
+if(savedKey){
+  authToken=savedKey;
+  authSecret=savedSecret||'';
+  authMode=savedMode;
+  if(document.getElementById('ak-input')) document.getElementById('ak-input').value=savedKey;
+  if(document.getElementById('ak-input-hmac')) document.getElementById('ak-input-hmac').value=savedKey;
+  if(document.getElementById('sk-input')&&savedSecret) document.getElementById('sk-input').value=savedSecret;
+  setAuthMode(authMode);
+  doAuth();
+}
 </script>
 </body>
 </html>`;

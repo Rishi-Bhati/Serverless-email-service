@@ -61,8 +61,11 @@ export default {
     const url = new URL(request.url);
 
     // 1. Dashboard UI — publicly accessible
-    if (url.pathname === '/' && request.method === 'GET') {
-      return new Response(renderDashboard(), {
+    if (
+      (url.pathname === '/' || url.pathname === '/dashboard' || url.pathname === '/index.html') &&
+      (request.method === 'GET' || request.method === 'HEAD')
+    ) {
+      return new Response(request.method === 'HEAD' ? null : renderDashboard(), {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'X-Frame-Options': 'DENY',
