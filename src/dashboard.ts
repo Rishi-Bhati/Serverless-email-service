@@ -4,7 +4,7 @@ export function renderDashboard(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Email Service – Dashboard</title>
+  <title>Unsent – Email Service Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1098,7 +1098,7 @@ export function renderDashboard(): string {
 <header>
   <div class="logo-wrap">
     <div class="logo-badge">✉</div>
-    <div class="logo-text">Email <span>Service</span></div>
+    <div class="logo-text">Unsent <span>Email</span></div>
   </div>
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="switchView('v-dash')" id="tab-dash">Dashboard</button>
@@ -1238,6 +1238,10 @@ export function renderDashboard(): string {
 <div id="v-logs" class="view">
   <div class="sec-hdr">
     <div class="sec-title">Delivery Logs</div>
+    <div style="display:flex;gap:8px;">
+      <button class="bsm b-ghost" onclick="exportLogs('jsonl')">Export JSONL</button>
+      <button class="bsm b-ghost" onclick="exportLogs('csv')">Export CSV</button>
+    </div>
   </div>
   <div class="filter-bar">
     <div>
@@ -1466,12 +1470,12 @@ async function api(path,opts={}){
   const hdrs=await buildHdrs(bodyStr,opts.qual||'');
   if(opts.provId) hdrs['X-Provider-Id']=opts.provId;
   if(opts.senderEmail) hdrs['X-Sender-Email']=opts.senderEmail;
-  const res=await fetch(path,{method,headers:hdrs,body:bodyStr||undefined});
+  const res=await fetch(path,{method,headers:hdrs,body:bodyStr||undefined,credentials:'omit'});
   const ct=res.headers.get('content-type')||'';
   if(ct.includes('application/json')) return res.json();
   return {_status:res.status,_text:await res.text()};
 }
-const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').split(String.fromCharCode(92)).join('&#92;');
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').split(String.fromCharCode(96)).join('&#96;').split(String.fromCharCode(47)).join('&#47;').split(String.fromCharCode(92)).join('&#92;');
 const fmt=iso=>{if(!iso)return'—';const d=new Date(iso);return d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})};
 function sbadge(s){const m={queued:'b-queued',sending:'b-sending',sent:'b-sent',failed:'b-failed'};return '<span class="badge '+(m[s]||'')+'">'+esc(s)+'</span>';}
 function tbadge(t){return '<span class="tbadge t-'+esc(t)+'">'+esc(t)+'</span>';}
@@ -1665,11 +1669,28 @@ async function saveProv(ev){
   let creds={};
   if(t==='smtp'){
     creds={host:document.getElementById('cs-host').value.trim(),port:parseInt(document.getElementById('cs-port').value)||587,username:document.getElementById('cs-user').value.trim()};
-    const pw=document.getElementById('cs-pass').value;if(pw)creds.password=pw;
-  }else if(t==='resend'){const k=document.getElementById('cr-key').value;if(k)creds.api_key=k;}
-  else if(t==='sendgrid'){const k=document.getElementById('csg-key').value;if(k)creds.api_key=k;}
-  else if(t==='mailgun'){const k=document.getElementById('cmg-key').value;if(k)creds.api_key=k;creds.domain=document.getElementById('cmg-domain').value.trim();creds.region=document.getElementById('cmg-region').value;}
-  else if(t==='postmark'){const k=document.getElementById('cpm-token').value;if(k)creds.server_token=k;}
+    const pw=document.getElementById('cs-pass').value;
+    if(pw) creds.password=pw;
+    else if(isEdit) creds.password='••••••••';
+  }else if(t==='resend'){
+    const k=document.getElementById('cr-key').value;
+    if(k) creds.api_key=k;
+    else if(isEdit) creds.api_key='••••••••';
+  }else if(t==='sendgrid'){
+    const k=document.getElementById('csg-key').value;
+    if(k) creds.api_key=k;
+    else if(isEdit) creds.api_key='••••••••';
+  }else if(t==='mailgun'){
+    const k=document.getElementById('cmg-key').value;
+    if(k) creds.api_key=k;
+    else if(isEdit) creds.api_key='••••••••';
+    creds.domain=document.getElementById('cmg-domain').value.trim();
+    creds.region=document.getElementById('cmg-region').value;
+  }else if(t==='postmark'){
+    const k=document.getElementById('cpm-token').value;
+    if(k) creds.server_token=k;
+    else if(isEdit) creds.server_token='••••••••';
+  }
   const payload={id:document.getElementById('pf-id').value.trim(),name:document.getElementById('pf-name').value.trim(),type:t,from_email:document.getElementById('pf-from-email').value.trim(),from_name:document.getElementById('pf-from-name').value.trim(),priority:parseInt(document.getElementById('pf-priority').value)||10,daily_limit:parseInt(document.getElementById('pf-daily').value)||0,is_default:document.getElementById('pf-default').checked,is_active:document.getElementById('pf-active').checked,credentials:creds};
   try{
     const r=await api('/api/providers',{method:isEdit?'PUT':'POST',body:payload});
@@ -1727,6 +1748,7 @@ async function execTest(ev){
 }
 
 // ── Logs ───────────────────────────────────────────────────
+let currentLogsCache = [];
 function resetFilters(){['fl-status','fl-search','fl-from','fl-to'].forEach(id=>{document.getElementById(id).value='';});logsPage=0;fetchLogs();}
 function changePage(d){logsPage=Math.max(0,logsPage+d);fetchLogs();}
 
@@ -1741,6 +1763,7 @@ async function fetchLogs(btn){
   try{
     const r=await api('/api/emails?'+p);
     const emails=r.emails||[];logsTotal=r.total||emails.length;
+    currentLogsCache=emails;
     renderLogs(emails);
     const start=logsPage*logsPerPage+1,end=Math.min(start+emails.length-1,logsTotal);
     document.getElementById('pag-info').textContent=emails.length?'Showing '+start+'–'+end+' of '+logsTotal:'No logs found';
@@ -1748,6 +1771,63 @@ async function fetchLogs(btn){
     document.getElementById('btn-next').disabled=end>=logsTotal;
   }catch(e){toast('Error loading logs: '+e.message,false);}
   finally{if(btn){btn.textContent='Apply';btn.disabled=false;}}
+}
+
+function sanitizeCsvCell(val){
+  if(val===null||val===undefined)return '""';
+  let str=typeof val==='object'?JSON.stringify(val):String(val);
+  if(/^[=+\-@\t\r]/.test(str))str="'"+str;
+  return '"'+str.replace(/"/g,'""')+'"';
+}
+
+function exportCsv(emails){
+  if(!emails||!emails.length){toast('No logs available to export',false);return;}
+  const headers=['ID','Date','Status','Recipient','Subject','Provider','From','Attempts','Error'];
+  const headerRow=headers.map(sanitizeCsvCell).join(',');
+  const rows=emails.map(e=>{
+    const to=Array.isArray(e.to)?e.to.join(', '):(e.to||'');
+    return [
+      sanitizeCsvCell(e.id),
+      sanitizeCsvCell(e.created_at?new Date(e.created_at).toISOString():''),
+      sanitizeCsvCell(e.status),
+      sanitizeCsvCell(to),
+      sanitizeCsvCell(e.subject||''),
+      sanitizeCsvCell(e.provider_used||''),
+      sanitizeCsvCell(e.from_email||''),
+      sanitizeCsvCell(e.attempts||0),
+      sanitizeCsvCell(e.error_message||e.error||'')
+    ].join(',');
+  });
+  const blob=new Blob(['\uFEFF'+[headerRow,...rows].join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='delivery_logs_'+(new Date().toISOString().slice(0,10))+'.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('Logs exported to CSV');
+}
+
+function exportJsonl(emails){
+  if(!emails||!emails.length){toast('No logs available to export',false);return;}
+  const content=emails.map(e=>JSON.stringify(e)).join('\n')+'\n';
+  const blob=new Blob([content],{type:'application/x-ndjson;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='delivery_logs_'+(new Date().toISOString().slice(0,10))+'.jsonl';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  toast('Logs exported to JSONL');
+}
+
+function exportLogs(fmt){
+  if(fmt==='csv')exportCsv(currentLogsCache);
+  else exportJsonl(currentLogsCache);
 }
 
 function renderLogs(emails){
@@ -1802,7 +1882,7 @@ function renderDetail(e, pfx=''){
         +'<button class="dtab active" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;html&#39;)">Preview</button>'
         +'<button class="dtab" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;raw&#39;)">HTML Source</button>'
       +'</div>'
-      +'<div id="'+bid+'-html"><iframe class="preview-iframe" sandbox="" referrerpolicy="no-referrer" srcdoc="'+esc(e.html_body||e.text_body||'(empty)')+'"></iframe></div>'
+      +'<div id="'+bid+'-html"><iframe class="preview-iframe" sandbox="allow-popups" referrerpolicy="no-referrer" srcdoc="'+esc(e.html_body||e.text_body||'(empty)')+'"></iframe></div>'
       +'<div id="'+bid+'-raw" style="display:none"><div class="detail-mono">'+esc(e.html_body||e.text_body||'(empty)')+'</div></div>'
     +'</div>'
   +'</div>';
