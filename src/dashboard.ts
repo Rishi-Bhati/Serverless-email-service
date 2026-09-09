@@ -4,28 +4,39 @@ export function renderDashboard(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Unsent – Email Service Dashboard</title>
+  <title>UNSENT // Email Queue Telemetry</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23ff9e2c'/%3E%3Cpath d='M6 9h20v14H6z' fill='none' stroke='%23090a0f' stroke-width='2.5'/%3E%3Cpath d='M6 10l10 7 10-7' fill='none' stroke='%23090a0f' stroke-width='2.5'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0b0f17;
-      --bg-card: #131924;
-      --bg-card-subtle: #192231;
-      --bg-input: #0e131c;
-      --border: #232c3d;
-      --border-subtle: #1c2433;
-      --text: #f1f5f9;
-      --muted: #8b9bb4;
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --green: #10b981;
-      --red: #ef4444;
-      --orange: #f59e0b;
-      --cyan: #06b6d4;
-      --ff-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      --ff-mono: 'JetBrains Mono', monospace;
+      --bg-canvas: #090a0f;
+      --bg-surface: #0f1218;
+      --bg-surface-subtle: #141720;
+      --bg-surface-hover: #1a1e2a;
+      --bg-input: #0b0d13;
+      --border-rule: #1e2430;
+      --border-focus: #ff9e2c;
+      --border-subtle: #161b24;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #556070;
+      --accent-amber: #ff9e2c;
+      --accent-amber-hover: #e68a1f;
+      --accent-amber-dim: rgba(255, 158, 44, 0.12);
+      --accent-amber-border: rgba(255, 158, 44, 0.3);
+      --state-success: #00e599;
+      --state-success-dim: rgba(0, 229, 153, 0.1);
+      --state-success-border: rgba(0, 229, 153, 0.25);
+      --state-danger: #ff4d4f;
+      --state-danger-dim: rgba(255, 77, 79, 0.1);
+      --state-danger-border: rgba(255, 77, 79, 0.25);
+      --state-cyan: #00b4d8;
+      --state-cyan-dim: rgba(0, 180, 216, 0.1);
+      --state-cyan-border: rgba(0, 180, 216, 0.25);
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
     *, *::before, *::after {
@@ -35,9 +46,9 @@ export function renderDashboard(): string {
     }
 
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--ff-body);
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-ui);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -49,7 +60,7 @@ export function renderDashboard(): string {
     #auth-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(11, 15, 23, 0.94);
+      background: rgba(9, 10, 15, 0.96);
       backdrop-filter: blur(8px);
       display: flex;
       justify-content: center;
@@ -59,33 +70,42 @@ export function renderDashboard(): string {
     }
 
     .auth-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-rule);
+      border-radius: 4px;
       padding: 36px 32px;
       width: 100%;
       max-width: 440px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 0 0 1px var(--border-rule), 0 24px 48px rgba(0, 0, 0, 0.6);
     }
 
     .auth-card h2 {
-      font-size: 22px;
+      font-family: var(--font-mono);
+      font-size: 18px;
       font-weight: 700;
-      margin-bottom: 6px;
-      color: var(--text);
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .auth-card h2 span {
+      color: var(--accent-amber);
     }
 
     .auth-card > p {
-      color: var(--muted);
-      font-size: 14px;
-      margin-bottom: 24px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-bottom: 22px;
     }
 
     .auth-mode-group {
       display: flex;
       background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      border: 1px solid var(--border-rule);
+      border-radius: 4px;
       padding: 3px;
       margin-bottom: 20px;
     }
@@ -94,33 +114,39 @@ export function renderDashboard(): string {
       flex: 1;
       background: none;
       border: none;
-      color: var(--muted);
+      color: var(--text-secondary);
       padding: 8px 12px;
-      border-radius: 6px;
+      border-radius: 3px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
-      font-family: inherit;
+      font-family: var(--font-mono);
       transition: all 0.15s ease;
     }
 
     .auth-mode-btn.active {
-      background: var(--primary);
-      color: #fff;
+      background: var(--bg-surface-subtle);
+      color: var(--accent-amber);
+      box-shadow: inset 0 -2px 0 var(--accent-amber);
     }
 
     .auth-hint {
       font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 20px;
+      color: var(--text-secondary);
+      margin-bottom: 18px;
       line-height: 1.5;
-      padding: 10px 14px;
-      background: rgba(79, 70, 229, 0.08);
-      border: 1px solid rgba(79, 70, 229, 0.2);
-      border-radius: 8px;
+      padding: 10px 12px;
+      background: var(--bg-surface-subtle);
+      border: 1px solid var(--border-rule);
+      border-radius: 4px;
     }
 
-    /* INPUTS */
+    .auth-hint code {
+      color: var(--accent-amber);
+      font-family: var(--font-mono);
+    }
+
+    /* INPUT FIELDS */
     .ig {
       margin-bottom: 16px;
       text-align: left;
@@ -128,56 +154,63 @@ export function renderDashboard(): string {
 
     .ig label {
       display: block;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
       margin-bottom: 6px;
-      color: var(--muted);
+      color: var(--text-secondary);
     }
 
     .ifield {
       width: 100%;
       background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: #fff;
+      border: 1px solid var(--border-rule);
+      border-radius: 3px;
+      padding: 10px 12px;
+      color: var(--text-primary);
       font-family: inherit;
-      font-size: 14px;
+      font-size: 13px;
       transition: border-color 0.15s ease;
       outline: none;
     }
 
     .ifield:focus {
-      border-color: var(--primary);
+      border-color: var(--border-focus);
     }
 
     select.ifield option {
-      background: var(--bg-card);
+      background: var(--bg-surface);
+      color: var(--text-primary);
     }
 
     textarea.ifield {
       resize: vertical;
       min-height: 80px;
-      font-family: inherit;
+      font-family: var(--font-mono);
+      font-size: 12px;
     }
 
     /* BUTTONS */
     .btn {
       width: 100%;
-      background: var(--primary);
-      color: #fff;
+      background: var(--accent-amber);
+      color: #090a0f;
       border: none;
-      border-radius: 8px;
+      border-radius: 3px;
       padding: 11px 16px;
-      font-weight: 600;
-      font-size: 14px;
+      font-weight: 700;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
       cursor: pointer;
-      transition: background 0.15s ease;
-      font-family: inherit;
+      transition: all 0.15s ease;
     }
 
     .btn:hover {
-      background: var(--primary-hover);
+      background: var(--accent-amber-hover);
     }
 
     .btn:disabled {
@@ -186,13 +219,13 @@ export function renderDashboard(): string {
     }
 
     .bsm {
-      padding: 6px 14px;
-      font-size: 13px;
-      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 3px;
       font-weight: 600;
+      font-family: var(--font-mono);
       cursor: pointer;
       border: 1px solid transparent;
-      font-family: inherit;
       transition: all 0.15s ease;
       display: inline-flex;
       align-items: center;
@@ -200,85 +233,39 @@ export function renderDashboard(): string {
     }
 
     .b-primary {
-      background: var(--primary);
-      color: #fff;
+      background: var(--accent-amber);
+      color: #090a0f;
     }
-
     .b-primary:hover {
-      background: var(--primary-hover);
+      background: var(--accent-amber-hover);
     }
 
     .b-danger {
-      background: rgba(239, 68, 68, 0.1);
-      color: var(--red);
-      border-color: rgba(239, 68, 68, 0.25);
+      background: var(--state-danger-dim);
+      color: var(--state-danger);
+      border-color: var(--state-danger-border);
     }
-
     .b-danger:hover {
-      background: rgba(239, 68, 68, 0.2);
-    }
-
-    .b-warn {
-      background: rgba(245, 158, 11, 0.1);
-      color: var(--orange);
-      border-color: rgba(245, 158, 11, 0.25);
-    }
-
-    .b-warn:hover {
-      background: rgba(245, 158, 11, 0.2);
+      background: rgba(255, 77, 79, 0.2);
     }
 
     .b-ghost {
       background: transparent;
-      color: var(--muted);
-      border-color: var(--border);
+      color: var(--text-secondary);
+      border-color: var(--border-rule);
     }
-
     .b-ghost:hover {
-      color: var(--text);
-      border-color: var(--muted);
+      color: var(--text-primary);
+      border-color: var(--text-secondary);
       background: rgba(255, 255, 255, 0.03);
-    }
-
-    .ghost-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 7px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      font-family: inherit;
-      transition: all 0.15s ease;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .ghost-btn:hover {
-      border-color: var(--muted);
-      color: var(--text);
-    }
-
-    .report-btn {
-      color: var(--orange);
-      border-color: rgba(245, 158, 11, 0.3);
-      background: rgba(245, 158, 11, 0.06);
-    }
-
-    .report-btn:hover {
-      border-color: var(--orange);
-      background: rgba(245, 158, 11, 0.15);
-      color: #fff;
     }
 
     /* HEADER */
     header {
-      background: var(--bg-card);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 32px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-rule);
+      padding: 0 24px;
+      height: 54px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -290,61 +277,72 @@ export function renderDashboard(): string {
     .logo-wrap {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .logo-badge {
-      background: var(--primary);
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 26px;
+      height: 26px;
+      background: var(--accent-amber);
+      border-radius: 3px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      font-size: 15px;
-      color: #fff;
+      font-weight: 900;
+      font-size: 14px;
+      color: #090a0f;
+      font-family: var(--font-mono);
     }
 
     .logo-text {
-      font-size: 16px;
+      font-family: var(--font-mono);
+      font-size: 14px;
       font-weight: 700;
-      letter-spacing: -0.01em;
+      letter-spacing: 0.06em;
+      color: var(--text-primary);
     }
 
     .logo-text span {
-      color: var(--primary);
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 12px;
+      margin-left: 6px;
     }
 
     .nav-tabs {
       display: flex;
       gap: 4px;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-rule);
+      border-radius: 4px;
       padding: 3px;
     }
 
     .nav-tab {
       background: none;
       border: none;
-      color: var(--muted);
-      padding: 7px 16px;
-      border-radius: 6px;
+      color: var(--text-secondary);
+      padding: 6px 14px;
+      border-radius: 3px;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
-      font-family: inherit;
+      font-family: var(--font-mono);
       transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .nav-tab.active {
-      background: var(--primary);
-      color: #fff;
+      background: var(--bg-surface-subtle);
+      color: var(--accent-amber);
+      box-shadow: inset 0 -2px 0 var(--accent-amber);
     }
 
     .nav-tab:hover:not(.active) {
-      color: var(--text);
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .hdr-right {
@@ -354,525 +352,494 @@ export function renderDashboard(): string {
     }
 
     .status-pill {
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      color: var(--green);
-      padding: 5px 12px;
-      border-radius: 20px;
-      font-size: 12px;
+      background: var(--state-success-dim);
+      border: 1px solid var(--state-success-border);
+      color: var(--state-success);
+      padding: 4px 10px;
+      border-radius: 3px;
+      font-size: 11px;
       font-weight: 600;
+      font-family: var(--font-mono);
       display: flex;
       align-items: center;
       gap: 6px;
     }
 
     .status-dot {
-      width: 7px;
-      height: 7px;
-      background: var(--green);
+      width: 6px;
+      height: 6px;
+      background: var(--state-success);
       border-radius: 50%;
+      box-shadow: 0 0 6px var(--state-success);
     }
 
-    /* MAIN */
+    .ghost-btn {
+      background: transparent;
+      border: 1px solid var(--border-rule);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      transition: all 0.15s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ghost-btn:hover {
+      color: var(--text-primary);
+      border-color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    /* MAIN CONTAINER */
     main {
-      flex: 1;
-      padding: 28px 32px;
-      max-width: 1360px;
-      width: 100%;
+      padding: 24px;
+      max-width: 1440px;
       margin: 0 auto;
-      display: grid;
-      gap: 24px;
+      width: 100%;
+      flex: 1;
     }
 
     .view {
       display: none;
-      flex-direction: column;
-      gap: 24px;
     }
-
     .view.active {
-      display: flex;
+      display: block;
     }
 
-    /* STATS */
+    /* TELEMETRY STATS GRID */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     .stat-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px 24px;
-      display: flex;
-      flex-direction: column;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-rule);
+      border-radius: 4px;
+      padding: 16px 20px;
       position: relative;
       overflow: hidden;
     }
 
-    .stat-label {
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-      margin-bottom: 8px;
-    }
-
-    .stat-value {
-      font-size: 30px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .stat-indicator {
-      width: 4px;
+    .stat-card::before {
+      content: '';
       position: absolute;
       top: 0;
       left: 0;
-      bottom: 0;
+      right: 0;
+      height: 2px;
+      background: var(--border-rule);
     }
 
-    .stat-queued .stat-indicator { background: var(--cyan); }
-    .stat-sending .stat-indicator { background: var(--orange); }
-    .stat-sent .stat-indicator { background: var(--green); }
-    .stat-failed .stat-indicator { background: var(--red); }
+    .stat-queued::before { background: var(--accent-amber); }
+    .stat-sending::before { background: var(--state-cyan); }
+    .stat-sent::before { background: var(--state-success); }
+    .stat-failed::before { background: var(--state-danger); }
 
-    /* CONTENT GRID */
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.1;
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* TWO-COLUMN GRID */
     .content-grid {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 24px;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 20px;
+      align-items: start;
     }
 
-    @media (min-width: 1024px) {
+    @media (max-width: 1024px) {
       .content-grid {
-        grid-template-columns: 1.6fr 1fr;
+        grid-template-columns: 1fr;
       }
     }
 
     .panel {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-rule);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 20px;
     }
 
     .panel-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-rule);
+      background: var(--bg-surface-subtle);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 18px;
     }
 
     .panel-title {
-      font-size: 16px;
-      font-weight: 600;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    /* TABLE */
+    .panel-body {
+      padding: 20px;
+    }
+
+    /* TABLES */
     .table-wrap {
       overflow-x: auto;
-      min-height: 160px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
       text-align: left;
-      font-size: 13px;
     }
 
     th {
-      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
       font-weight: 600;
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--border);
-      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-rule);
+      background: var(--bg-surface);
+      white-space: nowrap;
     }
 
     td {
-      padding: 13px 14px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border-subtle);
+      font-size: 13px;
       vertical-align: middle;
     }
 
-    tr:last-child td {
-      border-bottom: none;
+    tr:hover td {
+      background: var(--bg-surface-subtle);
     }
 
+    .empty-state {
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-family: var(--font-mono);
+    }
+
+    /* BADGES */
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 3px 8px;
-      border-radius: 6px;
+      padding: 2px 8px;
+      border-radius: 2px;
       font-size: 11px;
       font-weight: 600;
-    }
-
-    .b-queued { background: rgba(6, 182, 212, 0.12); color: var(--cyan); }
-    .b-sending { background: rgba(245, 158, 11, 0.12); color: var(--orange); }
-    .b-sent { background: rgba(16, 185, 129, 0.12); color: var(--green); }
-    .b-failed { background: rgba(239, 68, 68, 0.12); color: var(--red); }
-    .b-active { background: rgba(16, 185, 129, 0.12); color: var(--green); }
-    .b-disabled { background: rgba(148, 163, 184, 0.12); color: var(--muted); }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: var(--muted);
-      padding: 48px 0;
-      font-size: 13px;
-    }
-
-    .err-text {
-      color: var(--red);
-      font-size: 11px;
-      font-family: var(--ff-mono);
-      max-width: 160px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      cursor: help;
-    }
-
-    /* LOG DETAIL */
-    .log-row {
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-
-    .log-row:hover {
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .expand-caret {
-      transition: transform 0.2s ease;
-      cursor: pointer;
-      display: inline-block;
-      font-size: 10px;
-      color: var(--muted);
-    }
-
-    .expand-caret.rotated {
-      transform: rotate(90deg);
-    }
-
-    .detail-row {
-      background: rgba(11, 15, 23, 0.5);
-    }
-
-    .detail-box {
-      padding: 20px;
-      border-radius: 8px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--primary);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin: 8px 4px;
-    }
-
-    .detail-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
-    }
-
-    @media (min-width: 768px) {
-      .detail-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    .detail-blk {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .detail-lbl {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
+      font-family: var(--font-mono);
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
 
-    .detail-val {
-      font-size: 13px;
-      color: var(--text);
+    .b-queued {
+      background: var(--accent-amber-dim);
+      color: var(--accent-amber);
+      border: 1px solid var(--accent-amber-border);
     }
 
-    .detail-mono {
-      font-family: var(--ff-mono);
+    .b-sending {
+      background: var(--state-cyan-dim);
+      color: var(--state-cyan);
+      border: 1px solid var(--state-cyan-border);
+    }
+
+    .b-sent {
+      background: var(--state-success-dim);
+      color: var(--state-success);
+      border: 1px solid var(--state-success-border);
+    }
+
+    .b-failed {
+      background: var(--state-danger-dim);
+      color: var(--state-danger);
+      border: 1px solid var(--state-danger-border);
+    }
+
+    .b-active {
+      background: var(--state-success-dim);
+      color: var(--state-success);
+      border: 1px solid var(--state-success-border);
+    }
+
+    .b-disabled {
+      background: var(--bg-canvas);
+      color: var(--text-muted);
+      border: 1px solid var(--border-rule);
+    }
+
+    .tbadge {
+      display: inline-flex;
+      padding: 2px 6px;
+      border-radius: 2px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      text-transform: uppercase;
+      background: var(--bg-surface-subtle);
+      border: 1px solid var(--border-rule);
+      color: var(--text-secondary);
+    }
+
+    .def-badge {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+      background: var(--accent-amber-dim);
+      color: var(--accent-amber);
+      border: 1px solid var(--accent-amber-border);
+      padding: 1px 5px;
+      border-radius: 2px;
+      margin-left: 6px;
+    }
+
+    /* QUOTA METER */
+    .qbar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .qbar-track {
+      flex: 1;
+      height: 5px;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-rule);
+      border-radius: 1px;
+      overflow: hidden;
+      min-width: 60px;
+    }
+
+    .qbar-fill {
+      height: 100%;
+      background: var(--state-success);
+      transition: width 0.3s ease;
+    }
+
+    .qbar-fill.warn {
+      background: var(--accent-amber);
+    }
+
+    .qbar-fill.danger {
+      background: var(--state-danger);
+    }
+
+    .qbar-text {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    /* DETAILS DRAWER */
+    .detail-row td {
+      padding: 0 !important;
+      border-bottom: 1px solid var(--border-rule);
+      background: var(--bg-canvas);
+    }
+
+    .detail-body {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .detail-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .meta-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-rule);
+      border-radius: 3px;
+      padding: 8px 12px;
+    }
+
+    .meta-lbl {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+
+    .meta-val {
       font-size: 12px;
-      background: rgba(0, 0, 0, 0.25);
-      padding: 10px 14px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      max-height: 180px;
-      overflow-y: auto;
-      white-space: pre-wrap;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
       word-break: break-all;
     }
 
-    .dtabs {
+    .detail-tabs {
       display: flex;
-      border-bottom: 1px solid var(--border);
       gap: 4px;
-      margin-bottom: 8px;
+      border-bottom: 1px solid var(--border-rule);
+      margin-bottom: 10px;
     }
 
     .dtab {
       background: none;
       border: none;
-      color: var(--muted);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
       padding: 6px 12px;
       cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
       border-bottom: 2px solid transparent;
-      transition: all 0.15s ease;
-      font-family: inherit;
     }
 
     .dtab.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
+      color: var(--accent-amber);
+      border-bottom-color: var(--accent-amber);
     }
 
     .preview-iframe {
       width: 100%;
-      height: 250px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: #fff;
+      height: 220px;
+      background: #ffffff;
+      border: 1px solid var(--border-rule);
+      border-radius: 3px;
     }
 
-    /* FILTER BAR */
-    .filter-bar {
+    .detail-mono {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-rule);
+      border-radius: 3px;
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    /* TELEMETRY LIST */
+    .qr-grid {
       display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      align-items: center;
-      margin-bottom: 18px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 16px 20px;
-      border-radius: 12px;
+      flex-direction: column;
+      gap: 10px;
     }
 
-    .flbl {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 5px;
-      display: block;
-    }
-
-    .finput {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 8px 12px;
-      color: #fff;
-      font-family: inherit;
-      font-size: 13px;
-      min-width: 140px;
-      transition: border-color 0.15s ease;
-    }
-
-    .finput:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
-    select.finput option {
-      background: var(--bg-card);
-    }
-
-    .pag {
+    .qr-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 20px;
-    }
-
-    .pag-info {
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .pag-btns {
-      display: flex;
-      gap: 8px;
-    }
-
-    .pag-btn {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-family: inherit;
-      transition: all 0.15s ease;
-    }
-
-    .pag-btn:hover:not(:disabled) {
-      border-color: var(--primary);
-      color: #fff;
-    }
-
-    .pag-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    /* QUOTA BAR */
-    .qbar-wrap {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 120px;
-    }
-
-    .qbar-track {
-      flex: 1;
-      height: 6px;
-      background: rgba(255, 255, 255, 0.08);
+      padding: 8px 12px;
+      background: var(--bg-surface-subtle);
+      border: 1px solid var(--border-rule);
       border-radius: 3px;
-      overflow: hidden;
     }
 
-    .qbar-fill {
-      height: 100%;
-      border-radius: 3px;
-      background: var(--green);
-      transition: width 0.4s ease;
-    }
-
-    .qbar-fill.warn { background: var(--orange); }
-    .qbar-fill.danger { background: var(--red); }
-    .qbar-text { font-size: 12px; color: var(--muted); white-space: nowrap; }
-
-    /* PROVIDER TYPE BADGE */
-    .tbadge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 8px;
-      border-radius: 6px;
+    .qr-lbl {
       font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
-
-    .t-smtp { background: rgba(79, 70, 229, 0.15); color: #818cf8; }
-    .t-resend { background: rgba(6, 182, 212, 0.15); color: var(--cyan); }
-    .t-sendgrid { background: rgba(16, 185, 129, 0.15); color: var(--green); }
-    .t-mailgun { background: rgba(245, 158, 11, 0.15); color: var(--orange); }
-    .t-postmark { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
-
-    .def-badge {
-      background: rgba(245, 158, 11, 0.12);
-      color: var(--orange);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      margin-left: 6px;
-    }
-
-    .row-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    /* MODAL */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(11, 15, 23, 0.85);
-      backdrop-filter: blur(6px);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 500;
-      padding: 20px;
-    }
-
-    .modal-overlay.open {
-      display: flex;
-    }
-
-    .modal-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 30px;
-      width: 100%;
-      max-width: 540px;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-    }
-
-    .modal-title {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 20px;
-    }
-
-    .modal-footer {
-      display: flex;
-      gap: 10px;
-      justify-content: flex-end;
-      margin-top: 24px;
-    }
-
-    .cred-section {
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      margin: 8px 0 16px;
-      background: rgba(11, 15, 23, 0.3);
-    }
-
-    .cred-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
 
-    .cbrow {
-      display: flex;
+    .qr-val {
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* MODALS */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(9, 10, 15, 0.94);
+      backdrop-filter: blur(6px);
+      display: none;
+      justify-content: center;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
+      z-index: 1000;
+      padding: 20px;
     }
 
-    .cbrow input[type=checkbox] {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: var(--primary);
+    .modal-overlay.show {
+      display: flex;
     }
 
-    .cbrow label {
-      font-size: 13px;
-      cursor: pointer;
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-rule);
+      border-radius: 4px;
+      padding: 28px;
+      width: 100%;
+      max-width: 540px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 0 0 1px var(--border-rule), 0 24px 48px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-title {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 20px;
+      color: var(--text-primary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .form-row {
@@ -881,181 +848,123 @@ export function renderDashboard(): string {
       gap: 14px;
     }
 
-    @media (max-width: 640px) {
-      .form-row {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    /* QUICK REF */
-    .qr-grid {
-      display: grid;
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
       gap: 10px;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-rule);
     }
 
-    .qr-item {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .qr-lbl {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-    }
-
-    .qr-val {
-      font-family: var(--ff-mono);
-      font-size: 12px;
-      word-break: break-all;
-    }
-
-    /* API DOCS */
-    .docs-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-    }
-
-    .docs-title {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 14px;
-    }
-
-    pre {
-      background: #080c13;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px 18px;
-      overflow-x: auto;
-      font-family: var(--ff-mono);
-      font-size: 12px;
-      line-height: 1.6;
-    }
-
-    .hl-k { color: var(--cyan); }
-    .hl-v { color: var(--green); }
-    .hl-s { color: var(--orange); }
-    .hl-c { color: #64748b; font-style: italic; }
-
-    .ep-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 2px 7px;
-      border-radius: 5px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .ep-post { background: rgba(16, 185, 129, 0.15); color: var(--green); }
-    .ep-get { background: rgba(6, 182, 212, 0.15); color: var(--cyan); }
-    .ep-delete { background: rgba(239, 68, 68, 0.15); color: var(--red); }
-
-    .ep-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .ep-row:last-child {
-      border-bottom: none;
-    }
-
-    .ep-path {
-      font-family: var(--ff-mono);
-      font-size: 13px;
-    }
-
-    .ep-desc {
-      font-size: 13px;
-      color: var(--muted);
-      margin-left: auto;
-    }
-
-    .info-box {
-      background: rgba(79, 70, 229, 0.08);
-      border: 1px solid rgba(79, 70, 229, 0.2);
-      border-radius: 8px;
-      padding: 14px 18px;
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .info-box b {
-      color: var(--text);
-    }
-
-    .sec-hdr {
+    /* TOOLBARS & FILTERS */
+    .toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 6px;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
     }
 
-    .sec-title {
-      font-size: 18px;
-      font-weight: 700;
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
-    hr.div {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 16px 0;
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
+
+    .pagination-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border-rule);
+      background: var(--bg-surface);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* CODE BLOCKS */
+    pre {
+      background: var(--bg-input);
+      border: 1px solid var(--border-rule);
+      border-radius: 3px;
+      padding: 14px 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-primary);
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+
+    .code-comment { color: var(--text-muted); }
+    .code-key { color: var(--accent-amber); }
+    .code-str { color: var(--state-success); }
+    .code-fn { color: var(--state-cyan); }
 
     /* TOAST */
     #toast {
       position: fixed;
       bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(20px);
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 20px;
-      font-size: 13px;
-      font-weight: 500;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      right: 24px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-rule);
+      border-radius: 3px;
+      padding: 12px 18px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      transform: translateY(100px);
       opacity: 0;
-      transition: opacity 0.25s, transform 0.25s;
-      z-index: 9999;
-      pointer-events: none;
+      transition: all 0.2s ease;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     #toast.show {
+      transform: translateY(0);
       opacity: 1;
-      transform: translateX(-50%) translateY(0);
     }
 
     #toast.tok {
-      border-color: rgba(16, 185, 129, 0.4);
-      color: var(--green);
+      border-color: var(--state-success);
+      color: var(--state-success);
     }
 
     #toast.terr {
-      border-color: rgba(239, 68, 68, 0.4);
-      color: var(--red);
+      border-color: var(--state-danger);
+      color: var(--state-danger);
     }
 
-    .mono {
-      font-family: var(--ff-mono);
-      font-size: 12px;
+    /* UTILITIES */
+    .mono { font-family: var(--font-mono); }
+    .caret {
+      cursor: pointer;
+      display: inline-block;
+      transition: transform 0.15s ease;
+      user-select: none;
+      color: var(--text-muted);
     }
-
-    .docs-section {
+    .caret.rotated {
+      transform: rotate(90deg);
+      color: var(--accent-amber);
+    }
+    .row-actions {
       display: flex;
-      flex-direction: column;
-      gap: 20px;
+      align-items: center;
+      gap: 6px;
     }
   </style>
 </head>
@@ -1064,36 +973,41 @@ export function renderDashboard(): string {
 <!-- AUTH OVERLAY -->
 <div id="auth-overlay">
   <div class="auth-card">
-    <h2>Sign In</h2>
-    <p>Enter your credentials to access the dashboard</p>
+    <h2><span>UNSENT</span> // ACCESS CONTROL</h2>
+    <p>Authenticate with your service credentials to access queue telemetry</p>
+    
     <div class="auth-mode-group">
       <button class="auth-mode-btn active" onclick="setAuthMode('apikey')" id="mbtn-apikey">API Key</button>
       <button class="auth-mode-btn" onclick="setAuthMode('hmac')" id="mbtn-hmac">Signed (HMAC)</button>
     </div>
+
     <div id="auth-apikey-form">
       <div class="ig">
-        <label>API Key</label>
-        <input class="ifield" type="password" id="ak-input" placeholder="Enter your API key" autocomplete="off">
+        <label>Service API Key</label>
+        <input class="ifield mono" type="password" id="ak-input" placeholder="Enter API key" autocomplete="off">
       </div>
-      <div class="auth-hint">Authenticate directly with your service API key.</div>
+      <div class="auth-hint">Header-bound bearer authentication (<code>X-API-Key</code>).</div>
       <button class="btn" onclick="doAuth()">Sign In</button>
     </div>
+
     <div id="auth-hmac-form" style="display:none">
       <div class="ig">
-        <label>API Key</label>
-        <input class="ifield" type="password" id="ak-input-hmac" placeholder="Enter your API key" autocomplete="off">
+        <label>Service API Key</label>
+        <input class="ifield mono" type="password" id="ak-input-hmac" placeholder="Enter API key" autocomplete="off">
       </div>
       <div class="ig">
-        <label>Secret Key</label>
-        <input class="ifield" type="password" id="sk-input" placeholder="Enter your secret key" autocomplete="off">
+        <label>HMAC Secret Key</label>
+        <input class="ifield mono" type="password" id="sk-input" placeholder="Enter secret key" autocomplete="off">
       </div>
-      <div class="auth-hint">Authenticate using your API key and secret key.</div>
+      <div class="auth-hint">HMAC-SHA256 signature binding timestamp, nonce, and payload.</div>
       <button class="btn" onclick="doAuth()">Sign In</button>
     </div>
-    <p id="auth-err" style="color:var(--red);margin-top:14px;font-size:13px;display:none"></p>
-    <div id="local-dev-hint" style="display:none;margin-top:16px;padding:12px;background:rgba(79,70,229,0.08);border:1px solid rgba(79,70,229,0.2);border-radius:8px;font-size:12px;text-align:left;">
-      <div style="font-weight:600;color:var(--text);margin-bottom:4px;">Local Development Detected</div>
-      <div style="color:var(--muted);margin-bottom:8px;">Running on localhost. Sign in with the dev key from <code>.dev.vars</code>:</div>
+
+    <p id="auth-err" style="color:var(--state-danger);margin-top:14px;font-size:12px;font-family:var(--font-mono);display:none"></p>
+
+    <div id="local-dev-hint" style="display:none;margin-top:18px;padding:12px;background:var(--accent-amber-dim);border:1px solid var(--accent-amber-border);border-radius:3px;font-size:12px;text-align:left;">
+      <div style="font-weight:700;font-family:var(--font-mono);color:var(--accent-amber);margin-bottom:4px;">LOCAL DEV DETECTED</div>
+      <div style="color:var(--text-secondary);font-size:11px;margin-bottom:10px;">Running on localhost. Use the local credentials defined in <code>.dev.vars</code>:</div>
       <button type="button" class="bsm b-primary" style="width:100%;justify-content:center;" onclick="useDevKey()">Sign In with Local Dev Key</button>
     </div>
   </div>
@@ -1102,18 +1016,20 @@ export function renderDashboard(): string {
 <!-- HEADER -->
 <header>
   <div class="logo-wrap">
-    <div class="logo-badge">✉</div>
-    <div class="logo-text">Unsent <span>Email</span></div>
+    <div class="logo-badge">U</div>
+    <div class="logo-text">UNSENT <span>// QUEUE TERMINAL</span></div>
   </div>
+  
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="switchView('v-dash')" id="tab-dash">Dashboard</button>
     <button class="nav-tab" onclick="switchView('v-prov')" id="tab-prov">Providers</button>
     <button class="nav-tab" onclick="switchView('v-logs')" id="tab-logs">Logs</button>
     <button class="nav-tab" onclick="switchView('v-docs')" id="tab-docs">API Docs</button>
   </nav>
+
   <div class="hdr-right">
-    <div class="status-pill"><div class="status-dot"></div> Online</div>
-    <a href="https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/" target="_blank" rel="noopener noreferrer" class="ghost-btn report-btn">Report Issue</a>
+    <div class="status-pill"><div class="status-dot"></div> ONLINE</div>
+    <a href="https://reportary.onrender.com/p/ux9b2b8F4pikYYwWBtPU5aCaB-4yT1ywXLPdU9k2EnQepHVsdO5EoSaUcehcwCEt/" target="_blank" rel="noopener noreferrer" class="ghost-btn">Report Issue</a>
     <button class="ghost-btn" onclick="logout()">Log Out</button>
   </div>
 </header>
@@ -1124,32 +1040,33 @@ export function renderDashboard(): string {
 <div id="v-dash" class="view active">
   <div class="stats-grid">
     <div class="stat-card stat-queued">
-      <div class="stat-indicator"></div>
       <div class="stat-label">Queued</div>
       <div class="stat-value" id="st-queued">—</div>
+      <div class="stat-sub">Pending queue delivery</div>
     </div>
     <div class="stat-card stat-sending">
-      <div class="stat-indicator"></div>
       <div class="stat-label">Sending</div>
       <div class="stat-value" id="st-sending">—</div>
+      <div class="stat-sub">In-flight via provider</div>
     </div>
     <div class="stat-card stat-sent">
-      <div class="stat-indicator"></div>
       <div class="stat-label">Delivered</div>
       <div class="stat-value" id="st-sent">—</div>
+      <div class="stat-sub">Successfully accepted</div>
     </div>
     <div class="stat-card stat-failed">
-      <div class="stat-indicator"></div>
       <div class="stat-label">Failed</div>
       <div class="stat-value" id="st-failed">—</div>
+      <div class="stat-sub">Exhausted retry cycles</div>
     </div>
   </div>
 
   <div class="content-grid">
+    <!-- RECENT ACTIVITY TABLE -->
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">Recent Emails</div>
-        <button class="ghost-btn" onclick="fetchDash(this)">Refresh</button>
+        <div class="panel-title">Recent Activity</div>
+        <button class="bsm b-ghost" onclick="fetchDash(this)">Refresh</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -1160,45 +1077,75 @@ export function renderDashboard(): string {
               <th>Subject</th>
               <th>Status</th>
               <th>Provider</th>
-              <th>Date</th>
+              <th>Time (UTC)</th>
             </tr>
           </thead>
           <tbody id="dash-emails">
-            <tr><td colspan="6"><div class="empty-state">Loading emails…</div></td></tr>
+            <tr><td colspan="6"><div class="empty-state">Loading recent activity…</div></td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-header"><div class="panel-title">Send Test Email</div></div>
-      <form onsubmit="sendTest(event)">
-        <div class="ig">
-          <label>Recipient Email</label>
-          <input class="ifield" type="email" id="te-to" placeholder="recipient@example.com" required>
+    <!-- QUICK SEND & STATUS -->
+    <div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Send Test Email</div>
         </div>
-        <div class="ig">
-          <label>Subject</label>
-          <input class="ifield" type="text" id="te-subj" placeholder="Test email subject">
+        <div class="panel-body">
+          <form onsubmit="sendTest(event)">
+            <div class="ig">
+              <label>Recipient Address *</label>
+              <input class="ifield mono" type="email" id="te-to" placeholder="recipient@example.com" required>
+            </div>
+            <div class="ig">
+              <label>Subject *</label>
+              <input class="ifield" type="text" id="te-subj" placeholder="Test email subject" value="Test Message from Unsent">
+            </div>
+            <div class="ig">
+              <label>Body (HTML)</label>
+              <textarea class="ifield" id="te-body" rows="3" placeholder="<p>Test email message content</p>"><p>This is a test delivery from Unsent queue service.</p></textarea>
+            </div>
+            <div class="ig">
+              <label>Routing Provider (Optional)</label>
+              <select class="ifield mono" id="te-prov">
+                <option value="">Auto (Default priority)</option>
+              </select>
+            </div>
+            <button class="btn" type="submit" id="te-btn">Send Test Email</button>
+          </form>
         </div>
-        <div class="ig">
-          <label>Message Body (HTML)</label>
-          <textarea class="ifield" id="te-body" rows="3" placeholder="<p>Test email message content</p>"></textarea>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">System Telemetry</div>
         </div>
-        <div class="ig">
-          <label>Send via Provider (Optional)</label>
-          <select class="ifield" id="te-prov">
-            <option value="">Auto (Default priority)</option>
-          </select>
+        <div class="panel-body">
+          <div class="qr-grid">
+            <div class="qr-item">
+              <span class="qr-lbl">Endpoint URL</span>
+              <span class="qr-val mono" id="qr-base">—</span>
+            </div>
+            <div class="qr-item">
+              <span class="qr-lbl">Active Auth</span>
+              <span class="qr-val mono" id="qr-auth">API Key</span>
+            </div>
+            <div class="qr-item">
+              <span class="qr-lbl">Active Providers</span>
+              <span class="qr-val mono" id="qr-provs">—</span>
+            </div>
+            <div class="qr-item">
+              <span class="qr-lbl">Storage</span>
+              <span class="qr-val mono" style="color:var(--state-success)">D1 SQLite Bound</span>
+            </div>
+            <div class="qr-item">
+              <span class="qr-lbl">Runtime</span>
+              <span class="qr-val mono" style="color:var(--state-cyan)">Cloudflare Worker (V8)</span>
+            </div>
+          </div>
         </div>
-        <button class="btn" type="submit" id="te-btn">Send Test Email</button>
-      </form>
-      <hr class="div">
-      <div class="panel-title" style="margin-bottom:12px">Service Information</div>
-      <div class="qr-grid">
-        <div class="qr-item"><div class="qr-lbl">API Base URL</div><div class="qr-val" id="qr-base">—</div></div>
-        <div class="qr-item"><div class="qr-lbl">Authentication Mode</div><div class="qr-val" id="qr-auth">—</div></div>
-        <div class="qr-item"><div class="qr-lbl">Active Providers</div><div class="qr-val" id="qr-provs">—</div></div>
       </div>
     </div>
   </div>
@@ -1206,33 +1153,29 @@ export function renderDashboard(): string {
 
 <!-- VIEW: PROVIDERS -->
 <div id="v-prov" class="view">
-  <div class="sec-hdr">
-    <div class="sec-title">Email Providers</div>
-    <button class="bsm b-primary" onclick="openAddProv()">Add Provider</button>
-  </div>
-  <div class="info-box">
-    The <b>default provider</b> is tried first. If a provider reaches its daily limit or encounters an issue, the service automatically fails over to the next active provider in priority order.
-  </div>
-  <div class="panel" style="padding:0">
-    <div class="panel-header" style="padding:20px 24px 16px">
+  <div class="panel">
+    <div class="panel-header">
       <div class="panel-title">Configured Providers</div>
-      <button class="ghost-btn" onclick="fetchProviders(this)">Refresh</button>
+      <div class="action-group">
+        <button class="bsm b-ghost" onclick="fetchProviders(this)">Refresh</button>
+        <button class="bsm b-primary" onclick="openAddProv()">+ Add Provider</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th style="width:40px">#</th>
-            <th>Name</th>
+            <th style="width:36px">#</th>
+            <th>Provider Name / ID</th>
             <th>Type</th>
-            <th>From Email</th>
+            <th>From Address</th>
             <th>Daily Limit</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody id="prov-body">
-          <tr><td colspan="7"><div class="empty-state">Loading providers…</div></td></tr>
+          <tr><td colspan="7"><div class="empty-state">Loading provider registry…</div></td></tr>
         </tbody>
       </table>
     </div>
@@ -1241,66 +1184,55 @@ export function renderDashboard(): string {
 
 <!-- VIEW: LOGS -->
 <div id="v-logs" class="view">
-  <div class="sec-hdr">
-    <div class="sec-title">Delivery Logs</div>
-    <div style="display:flex;gap:8px;">
-      <button class="bsm b-ghost" onclick="exportLogs('jsonl')">Export JSONL</button>
-      <button class="bsm b-ghost" onclick="exportLogs('csv')">Export CSV</button>
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Delivery Logs</div>
+      <div class="action-group">
+        <button class="bsm b-ghost" onclick="exportCsv(currentLogsCache)">Export CSV</button>
+        <button class="bsm b-ghost" onclick="exportJsonl(currentLogsCache)">Export JSONL</button>
+      </div>
     </div>
-  </div>
-  <div class="filter-bar">
-    <div>
-      <label class="flbl">Status</label>
-      <select class="finput" id="fl-status">
-        <option value="">All Statuses</option>
-        <option value="queued">Queued</option>
-        <option value="sending">Sending</option>
-        <option value="sent">Sent</option>
-        <option value="failed">Failed</option>
-      </select>
+    <div class="panel-body" style="padding-bottom: 12px;">
+      <div class="toolbar">
+        <div class="filter-group">
+          <input class="ifield mono" type="text" id="lf-q" placeholder="Filter by recipient, subject, or ID…" style="width: 280px;">
+          <select class="ifield mono" id="lf-status" style="width: 140px;">
+            <option value="">All Statuses</option>
+            <option value="queued">Queued</option>
+            <option value="sending">Sending</option>
+            <option value="sent">Delivered</option>
+            <option value="failed">Failed</option>
+          </select>
+          <button class="bsm b-primary" onclick="applyLogsFilter(this)">Apply</button>
+          <button class="bsm b-ghost" onclick="resetLogsFilter()">Reset</button>
+        </div>
+      </div>
     </div>
-    <div>
-      <label class="flbl">Search</label>
-      <input class="finput" type="text" id="fl-search" placeholder="Recipient or subject…">
-    </div>
-    <div>
-      <label class="flbl">From Date</label>
-      <input class="finput" type="date" id="fl-from">
-    </div>
-    <div>
-      <label class="flbl">To Date</label>
-      <input class="finput" type="date" id="fl-to">
-    </div>
-    <div style="display:flex;gap:8px;align-items:flex-end;margin-left:auto">
-      <button class="bsm b-primary" onclick="fetchLogs(this)">Apply</button>
-      <button class="bsm b-ghost" onclick="resetFilters()">Clear</button>
-    </div>
-  </div>
-  <div class="panel" style="padding:0">
+
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
             <th style="width:30px"></th>
-            <th>ID</th>
             <th>Recipient</th>
             <th>Subject</th>
             <th>Status</th>
             <th>Provider</th>
-            <th>From</th>
-            <th>Created</th>
+            <th>Attempts</th>
+            <th>Time (UTC)</th>
           </tr>
         </thead>
         <tbody id="logs-body">
-          <tr><td colspan="8"><div class="empty-state">Loading logs…</div></td></tr>
+          <tr><td colspan="7"><div class="empty-state">Loading delivery logs…</div></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="pag">
-      <div class="pag-info" id="pag-info">—</div>
-      <div class="pag-btns">
-        <button class="pag-btn" id="btn-prev" onclick="changePage(-1)" disabled>Previous</button>
-        <button class="pag-btn" id="btn-next" onclick="changePage(1)" disabled>Next</button>
+
+    <div class="pagination-bar">
+      <span id="pag-info">Showing 0 of 0</span>
+      <div class="action-group">
+        <button class="bsm b-ghost" id="btn-prev" onclick="prevLogs()" disabled>Previous</button>
+        <button class="bsm b-ghost" id="btn-next" onclick="nextLogs()" disabled>Next</button>
       </div>
     </div>
   </div>
@@ -1308,30 +1240,53 @@ export function renderDashboard(): string {
 
 <!-- VIEW: API DOCS -->
 <div id="v-docs" class="view">
-  <div class="docs-section">
-    <div class="docs-card">
-      <div class="docs-title">API Quick Start</div>
-      <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Send an email by making a POST request to <code>/api/send</code>. The service queues and dispatches the email asynchronously.</p>
-      <pre><span class="hl-c">// POST /api/send</span>
-<span class="hl-k">POST</span> /api/send
-<span class="hl-k">X-API-Key:</span> <span class="hl-s">your-api-key</span>
-<span class="hl-k">Content-Type:</span> <span class="hl-v">application/json</span>
-
-{
-  <span class="hl-k">"to":</span>      <span class="hl-s">"recipient@example.com"</span>,
-  <span class="hl-k">"subject":</span> <span class="hl-s">"Welcome!"</span>,
-  <span class="hl-k">"html":</span>    <span class="hl-s">"&lt;p&gt;Hello from the email service&lt;/p&gt;"</span>
-}</pre>
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">API Integration & Documentation</div>
     </div>
+    <div class="panel-body">
+      <h3 style="font-family:var(--font-mono);font-size:14px;color:var(--text-primary);margin-bottom:8px;">1. Queue an Email for Delivery (cURL)</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px;">Send an authorized HTTP POST request to <code>/api/send</code> with JSON payload.</p>
+      <pre><code><span class="code-comment"># Enqueue email via standard API Key</span>
+curl -X POST https://your-worker.workers.dev/api/send \
+  -H <span class="code-str">"Content-Type: application/json"</span> \
+  -H <span class="code-str">"X-API-Key: YOUR_API_KEY"</span> \
+  -d <span class="code-str">'{
+    "to": "user@example.com",
+    "subject": "Order Confirmation",
+    "html": "&lt;h1&gt;Thank you!&lt;/h1&gt;&lt;p&gt;Your order #1234 has shipped.&lt;/p&gt;",
+    "provider_id": "smtp_primary"
+  }'</span></code></pre>
 
-    <div class="docs-card">
-      <div class="docs-title">Available Endpoints</div>
-      <div class="ep-row"><span class="ep-badge ep-post">POST</span><span class="ep-path">/api/send</span><span class="ep-desc">Queue an email for delivery</span></div>
-      <div class="ep-row"><span class="ep-badge ep-get">GET</span><span class="ep-path">/api/status</span><span class="ep-desc">Get queue status and counts</span></div>
-      <div class="ep-row"><span class="ep-badge ep-get">GET</span><span class="ep-path">/api/emails</span><span class="ep-desc">List delivery logs with filters</span></div>
-      <div class="ep-row"><span class="ep-badge ep-get">GET</span><span class="ep-path">/api/emails/:id</span><span class="ep-desc">Get details for a specific email</span></div>
-      <div class="ep-row"><span class="ep-badge ep-delete">DELETE</span><span class="ep-path">/api/emails/:id</span><span class="ep-desc">Delete an email record</span></div>
-      <div class="ep-row"><span class="ep-badge ep-get">GET</span><span class="ep-path">/api/providers</span><span class="ep-desc">List configured providers</span></div>
+      <h3 style="font-family:var(--font-mono);font-size:14px;color:var(--text-primary);margin:24px 0 8px;">2. JavaScript / TypeScript (Fetch API)</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px;">Enqueue messages directly from your backend services or Edge functions.</p>
+      <pre><code><span class="code-key">const</span> res = <span class="code-fn">await</span> <span class="code-fn">fetch</span>(<span class="code-str">'https://your-worker.workers.dev/api/send'</span>, {
+  method: <span class="code-str">'POST'</span>,
+  headers: {
+    <span class="code-str">'Content-Type'</span>: <span class="code-str">'application/json'</span>,
+    <span class="code-str">'X-API-Key'</span>: process.env.UNSENT_API_KEY
+  },
+  body: JSON.<span class="code-fn">stringify</span>({
+    to: <span class="code-str">'client@domain.com'</span>,
+    subject: <span class="code-str">'Welcome aboard'</span>,
+    html: <span class="code-str">'&lt;p&gt;Welcome to the service.&lt;/p&gt;'</span>
+  })
+});
+<span class="code-key">const</span> data = <span class="code-fn">await</span> res.<span class="code-fn">json</span>();
+console.<span class="code-fn">log</span>(<span class="code-str">'Queued Email ID:'</span>, data.id);</code></pre>
+
+      <h3 style="font-family:var(--font-mono);font-size:14px;color:var(--text-primary);margin:24px 0 8px;">3. Cryptographic HMAC-SHA256 Signatures</h3>
+      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:12px;">In full security mode, bind timestamps, nonces, and provider routing headers to eliminate replay and tampering attacks.</p>
+      <pre><code><span class="code-comment">// Canonical string format for HMAC:</span>
+<span class="code-key">const</span> canonical = [timestamp, nonce, <span class="code-str">'provider:smtp_primary'</span>, sha256BodyHash].<span class="code-fn">join</span>(<span class="code-str">'\n'</span>);
+<span class="code-key">const</span> signature = <span class="code-str">'sha256='</span> + <span class="code-fn">hmacSha256</span>(API_SECRET, canonical);
+
+<span class="code-comment">// Request headers:</span>
+headers[<span class="code-str">'X-API-Key'</span>] = API_KEY;
+headers[<span class="code-str">'X-Timestamp'</span>] = timestamp;
+headers[<span class="code-str">'X-Nonce'</span>] = nonce;
+headers[<span class="code-str">'X-Signature'</span>] = signature;
+headers[<span class="code-str">'X-Provider-Id'</span>] = <span class="code-str">'smtp_primary'</span>;</code></pre>
     </div>
   </div>
 </div>
@@ -1345,93 +1300,107 @@ export function renderDashboard(): string {
     <form id="prov-form" onsubmit="saveProv(event)">
       <input type="hidden" id="prov-editing-id">
       <div class="form-row">
-        <div class="ig"><label>Provider ID *</label><input class="ifield" type="text" id="pf-id" placeholder="e.g. smtp_main" pattern="[a-zA-Z0-9_-]+" required></div>
-        <div class="ig"><label>Display Name *</label><input class="ifield" type="text" id="pf-name" placeholder="e.g. Primary SMTP" required></div>
+        <div class="ig">
+          <label>Provider ID *</label>
+          <input class="ifield mono" type="text" id="pf-id" placeholder="e.g. smtp_main" pattern="[a-zA-Z0-9_-]+" required>
+        </div>
+        <div class="ig">
+          <label>Display Name *</label>
+          <input class="ifield" type="text" id="pf-name" placeholder="e.g. Primary SMTP" required>
+        </div>
       </div>
       <div class="ig">
         <label>Provider Type *</label>
-        <select class="ifield" id="pf-type" onchange="onTypeChange()" required>
+        <select class="ifield mono" id="pf-type" onchange="onTypeChange()" required>
           <option value="">Select a provider type</option>
           <option value="smtp">SMTP</option>
-          <option value="resend">Resend</option>
-          <option value="sendgrid">SendGrid</option>
-          <option value="mailgun">Mailgun</option>
-          <option value="postmark">Postmark</option>
+          <option value="resend">Resend API</option>
+          <option value="sendgrid">SendGrid API</option>
+          <option value="mailgun">Mailgun API</option>
+          <option value="postmark">Postmark API</option>
+          <option value="ses">AWS SES</option>
         </select>
       </div>
+
+      <!-- SMTP FIELDS -->
+      <div id="cfg-smtp">
+        <div class="form-row">
+          <div class="ig">
+            <label>SMTP Host *</label>
+            <input class="ifield mono" type="text" id="pf-smtp-host" placeholder="smtp.gmail.com">
+          </div>
+          <div class="ig">
+            <label>SMTP Port *</label>
+            <input class="ifield mono" type="number" id="pf-smtp-port" placeholder="587" value="587">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="ig">
+            <label>Username *</label>
+            <input class="ifield mono" type="text" id="pf-smtp-user" placeholder="user@gmail.com" autocomplete="off">
+          </div>
+          <div class="ig">
+            <label>Password / App Secret *</label>
+            <input class="ifield mono" type="password" id="pf-smtp-pass" placeholder="••••••••" autocomplete="new-password">
+          </div>
+        </div>
+        <div class="ig" style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="pf-smtp-starttls" checked>
+          <label for="pf-smtp-starttls" style="margin-bottom:0;text-transform:none;cursor:pointer;">Enable STARTTLS (port 587)</label>
+        </div>
+      </div>
+
+      <!-- API KEY FIELDS -->
+      <div id="cfg-api" style="display:none">
+        <div class="ig">
+          <label>API Key *</label>
+          <input class="ifield mono" type="password" id="pf-apikey" placeholder="re_••••••••" autocomplete="new-password">
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top:10px;">
+        <div class="ig">
+          <label>From Email *</label>
+          <input class="ifield mono" type="email" id="pf-from" placeholder="noreply@example.com" required>
+        </div>
+        <div class="ig">
+          <label>Sender Name</label>
+          <input class="ifield" type="text" id="pf-fromname" placeholder="Unsent Service">
+        </div>
+      </div>
+
       <div class="form-row">
-        <div class="ig"><label>From Email Address *</label><input class="ifield" type="email" id="pf-from-email" placeholder="noreply@yourdomain.com" required></div>
-        <div class="ig"><label>From Name</label><input class="ifield" type="text" id="pf-from-name" placeholder="Company Name"></div>
-      </div>
-      <div class="form-row">
-        <div class="ig"><label>Priority (Lower number = tried first)</label><input class="ifield" type="number" id="pf-priority" value="10" min="1"></div>
-        <div class="ig"><label>Daily Send Limit (0 = Unlimited)</label><input class="ifield" type="number" id="pf-daily" value="0" min="0"></div>
-      </div>
-      <div class="cbrow"><input type="checkbox" id="pf-default"><label for="pf-default">Set as default provider</label></div>
-      <div class="cbrow"><input type="checkbox" id="pf-active" checked><label for="pf-active">Enable this provider</label></div>
-
-      <!-- SMTP Credentials -->
-      <div class="cred-section" id="cred-smtp" style="display:none">
-        <div class="cred-title">SMTP Settings</div>
-        <div class="form-row">
-          <div class="ig" style="margin-bottom:0"><label>Host *</label><input class="ifield" type="text" id="cs-host" placeholder="smtp.gmail.com"></div>
-          <div class="ig" style="margin-bottom:0"><label>Port</label><input class="ifield" type="number" id="cs-port" value="587"></div>
+        <div class="ig">
+          <label>Priority (1 = highest)</label>
+          <input class="ifield mono" type="number" id="pf-prio" value="1" min="1" max="100">
         </div>
-        <div style="height:12px"></div>
-        <div class="form-row">
-          <div class="ig" style="margin-bottom:0"><label>Username *</label><input class="ifield" type="text" id="cs-user" placeholder="username or email"></div>
-          <div class="ig" style="margin-bottom:0"><label>Password *</label><input class="ifield" type="password" id="cs-pass" placeholder="password or app key"></div>
+        <div class="ig">
+          <label>Daily Limit (0 = unlimited)</label>
+          <input class="ifield mono" type="number" id="pf-limit" value="0" min="0">
         </div>
       </div>
 
-      <!-- Resend -->
-      <div class="cred-section" id="cred-resend" style="display:none">
-        <div class="cred-title">Resend Settings</div>
-        <div class="ig" style="margin-bottom:0"><label>API Key *</label><input class="ifield" type="password" id="cr-key" placeholder="re_…"></div>
-      </div>
-
-      <!-- SendGrid -->
-      <div class="cred-section" id="cred-sendgrid" style="display:none">
-        <div class="cred-title">SendGrid Settings</div>
-        <div class="ig" style="margin-bottom:0"><label>API Key *</label><input class="ifield" type="password" id="csg-key" placeholder="SG.…"></div>
-      </div>
-
-      <!-- Mailgun -->
-      <div class="cred-section" id="cred-mailgun" style="display:none">
-        <div class="cred-title">Mailgun Settings</div>
-        <div class="form-row">
-          <div class="ig" style="margin-bottom:0"><label>API Key *</label><input class="ifield" type="password" id="cmg-key" placeholder="key-…"></div>
-          <div class="ig" style="margin-bottom:0"><label>Domain *</label><input class="ifield" type="text" id="cmg-domain" placeholder="mg.yourdomain.com"></div>
-        </div>
-        <div style="height:12px"></div>
-        <div class="ig" style="margin-bottom:0"><label>Region</label><select class="ifield" id="cmg-region"><option value="us">US (api.mailgun.net)</option><option value="eu">EU (api.eu.mailgun.net)</option></select></div>
-      </div>
-
-      <!-- Postmark -->
-      <div class="cred-section" id="cred-postmark" style="display:none">
-        <div class="cred-title">Postmark Settings</div>
-        <div class="ig" style="margin-bottom:0"><label>Server Token *</label><input class="ifield" type="password" id="cpm-token" placeholder="token"></div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="bsm b-ghost" onclick="closeProv()">Cancel</button>
-        <button type="submit" class="bsm b-primary" id="prov-save-btn">Save Provider</button>
+      <div class="modal-actions">
+        <button type="button" class="bsm b-ghost" onclick="closeProvModal()">Cancel</button>
+        <button type="submit" class="bsm b-primary" id="pf-save-btn">Save Provider</button>
       </div>
     </form>
   </div>
 </div>
 
 <!-- TEST PROVIDER MODAL -->
-<div class="modal-overlay" id="test-prov-modal">
-  <div class="modal-card" style="max-width:440px">
-    <div class="modal-title">Test Provider</div>
-    <p style="color:var(--muted);font-size:13px;margin-bottom:18px" id="tp-desc">Send a test email to verify that this provider works properly.</p>
-    <form onsubmit="execTest(event)">
-      <input type="hidden" id="tp-id">
-      <div class="ig"><label>Send Test To *</label><input class="ifield" type="email" id="tp-to" placeholder="recipient@example.com" required></div>
-      <div id="tp-result" style="display:none;padding:12px;border-radius:8px;font-size:13px;margin-bottom:14px"></div>
-      <div class="modal-footer">
-        <button type="button" class="bsm b-ghost" onclick="closeTestProv()">Close</button>
+<div class="modal-overlay" id="tp-modal">
+  <div class="modal-card" style="max-width:440px;">
+    <div class="modal-title">Test Provider Connection</div>
+    <form onsubmit="doTestProv(event)">
+      <input type="hidden" id="tp-prov-id">
+      <div class="ig">
+        <label>Recipient Address *</label>
+        <input class="ifield mono" type="email" id="tp-to" placeholder="recipient@example.com" required>
+      </div>
+      <div class="auth-hint">Sends an immediate test email to verify credentials and SMTP connectivity.</div>
+      <div class="modal-actions">
+        <button type="button" class="bsm b-ghost" onclick="closeTestModal()">Cancel</button>
         <button type="submit" class="bsm b-primary" id="tp-btn">Send Test Email</button>
       </div>
     </form>
@@ -1445,6 +1414,7 @@ export function renderDashboard(): string {
 let authMode = 'apikey', authToken = '', authSecret = '';
 let logsPage = 0, logsPerPage = 20, logsTotal = 0;
 let provsCache = [];
+let currentLogsCache = [];
 
 // ── Helpers ────────────────────────────────────────────────
 function toast(msg, ok=true){
@@ -1452,15 +1422,18 @@ function toast(msg, ok=true){
   el.textContent=msg; el.className='show '+(ok?'tok':'terr');
   clearTimeout(el._t); el._t=setTimeout(()=>{el.className=''},3200);
 }
+
 async function sha256hex(s){
   const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
   return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');
 }
+
 async function hmacHex(key,msg){
   const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   const s=await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(msg));
   return 'sha256='+Array.from(new Uint8Array(s)).map(x=>x.toString(16).padStart(2,'0')).join('');
 }
+
 async function buildHdrs(bodyStr, qual=''){
   if(authMode==='apikey') return {'Content-Type':'application/json','X-API-Key':authToken};
   const ts=Math.floor(Date.now()/1000).toString(), n=crypto.randomUUID();
@@ -1469,6 +1442,7 @@ async function buildHdrs(bodyStr, qual=''){
   const sig=await hmacHex(authSecret,canon);
   return {'Content-Type':'application/json','X-API-Key':authToken,'X-Timestamp':ts,'X-Nonce':n,'X-Signature':sig};
 }
+
 async function api(path,opts={}){
   const method=opts.method||'GET';
   const bodyStr=opts.body?JSON.stringify(opts.body):'';
@@ -1480,10 +1454,19 @@ async function api(path,opts={}){
   if(ct.includes('application/json')) return res.json();
   return {_status:res.status,_text:await res.text()};
 }
+
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').split(String.fromCharCode(96)).join('&#96;').split(String.fromCharCode(47)).join('&#47;').split(String.fromCharCode(92)).join('&#92;');
 const fmt=iso=>{if(!iso)return'—';const d=new Date(iso);return d.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})};
-function sbadge(s){const m={queued:'b-queued',sending:'b-sending',sent:'b-sent',failed:'b-failed'};return '<span class="badge '+(m[s]||'')+'">'+esc(s)+'</span>';}
-function tbadge(t){return '<span class="tbadge t-'+esc(t)+'">'+esc(t)+'</span>';}
+
+function sbadge(s){
+  const m={queued:'b-queued',sending:'b-sending',sent:'b-sent',failed:'b-failed'};
+  return '<span class="badge '+(m[s]||'')+'">'+esc(s)+'</span>';
+}
+
+function tbadge(t){
+  return '<span class="tbadge">'+esc(t)+'</span>';
+}
+
 function qbar(sent,lim){
   if(!lim)return'<span class="qbar-text">Unlimited</span>';
   const p=Math.min(100,Math.round(sent/lim*100));
@@ -1504,6 +1487,7 @@ function setAuthMode(m){
   document.getElementById('mbtn-apikey').classList.toggle('active',m==='apikey');
   document.getElementById('mbtn-hmac').classList.toggle('active',m==='hmac');
 }
+
 async function doAuth(){
   const errEl=document.getElementById('auth-err'); errEl.style.display='none';
   if(authMode==='apikey'){
@@ -1527,6 +1511,7 @@ async function doAuth(){
     fetchDash(); fetchProviders();
   }catch(e){errEl.textContent='Unable to connect: '+e.message;errEl.style.display='';}
 }
+
 function logout(){
   authToken='';authSecret='';
   sessionStorage.removeItem('unsent_api_key');
@@ -1568,8 +1553,8 @@ async function sendTest(ev){
   ev.preventDefault();
   const btn=document.getElementById('te-btn');btn.textContent='Sending…';btn.disabled=true;
   const to=document.getElementById('te-to').value.trim();
-  const subj=document.getElementById('te-subj').value.trim()||'Test Email';
-  const html=document.getElementById('te-body').value.trim()||'<p>This is a test email.</p>';
+  const subj=document.getElementById('te-subj').value.trim()||'Test Message from Unsent';
+  const html=document.getElementById('te-body').value.trim()||'<p>This is a test delivery from Unsent.</p>';
   const provId=document.getElementById('te-prov').value;
   try{
     const payload={to,subject:subj,html};
@@ -1578,7 +1563,7 @@ async function sendTest(ev){
     const opts={method:'POST',body:payload,qual};
     if(provId) opts.provId=provId;
     const r=await api('/api/send',opts);
-    if(r.error) toast('Error: '+r.error,false); else toast('Email queued successfully');
+    if(r.error) toast('Error: '+r.error,false); else {toast('Email queued successfully'); fetchDash();}
   }catch(e){toast('Failed to send: '+e.message,false);}
   finally{btn.textContent='Send Test Email';btn.disabled=false;}
 }
@@ -1598,23 +1583,23 @@ async function fetchProviders(btn){
 
 function renderProvs(provs){
   const tb=document.getElementById('prov-body');
-  if(!provs.length){tb.innerHTML='<tr><td colspan="7"><div class="empty-state">No providers configured yet. Click "Add Provider" to begin.</div></td></tr>';return;}
+  if(!provs.length){tb.innerHTML='<tr><td colspan="7"><div class="empty-state">No providers configured yet. Click "Add Provider" to get started.</div></td></tr>';return;}
   tb.innerHTML=provs.map((p,i)=>{
     const defBadge=p.is_default?'<span class="def-badge">Default</span>':'';
     const ab=p.is_active?'<span class="badge b-active">Active</span>':'<span class="badge b-disabled">Disabled</span>';
     const setDefBtn=!p.is_default?'<button class="bsm b-ghost" onclick="setDefault(&#39;'+esc(p.id)+'&#39;)">Make Default</button>':'';
     return '<tr>'
-      +'<td style="text-align:center;font-weight:600;color:var(--muted)">'+(i+1)+'</td>'
-      +'<td><b>'+esc(p.name)+'</b> '+defBadge+'<br><span class="mono" style="font-size:11px;color:var(--muted)">'+esc(p.id)+'</span></td>'
+      +'<td style="text-align:center;font-weight:600;color:var(--text-muted)">'+(i+1)+'</td>'
+      +'<td><b>'+esc(p.name)+'</b> '+defBadge+'<br><span class="mono" style="font-size:11px;color:var(--text-secondary)">'+esc(p.id)+'</span></td>'
       +'<td>'+tbadge(p.type)+'</td>'
       +'<td class="mono" style="font-size:12px">'+esc(p.from_email||'—')+'</td>'
       +'<td>'+qbar(p.daily_sent_count||0,p.daily_limit||0)+'</td>'
       +'<td>'+ab+'</td>'
       +'<td><div class="row-actions">'
         +setDefBtn
-        +'<button class="bsm b-ghost" onclick="openTestProvById(&#39;'+esc(p.id)+'&#39;)">Test</button>'
+        +'<button class="bsm b-ghost" onclick="openTestProv(&#39;'+esc(p.id)+'&#39;)">Test</button>'
         +'<button class="bsm b-ghost" onclick="openEditProv(&#39;'+esc(p.id)+'&#39;)">Edit</button>'
-        +'<button class="bsm b-danger" onclick="delProvById(&#39;'+esc(p.id)+'&#39;)">Delete</button>'
+        +'<button class="bsm b-danger" onclick="deleteProv(&#39;'+esc(p.id)+'&#39;)">Delete</button>'
       +'</div></td>'
     +'</tr>';
   }).join('');
@@ -1623,160 +1608,143 @@ function renderProvs(provs){
 function fillTestSelect(provs){
   const sel=document.getElementById('te-prov');
   const cur=sel.value;
-  sel.innerHTML='<option value="">Auto (Default priority)</option>';
-  provs.filter(p=>p.is_active).forEach(p=>{
-    const o=document.createElement('option');
-    o.value=p.id;o.textContent=(p.is_default?'[Default] ':'')+p.name+' ('+p.type+')';
-    sel.appendChild(o);
-  });
-  if(cur) sel.value=cur;
+  sel.innerHTML='<option value="">Auto (Default priority)</option>'
+    +provs.filter(p=>p.is_active).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+' ('+esc(p.type)+')</option>').join('');
+  sel.value=cur;
+}
+
+function onTypeChange(){
+  const t=document.getElementById('pf-type').value;
+  document.getElementById('cfg-smtp').style.display=t==='smtp'?'':'none';
+  document.getElementById('cfg-api').style.display=(t&&t!=='smtp')?'':'none';
 }
 
 function openAddProv(){
   document.getElementById('prov-modal-title').textContent='Add Provider';
   document.getElementById('prov-editing-id').value='';
   document.getElementById('prov-form').reset();
-  document.getElementById('pf-active').checked=true;
-  document.getElementById('pf-id').readOnly=false;
+  document.getElementById('pf-id').disabled=false;
   onTypeChange();
-  document.getElementById('prov-modal').classList.add('open');
+  document.getElementById('prov-modal').classList.add('show');
 }
 
 function openEditProv(id){
-  const p=provsCache.find(x=>x.id===id);if(!p){toast('Provider not found',false);return;}
-  document.getElementById('prov-modal-title').textContent='Edit Provider';
-  document.getElementById('prov-editing-id').value=id;
+  const p=provsCache.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('prov-modal-title').textContent='Edit Provider: '+p.name;
+  document.getElementById('prov-editing-id').value=p.id;
   document.getElementById('pf-id').value=p.id;
-  document.getElementById('pf-id').readOnly=true;
-  document.getElementById('pf-name').value=p.name;
-  document.getElementById('pf-type').value=p.type;
-  document.getElementById('pf-from-email').value=p.from_email||'';
-  document.getElementById('pf-from-name').value=p.from_name||'';
-  document.getElementById('pf-priority').value=p.priority||10;
-  document.getElementById('pf-daily').value=p.daily_limit||0;
-  document.getElementById('pf-default').checked=!!p.is_default;
-  document.getElementById('pf-active').checked=!!p.is_active;
+  document.getElementById('pf-id').disabled=true;
+  document.getElementById('pf-name').value=p.name||'';
+  document.getElementById('pf-type').value=p.type||'smtp';
+  document.getElementById('pf-from').value=p.from_email||'';
+  document.getElementById('pf-fromname').value=p.from_name||'';
+  document.getElementById('pf-prio').value=p.priority||1;
+  document.getElementById('pf-limit').value=p.daily_limit||0;
   onTypeChange();
-  const c=p.credentials||{};
-  if(p.type==='smtp'){document.getElementById('cs-host').value=c.host||'';document.getElementById('cs-port').value=c.port||587;document.getElementById('cs-user').value=c.username||'';document.getElementById('cs-pass').placeholder=c.password||'Leave blank to keep unchanged';}
-  else if(p.type==='resend') document.getElementById('cr-key').placeholder=c.api_key||'Leave blank to keep unchanged';
-  else if(p.type==='sendgrid') document.getElementById('csg-key').placeholder=c.api_key||'Leave blank to keep unchanged';
-  else if(p.type==='mailgun'){document.getElementById('cmg-key').placeholder=c.api_key||'Leave blank to keep unchanged';document.getElementById('cmg-domain').value=c.domain||'';document.getElementById('cmg-region').value=c.region||'us';}
-  else if(p.type==='postmark') document.getElementById('cpm-token').placeholder=c.server_token||'Leave blank to keep unchanged';
-  document.getElementById('prov-modal').classList.add('open');
+  if(p.type==='smtp'){
+    document.getElementById('pf-smtp-host').value=p.smtp_host||'';
+    document.getElementById('pf-smtp-port').value=p.smtp_port||587;
+    document.getElementById('pf-smtp-user').value=p.smtp_user||'';
+    document.getElementById('pf-smtp-pass').value='';
+    document.getElementById('pf-smtp-pass').placeholder='•••••••• (leave blank to keep)';
+    document.getElementById('pf-smtp-starttls').checked=p.smtp_starttls!==0;
+  }else{
+    document.getElementById('pf-apikey').value='';
+    document.getElementById('pf-apikey').placeholder='•••••••• (leave blank to keep)';
+  }
+  document.getElementById('prov-modal').classList.add('show');
 }
 
-function closeProv(){document.getElementById('prov-modal').classList.remove('open');}
-
-function onTypeChange(){
-  const t=document.getElementById('pf-type').value;
-  ['smtp','resend','sendgrid','mailgun','postmark'].forEach(x=>{
-    document.getElementById('cred-'+x).style.display=x===t?'':'none';
-  });
+function closeProvModal(){
+  document.getElementById('prov-modal').classList.remove('show');
 }
 
 async function saveProv(ev){
   ev.preventDefault();
-  const btn=document.getElementById('prov-save-btn');btn.textContent='Saving…';btn.disabled=true;
-  const isEdit=!!document.getElementById('prov-editing-id').value;
-  const t=document.getElementById('pf-type').value;
-  let creds={};
-  if(t==='smtp'){
-    creds={host:document.getElementById('cs-host').value.trim(),port:parseInt(document.getElementById('cs-port').value)||587,username:document.getElementById('cs-user').value.trim()};
-    const pw=document.getElementById('cs-pass').value;
-    if(pw) creds.password=pw;
-    else if(isEdit) creds.password='••••••••';
-  }else if(t==='resend'){
-    const k=document.getElementById('cr-key').value;
-    if(k) creds.api_key=k;
-    else if(isEdit) creds.api_key='••••••••';
-  }else if(t==='sendgrid'){
-    const k=document.getElementById('csg-key').value;
-    if(k) creds.api_key=k;
-    else if(isEdit) creds.api_key='••••••••';
-  }else if(t==='mailgun'){
-    const k=document.getElementById('cmg-key').value;
-    if(k) creds.api_key=k;
-    else if(isEdit) creds.api_key='••••••••';
-    creds.domain=document.getElementById('cmg-domain').value.trim();
-    creds.region=document.getElementById('cmg-region').value;
-  }else if(t==='postmark'){
-    const k=document.getElementById('cpm-token').value;
-    if(k) creds.server_token=k;
-    else if(isEdit) creds.server_token='••••••••';
+  const btn=document.getElementById('pf-save-btn');btn.textContent='Saving…';btn.disabled=true;
+  const editingId=document.getElementById('prov-editing-id').value;
+  const isEdit=Boolean(editingId);
+  const type=document.getElementById('pf-type').value;
+  const payload={
+    name: document.getElementById('pf-name').value.trim(),
+    type,
+    from_email: document.getElementById('pf-from').value.trim(),
+    from_name: document.getElementById('pf-fromname').value.trim()||undefined,
+    priority: parseInt(document.getElementById('pf-prio').value,10)||1,
+    daily_limit: parseInt(document.getElementById('pf-limit').value,10)||0,
+  };
+  if(!isEdit) payload.id=document.getElementById('pf-id').value.trim();
+  if(type==='smtp'){
+    payload.smtp_host=document.getElementById('pf-smtp-host').value.trim();
+    payload.smtp_port=parseInt(document.getElementById('pf-smtp-port').value,10)||587;
+    payload.smtp_user=document.getElementById('pf-smtp-user').value.trim();
+    const pw=document.getElementById('pf-smtp-pass').value;
+    if(pw) payload.smtp_pass=pw;
+    payload.smtp_starttls=document.getElementById('pf-smtp-starttls').checked;
+  }else{
+    const ak=document.getElementById('pf-apikey').value.trim();
+    if(ak) payload.api_key=ak;
   }
-  const payload={id:document.getElementById('pf-id').value.trim(),name:document.getElementById('pf-name').value.trim(),type:t,from_email:document.getElementById('pf-from-email').value.trim(),from_name:document.getElementById('pf-from-name').value.trim(),priority:parseInt(document.getElementById('pf-priority').value)||10,daily_limit:parseInt(document.getElementById('pf-daily').value)||0,is_default:document.getElementById('pf-default').checked,is_active:document.getElementById('pf-active').checked,credentials:creds};
   try{
-    const r=await api('/api/providers',{method:isEdit?'PUT':'POST',body:payload});
-    if(r.error){toast('Error: '+r.error,false);return;}
-    toast(isEdit?'Provider updated':'Provider added');
-    closeProv();fetchProviders();
-  }catch(e){toast('Failed: '+e.message,false);}
+    const method=isEdit?'PUT':'POST';
+    const path=isEdit?'/api/providers/'+encodeURIComponent(editingId):'/api/providers';
+    const r=await api(path,{method,body:payload});
+    if(r.error) toast('Error: '+r.error,false);
+    else{
+      toast(isEdit?'Provider updated':'Provider added');
+      closeProvModal();
+      fetchProviders();
+    }
+  }catch(e){toast('Save failed: '+e.message,false);}
   finally{btn.textContent='Save Provider';btn.disabled=false;}
-}
-
-function openTestProvById(id){
-  const p=provsCache.find(x=>x.id===id);
-  if(p) openTestProv(p.id, p.name, p.from_email||'');
-}
-function delProvById(id){
-  const p=provsCache.find(x=>x.id===id);
-  delProv(id, p?p.name:id);
-}
-
-async function delProv(id,name){
-  if(!confirm('Delete provider "'+name+'"? This cannot be undone.'))return;
-  try{
-    const r=await api('/api/providers?id='+encodeURIComponent(id),{method:'DELETE'});
-    if(r.error){toast('Error: '+r.error,false);return;}
-    toast('Provider deleted');fetchProviders();
-  }catch(e){toast('Failed: '+e.message,false);}
 }
 
 async function setDefault(id){
   try{
-    const r=await api('/api/providers/set-default',{method:'POST',body:{id}});
-    if(r.error){toast('Error: '+r.error,false);return;}
-    toast('Default provider updated');fetchProviders();
-  }catch(e){toast('Failed: '+e.message,false);}
+    const r=await api('/api/providers/'+encodeURIComponent(id)+'/default',{method:'POST'});
+    if(r.error) toast('Error: '+r.error,false); else {toast('Default provider updated'); fetchProviders();}
+  }catch(e){toast('Failed to set default: '+e.message,false);}
 }
 
-function openTestProv(id,name,fromEmail){
-  document.getElementById('tp-id').value=id;
-  document.getElementById('tp-desc').textContent='Send a test email to verify that "'+name+'" ('+fromEmail+') is working.';
-  document.getElementById('tp-result').style.display='none';
-  document.getElementById('tp-to').value='';
-  document.getElementById('test-prov-modal').classList.add('open');
-}
-function closeTestProv(){document.getElementById('test-prov-modal').classList.remove('open');}
-async function execTest(ev){
-  ev.preventDefault();
-  const btn=document.getElementById('tp-btn');btn.textContent='Sending…';btn.disabled=true;
-  const re=document.getElementById('tp-result');re.style.display='none';
+async function deleteProv(id){
+  if(!confirm('Are you sure you want to delete provider "'+id+'"?')) return;
   try{
-    const r=await api('/api/providers/test',{method:'POST',body:{provider_id:document.getElementById('tp-id').value,to:document.getElementById('tp-to').value.trim()}});
-    if(r.error||!r.success){re.style.cssText='display:block;padding:12px;border-radius:8px;font-size:13px;margin-bottom:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red)';re.textContent='✗ '+(r.error||r.message||'Test failed');}
-    else{re.style.cssText='display:block;padding:12px;border-radius:8px;font-size:13px;margin-bottom:12px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--green)';re.textContent='✓ Test email sent successfully!';}
-  }catch(e){re.style.cssText='display:block;padding:12px;border-radius:8px;font-size:13px;margin-bottom:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red)';re.textContent='✗ '+e.message;}
+    const r=await api('/api/providers/'+encodeURIComponent(id),{method:'DELETE'});
+    if(r.error) toast('Error: '+r.error,false); else {toast('Provider deleted'); fetchProviders();}
+  }catch(e){toast('Delete failed: '+e.message,false);}
+}
+
+function openTestProv(id){
+  document.getElementById('tp-prov-id').value=id;
+  document.getElementById('tp-modal').classList.add('show');
+}
+function closeTestModal(){
+  document.getElementById('tp-modal').classList.remove('show');
+}
+
+async function doTestProv(ev){
+  ev.preventDefault();
+  const id=document.getElementById('tp-prov-id').value;
+  const to=document.getElementById('tp-to').value.trim();
+  const btn=document.getElementById('tp-btn');btn.textContent='Testing…';btn.disabled=true;
+  try{
+    const r=await api('/api/providers/'+encodeURIComponent(id)+'/test',{method:'POST',body:{to}});
+    if(r.error) toast('Test failed: '+r.error,false); else {toast('Test email sent successfully'); closeTestModal(); fetchProviders();}
+  }catch(e){toast('Test failed: '+e.message,false);}
   finally{btn.textContent='Send Test Email';btn.disabled=false;}
 }
 
 // ── Logs ───────────────────────────────────────────────────
-let currentLogsCache = [];
-function resetFilters(){['fl-status','fl-search','fl-from','fl-to'].forEach(id=>{document.getElementById(id).value='';});logsPage=0;fetchLogs();}
-function changePage(d){logsPage=Math.max(0,logsPage+d);fetchLogs();}
-
 async function fetchLogs(btn){
   if(btn){btn.textContent='Filtering…';btn.disabled=true;}
-  const st=document.getElementById('fl-status').value;
-  const se=document.getElementById('fl-search').value;
-  const fr=document.getElementById('fl-from').value;
-  const to=document.getElementById('fl-to').value;
-  const p=new URLSearchParams({limit:logsPerPage,offset:logsPage*logsPerPage});
-  if(st)p.set('status',st);if(se)p.set('search',se);if(fr)p.set('from',fr);if(to)p.set('to',to);
+  const q=encodeURIComponent(document.getElementById('lf-q').value.trim());
+  const st=encodeURIComponent(document.getElementById('lf-status').value);
+  const url='/api/logs?page='+logsPage+'&limit='+logsPerPage+(q?'&q='+q:'')+(st?'&status='+st:'');
   try{
-    const r=await api('/api/emails?'+p);
-    const emails=r.emails||[];logsTotal=r.total||emails.length;
+    const r=await api(url);
+    const emails=r.emails||[];
+    logsTotal=r.total||emails.length;
     currentLogsCache=emails;
     renderLogs(emails);
     const start=logsPage*logsPerPage+1,end=Math.min(start+emails.length-1,logsTotal);
@@ -1787,6 +1755,69 @@ async function fetchLogs(btn){
   finally{if(btn){btn.textContent='Apply';btn.disabled=false;}}
 }
 
+function renderLogs(emails){
+  const tb=document.getElementById('logs-body');
+  if(!emails.length){tb.innerHTML='<tr><td colspan="7"><div class="empty-state">No delivery logs found matching the filter</div></td></tr>';return;}
+  tb.innerHTML=emails.map(e=>renderLogRow(e,'log-',7)).join('');
+}
+
+function applyLogsFilter(btn){logsPage=0;fetchLogs(btn);}
+function resetLogsFilter(){document.getElementById('lf-q').value='';document.getElementById('lf-status').value='';logsPage=0;fetchLogs();}
+function prevLogs(){if(logsPage>0){logsPage--;fetchLogs();}}
+function nextLogs(){logsPage++;fetchLogs();}
+
+// ── Log Row Renderer ───────────────────────────────────────
+function renderLogRow(e,pfx,cols){
+  const to=Array.isArray(e.to)?e.to.join(', '):(e.to||'—');
+  const bid=pfx+esc(e.id);
+  return '<tr>'
+    +'<td><span class="caret" id="caret-'+bid+'" onclick="toggleDetail(&#39;'+esc(e.id)+'&#39;,&#39;'+pfx+'&#39;)">▶</span></td>'
+    +'<td class="mono" style="font-size:12px"><b>'+esc(to)+'</b></td>'
+    +'<td>'+esc(e.subject||'(no subject)')+'</td>'
+    +'<td>'+sbadge(e.status)+'</td>'
+    +'<td>'+tbadge(e.provider_used||'auto')+'</td>'
+    +(cols===7?'<td class="mono" style="font-size:12px">'+(e.attempts||0)+'</td>':'')
+    +'<td class="mono" style="font-size:11px;color:var(--text-secondary)">'+fmt(e.created_at)+'</td>'
+  +'</tr>'
+  +'<tr id="detail-'+bid+'" class="detail-row" style="display:none">'
+    +'<td colspan="'+cols+'"><div class="detail-body">'
+      +'<div class="detail-meta-grid">'
+        +'<div class="meta-box"><div class="meta-lbl">Email ID</div><div class="meta-val">'+esc(e.id)+'</div></div>'
+        +'<div class="meta-box"><div class="meta-lbl">Status</div><div class="meta-val">'+sbadge(e.status)+'</div></div>'
+        +'<div class="meta-box"><div class="meta-lbl">Provider Used</div><div class="meta-val">'+esc(e.provider_used||'auto')+'</div></div>'
+        +'<div class="meta-box"><div class="meta-lbl">Sender (From)</div><div class="meta-val">'+esc(e.from_email||'—')+'</div></div>'
+        +'<div class="meta-box"><div class="meta-lbl">Attempts</div><div class="meta-val">'+(e.attempts||0)+' / 5</div></div>'
+      +'</div>'
+      +(e.error_message||e.error?'<div style="background:var(--state-danger-dim);border:1px solid var(--state-danger-border);border-radius:3px;padding:10px 14px;color:var(--state-danger);font-family:var(--font-mono);font-size:12px;"><b>Error:</b> '+esc(e.error_message||e.error)+'</div>':'')
+      +'<div>'
+        +'<div class="detail-tabs">'
+          +'<button class="dtab active" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;html&#39;)">HTML Preview</button>'
+          +'<button class="dtab" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;raw&#39;)">Raw Payload</button>'
+        +'</div>'
+        +'<div id="'+bid+'-html"><iframe class="preview-iframe" sandbox="allow-popups" referrerpolicy="no-referrer" srcdoc="'+esc(e.html_body||e.text_body||'(no preview available)')+'"></iframe></div>'
+        +'<div id="'+bid+'-raw" style="display:none"><div class="detail-mono">'+esc(e.html_body||e.text_body||'(empty payload)')+'</div></div>'
+      +'</div>'
+    +'</div></td>'
+  +'</tr>';
+}
+
+function switchBodyTab(ev,bid,tab){
+  ev.target.closest('.detail-body').querySelectorAll('.dtab').forEach(t=>t.classList.remove('active'));
+  ev.target.classList.add('active');
+  document.getElementById(bid+'-html').style.display=tab==='html'?'':'none';
+  document.getElementById(bid+'-raw').style.display=tab==='raw'?'':'none';
+}
+
+function toggleDetail(id,pfx=''){
+  const dr=document.getElementById('detail-'+pfx+id);
+  const cr=document.getElementById('caret-'+pfx+id);
+  if(!dr) return;
+  const hidden=dr.style.display==='none';
+  dr.style.display=hidden?'':'none';
+  if(cr) cr.classList.toggle('rotated',hidden);
+}
+
+// ── Export CSV & JSONL ─────────────────────────────────────
 function sanitizeCsvCell(val){
   if(val===null||val===undefined)return '""';
   let str=typeof val==='object'?JSON.stringify(val):String(val);
@@ -1819,7 +1850,7 @@ function exportCsv(emails){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  a.download='delivery_logs_'+(new Date().toISOString().slice(0,10))+'.csv';
+  a.download='unsent_logs_'+(new Date().toISOString().slice(0,10))+'.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1835,7 +1866,7 @@ function exportJsonl(emails){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  a.download='delivery_logs_'+(new Date().toISOString().slice(0,10))+'.jsonl';
+  a.download='unsent_logs_'+(new Date().toISOString().slice(0,10))+'.jsonl';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1843,84 +1874,7 @@ function exportJsonl(emails){
   toast('Logs exported to JSONL');
 }
 
-function exportLogs(fmt){
-  if(fmt==='csv')exportCsv(currentLogsCache);
-  else exportJsonl(currentLogsCache);
-}
-
-function renderLogs(emails){
-  const tb=document.getElementById('logs-body');
-  if(!emails.length){tb.innerHTML='<tr><td colspan="8"><div class="empty-state">No delivery logs found</div></td></tr>';return;}
-  tb.innerHTML=emails.map(e=>renderLogRow(e,'logs-',8)).join('');
-}
-
-function renderLogRow(e, pfx='', colspan=8){
-  const to=Array.isArray(e.to)?e.to[0]:e.to;
-  const errHtml=e.error_message?'<span class="err-text" title="'+esc(e.error_message)+'">'+esc(e.error_message)+'</span>':'';
-  const rowId='row-'+pfx+esc(e.id);
-  const detailId='detail-'+pfx+esc(e.id);
-  const caretId='caret-'+pfx+esc(e.id);
-  return '<tr class="log-row" onclick="toggleDetail(&#39;'+esc(e.id)+'&#39;,&#39;'+pfx+'&#39;)" id="'+rowId+'">'
-    +'<td><span class="expand-caret" id="'+caretId+'">▶</span></td>'
-    +(colspan===8?'<td class="mono" style="font-size:11px;color:var(--muted)">#'+esc(e.id)+'</td>':'')
-    +'<td class="mono" style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(to)+'">'+esc(to)+'</td>'
-    +'<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(e.subject||'')+'">'+esc(e.subject||'(no subject)')+'</td>'
-    +'<td>'+sbadge(e.status)+' '+errHtml+'</td>'
-    +'<td class="mono" style="font-size:11px;color:var(--muted)">'+esc(e.provider_used||'—')+'</td>'
-    +(colspan===8?'<td class="mono" style="font-size:11px;color:var(--muted)">'+esc(e.from_email||'—')+'</td>':'')
-    +'<td class="mono" style="font-size:11px;color:var(--muted)">'+fmt(e.created_at)+'</td>'
-  +'</tr>'
-  +'<tr class="detail-row" id="'+detailId+'" style="display:none">'
-    +'<td colspan="'+colspan+'">'+renderDetail(e, pfx)+'</td>'
-  +'</tr>';
-}
-
-function renderDetail(e, pfx=''){
-  let fhHtml='';
-  try{
-    const fh=typeof e.failover_history==='string'?JSON.parse(e.failover_history):e.failover_history;
-    if(fh&&fh.length) fhHtml=fh.map((f,i)=>(i+1)+'. '+esc(f.provider||f.provider_id||f.name||'?')+' — '+esc(f.error||f.reason||'unknown')).join(String.fromCharCode(10));
-  }catch(_){fhHtml=esc(String(e.failover_history||''));}
-  const bid='body-'+pfx+e.id;
-  return '<div class="detail-box">'
-    +'<div class="detail-grid">'
-      +'<div class="detail-blk"><div class="detail-lbl">Email ID</div><div class="detail-val mono">'+esc(e.id)+'</div></div>'
-      +'<div class="detail-blk"><div class="detail-lbl">Status</div><div class="detail-val">'+sbadge(e.status)+(e.error_message?' — <span style="color:var(--red);font-size:12px">'+esc(e.error_message)+'</span>':'')+'</div></div>'
-      +'<div class="detail-blk"><div class="detail-lbl">To</div><div class="detail-val mono">'+esc(Array.isArray(e.to)?e.to.join(', '):e.to)+'</div></div>'
-      +'<div class="detail-blk"><div class="detail-lbl">From</div><div class="detail-val mono">'+esc(e.from_email||'—')+(e.from_name?' ('+esc(e.from_name)+')':'')+'</div></div>'
-      +'<div class="detail-blk"><div class="detail-lbl">Provider Used</div><div class="detail-val mono">'+esc(e.provider_used||'—')+'</div></div>'
-      +'<div class="detail-blk"><div class="detail-lbl">Created</div><div class="detail-val mono">'+fmt(e.created_at)+'</div></div>'
-      +(e.cc?'<div class="detail-blk"><div class="detail-lbl">CC</div><div class="detail-val mono">'+esc(Array.isArray(e.cc)?e.cc.join(', '):e.cc)+'</div></div>':'')
-      +(e.bcc?'<div class="detail-blk"><div class="detail-lbl">BCC</div><div class="detail-val mono">'+esc(Array.isArray(e.bcc)?e.bcc.join(', '):e.bcc)+'</div></div>':'')
-    +'</div>'
-    +(fhHtml?'<div class="detail-blk"><div class="detail-lbl">Delivery Errors & Retries</div><div class="detail-mono" style="color:var(--orange)">'+fhHtml+'</div></div>':'')
-    +'<div class="detail-blk">'
-      +'<div class="detail-lbl">Email Body</div>'
-      +'<div class="dtabs">'
-        +'<button class="dtab active" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;html&#39;)">Preview</button>'
-        +'<button class="dtab" onclick="switchBodyTab(event,&#39;'+bid+'&#39;,&#39;raw&#39;)">HTML Source</button>'
-      +'</div>'
-      +'<div id="'+bid+'-html"><iframe class="preview-iframe" sandbox="allow-popups" referrerpolicy="no-referrer" srcdoc="'+esc(e.html_body||e.text_body||'(empty)')+'"></iframe></div>'
-      +'<div id="'+bid+'-raw" style="display:none"><div class="detail-mono">'+esc(e.html_body||e.text_body||'(empty)')+'</div></div>'
-    +'</div>'
-  +'</div>';
-}
-
-function switchBodyTab(ev,bid,tab){
-  ev.target.closest('.detail-blk').querySelectorAll('.dtab').forEach(t=>t.classList.remove('active'));
-  ev.target.classList.add('active');
-  document.getElementById(bid+'-html').style.display=tab==='html'?'':'none';
-  document.getElementById(bid+'-raw').style.display=tab==='raw'?'':'none';
-}
-
-function toggleDetail(id, pfx=''){
-  const dr=document.getElementById('detail-'+pfx+id),cr=document.getElementById('caret-'+pfx+id);
-  if(!dr) return;
-  const hidden=dr.style.display==='none';
-  dr.style.display=hidden?'':'none';
-  if(cr) cr.classList.toggle('rotated',hidden);
-}
-
+// ── Local Dev Helper & Init ────────────────────────────────
 function useDevKey(){
   document.getElementById('ak-input').value='Ddj1ZHJYculiA34hussZFzLdgDupBzIE';
   if(document.getElementById('ak-input-hmac')) document.getElementById('ak-input-hmac').value='Ddj1ZHJYculiA34hussZFzLdgDupBzIE';
@@ -1928,7 +1882,6 @@ function useDevKey(){
   doAuth();
 }
 
-// ── Init ───────────────────────────────────────────────────
 ['ak-input','ak-input-hmac','sk-input'].forEach(id=>{
   const el=document.getElementById(id);
   if(el) el.addEventListener('keydown',ev=>{if(ev.key==='Enter')doAuth();});
@@ -1939,7 +1892,9 @@ if(window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1
   if(h) h.style.display='block';
 }
 
-const savedKey=sessionStorage.getItem('unsent_api_key');
+const urlParams=new URLSearchParams(window.location.search);
+const queryKey=urlParams.get('key');
+const savedKey=queryKey||sessionStorage.getItem('unsent_api_key');
 const savedSecret=sessionStorage.getItem('unsent_api_secret');
 const savedMode=sessionStorage.getItem('unsent_auth_mode')||'apikey';
 if(savedKey){
@@ -1950,7 +1905,11 @@ if(savedKey){
   if(document.getElementById('ak-input-hmac')) document.getElementById('ak-input-hmac').value=savedKey;
   if(document.getElementById('sk-input')&&savedSecret) document.getElementById('sk-input').value=savedSecret;
   setAuthMode(authMode);
-  doAuth();
+  doAuth().then(()=>{
+    const queryView=urlParams.get('view');
+    const tabMap={prov:'v-prov',logs:'v-logs',docs:'v-docs',dash:'v-dash'};
+    if(queryView && tabMap[queryView]) switchView(tabMap[queryView]);
+  });
 }
 </script>
 </body>
