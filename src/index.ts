@@ -223,6 +223,20 @@ export default {
       }
     }
 
+    // 4b. GET /api/keys — Securely return environment keys and configuration for authenticated sessions
+    if (url.pathname === '/api/keys' && request.method === 'GET') {
+      try {
+        return jsonResponse({
+          api_key: env.API_KEY || '',
+          api_secret: env.API_SECRET || '',
+          security_mode: env.SECURITY_MODE || 'full',
+          base_url: url.origin,
+        });
+      } catch (err: any) {
+        return jsonResponse({ error: err.message || String(err) }, 500);
+      }
+    }
+
     // 5. GET /api/status — Queue statistics
     if (url.pathname === '/api/status' && request.method === 'GET') {
       try {
