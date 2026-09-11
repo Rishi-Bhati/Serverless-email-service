@@ -2712,9 +2712,9 @@ function renderLogRow(e, pfx, cols) {
   const jsonString = esc(JSON.stringify(e, null, 2));
   const latency = (e.updated_at && e.created_at) ? Math.max(14, e.updated_at - e.created_at) : 38;
   const rawPayload = e.html_body || e.text_body || '(no payload available)';
-  const sanitizedIframeHtml = rawPayload.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  const sanitizedIframeHtml = rawPayload.replace(new RegExp('<' + 'script[\\s\\S]*?<\\/' + 'script>', 'gi'), '');
 
-  return '<tr onclick="toggleDetail(\'' + esc(e.id) + '\',\'' + pfx + '\')">'
+  return '<tr onclick="toggleDetail(\\'' + esc(e.id) + '\\',\\'' + pfx + '\\')">'
     + '<td style="text-align:center"><span class="caret-btn" id="caret-' + bid + '">▶</span></td>'
     + '<td class="mono" style="font-size:13px;font-weight:500">' + esc(to) + '</td>'
     + '<td>' + esc(e.subject || '(no subject)') + '</td>'
@@ -2730,7 +2730,7 @@ function renderLogRow(e, pfx, cols) {
           + '<div class="meta-k">Transmission ID</div>'
           + '<div class="meta-v" style="display:flex;align-items:center;justify-content:space-between;gap:6px;">'
             + '<span>' + esc(e.id) + '</span>'
-            + '<button class="btn-subtle" style="height:22px;padding:0 6px;font-size:11px;" onclick="copyVal(\'' + esc(e.id) + '\', this)">Copy</button>'
+            + '<button class="btn-subtle" style="height:22px;padding:0 6px;font-size:11px;" onclick="copyVal(\\'' + esc(e.id) + '\\', this)">Copy</button>'
           + '</div>'
         + '</div>'
         + '<div class="meta-card">'
@@ -2755,14 +2755,14 @@ function renderLogRow(e, pfx, cols) {
           : '')
       + '<div>'
         + '<div class="drawer-tabs">'
-          + '<button class="drawer-tab active" onclick="switchBodyTab(event,\'' + bid + '\',\'preview\')">HTML Preview</button>'
-          + '<button class="drawer-tab" onclick="switchBodyTab(event,\'' + bid + '\',\'raw\')">Raw Payload</button>'
-          + '<button class="drawer-tab" onclick="switchBodyTab(event,\'' + bid + '\',\'json\')">JSON Inspector</button>'
+          + '<button class="drawer-tab active" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'preview\\')">HTML Preview</button>'
+          + '<button class="drawer-tab" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'raw\\')">Raw Payload</button>'
+          + '<button class="drawer-tab" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'json\\')">JSON Inspector</button>'
           + '<div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
-            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="toggleDrawerExpand(\'' + bid + '\', this)" title="Toggle expanded height">⤢ Expand</button>'
-            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="openDrawerPreview(\'' + bid + '\')" title="Open HTML in new tab">↗ Pop-out</button>'
-            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="copyDrawerHtml(\'' + bid + '\', this)">Copy HTML</button>'
-            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="copyDrawerJson(\'' + bid + '\', this)">Copy JSON</button>'
+            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="toggleDrawerExpand(\\'' + bid + '\\', this)" title="Toggle expanded height">⤢ Expand</button>'
+            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="openDrawerPreview(\\'' + bid + '\\')" title="Open HTML in new tab">↗ Pop-out</button>'
+            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="copyDrawerHtml(\\'' + bid + '\\', this)">Copy HTML</button>'
+            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="copyDrawerJson(\\'' + bid + '\\', this)">Copy JSON</button>'
           + '</div>'
         + '</div>'
         + '<div id="' + bid + '-preview" style="padding-top:4px;"><iframe id="iframe-' + bid + '" class="drawer-frame" sandbox="allow-popups allow-same-origin" referrerpolicy="no-referrer" onload="fitDrawerIframe(this)" srcdoc="' + esc(sanitizedIframeHtml) + '"></iframe></div>'
