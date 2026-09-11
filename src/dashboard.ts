@@ -2098,6 +2098,19 @@ async function api(path, opts = {}) {
   if (opts.provId) hdrs['X-Provider-Id'] = opts.provId;
   if (opts.senderEmail) hdrs['X-Sender-Email'] = opts.senderEmail;
   const res = await fetch(path, { method, headers: hdrs, body: bodyStr || undefined, credentials: 'omit' });
+  if (res.status === 401) {
+    sessionStorage.removeItem('unsent_session_token');
+    sessionStorage.removeItem('unsent_admin_user');
+    const overlay = document.getElementById('auth-overlay');
+    if (overlay && overlay.style.display === 'none') {
+      overlay.style.display = '';
+      const errEl = document.getElementById('auth-err');
+      if (errEl) {
+        errEl.textContent = 'Session expired or password updated. Please log in with your current credentials.';
+        errEl.style.display = '';
+      }
+    }
+  }
   const ct = res.headers.get('content-type') || '';
   if (ct.includes('application/json')) return res.json();
   return { _status: res.status, _text: await res.text() };
