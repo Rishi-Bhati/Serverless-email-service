@@ -26,6 +26,10 @@ export interface Env {
   SMTP_THROTTLE_DELAY_MS?: string;
   MAX_CONCURRENT_WORKERS?: string;
   SMTP_AUTH_TYPE?: string;
+  ADMIN_USERNAME?: string;
+  ADMIN_PASSWORD?: string;
+  DASHBOARD_USERNAME?: string;
+  DASHBOARD_PASSWORD?: string;
 }
 
 export interface EmailRow {

@@ -606,24 +606,33 @@ export function renderDashboard(): string {
 
     .drawer-frame {
       width: 100%;
-      height: 200px;
+      min-height: 520px;
+      height: 560px;
       background: #ffffff;
       border: 1px solid var(--border-subtle);
-      border-radius: 6px;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      display: block;
+      transition: height 0.2s ease;
+      resize: vertical;
+    }
+
+    .drawer-frame.expanded {
+      min-height: 850px;
     }
 
     .drawer-code {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      padding: 12px 14px;
+      border-radius: 8px;
+      padding: 14px 16px;
       font-family: var(--font-mono);
       font-size: 12px;
-      line-height: 1.5;
+      line-height: 1.55;
       color: var(--text-primary);
       white-space: pre-wrap;
       word-break: break-all;
-      max-height: 200px;
+      max-height: 540px;
       overflow-y: auto;
     }
 
@@ -768,13 +777,117 @@ export function renderDashboard(): string {
 
     /* ── TOOLBARS & FOOTERS ──────────────────────────────────── */
     .toolbar-bar {
-      padding: 14px 20px;
+      padding: 12px 20px;
       border-bottom: 1px solid var(--border-subtle);
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 12px;
+      background: var(--bg-surface);
+    }
+
+    .logs-toolbar-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-box-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 320px;
+    }
+
+    .search-box-icon {
+      position: absolute;
+      left: 12px;
+      width: 14px;
+      height: 14px;
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .toolbar-search-input {
+      width: 100%;
+      height: 36px;
+      padding: 0 12px 0 34px;
+      font-size: 13px;
+      font-family: var(--font-sans);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+    }
+
+    .toolbar-search-input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.8;
+    }
+
+    .toolbar-search-input:focus {
+      border-color: var(--border-focus);
+      background: var(--bg-surface);
+      box-shadow: 0 0 0 1px var(--border-focus);
+    }
+
+    .custom-select-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .toolbar-custom-select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      height: 36px;
+      padding: 0 32px 0 12px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+    }
+
+    .toolbar-custom-select:hover {
+      border-color: var(--border-hover);
+    }
+
+    .toolbar-custom-select:focus {
+      border-color: var(--border-focus);
+      background: var(--bg-surface);
+      box-shadow: 0 0 0 1px var(--border-focus);
+    }
+
+    .select-chevron-icon {
+      position: absolute;
+      right: 10px;
+      width: 14px;
+      height: 14px;
+      color: var(--text-muted);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .code-panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .pagination-bar {
@@ -1041,7 +1154,7 @@ export function renderDashboard(): string {
     .tpl-grid {
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 24px;
       margin-top: 16px;
     }
 
@@ -1053,7 +1166,7 @@ export function renderDashboard(): string {
     }
 
     .tpl-card-header {
-      padding: 16px 20px;
+      padding: 14px 20px;
       border-bottom: 1px solid var(--border-subtle);
       background: var(--bg-subtle);
       display: flex;
@@ -1061,6 +1174,11 @@ export function renderDashboard(): string {
       align-items: center;
       flex-wrap: wrap;
       gap: 12px;
+    }
+
+    .tpl-info {
+      flex: 1;
+      min-width: 240px;
     }
 
     .tpl-info h4 {
@@ -1076,6 +1194,49 @@ export function renderDashboard(): string {
       color: var(--text-muted);
     }
 
+    .tpl-header-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tpl-view-switcher {
+      display: inline-flex;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }
+
+    .tpl-view-btn {
+      background: transparent;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+    }
+
+    .tpl-view-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .tpl-view-btn.active {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
     .tpl-actions {
       display: flex;
       gap: 8px;
@@ -1083,33 +1244,78 @@ export function renderDashboard(): string {
     }
 
     .tpl-body {
+      min-height: 520px;
+      position: relative;
+    }
+
+    .tpl-body.tpl-mode-preview {
+      display: block;
+    }
+    .tpl-body.tpl-mode-preview .tpl-preview-pane {
+      display: flex;
+      width: 100%;
+      border-right: none;
+    }
+    .tpl-body.tpl-mode-preview .tpl-code-pane {
+      display: none;
+    }
+
+    .tpl-body.tpl-mode-code {
+      display: block;
+    }
+    .tpl-body.tpl-mode-code .tpl-preview-pane {
+      display: none;
+    }
+    .tpl-body.tpl-mode-code .tpl-code-pane {
+      display: flex;
+      width: 100%;
+    }
+
+    .tpl-body.tpl-mode-split {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      min-height: 420px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .tpl-body.tpl-mode-split .tpl-preview-pane {
+      display: flex;
+      border-right: 1px solid var(--border-subtle);
+    }
+    .tpl-body.tpl-mode-split .tpl-code-pane {
+      display: flex;
     }
 
     @media (max-width: 960px) {
-      .tpl-body {
+      .tpl-body.tpl-mode-split {
         grid-template-columns: 1fr;
+      }
+      .tpl-body.tpl-mode-split .tpl-preview-pane {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
       }
     }
 
     .tpl-preview-pane {
-      padding: 16px;
-      background: #F4F4F6;
-      border-right: 1px solid var(--border-subtle);
+      padding: 24px;
+      background: var(--bg-subtle);
+      min-width: 0;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
+      min-height: 520px;
+      overflow: hidden;
     }
 
     .tpl-preview-frame {
       width: 100%;
-      height: 100%;
-      min-height: 400px;
+      max-width: 580px;
+      height: 520px;
+      min-height: 480px;
       border: 1px solid var(--border-subtle);
-      border-radius: 6px;
+      border-radius: 8px;
       background: #FFFFFF;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+      display: block;
+      transition: height 0.2s ease;
+      resize: vertical;
     }
 
     .tpl-code-pane {
@@ -1117,13 +1323,23 @@ export function renderDashboard(): string {
       background: var(--bg-surface);
       display: flex;
       flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+      width: 100%;
     }
 
     .tpl-code-pane pre {
       flex: 1;
       margin: 0;
-      max-height: 440px;
-      overflow-y: auto;
+      padding: 18px 20px;
+      max-height: 540px;
+      overflow: auto;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--text-primary);
+      background: transparent;
+      border: none;
     }
 
     /* ── SCHEMA & REFERENCE TABLES ────────────────────────────── */
@@ -1336,43 +1552,30 @@ export function renderDashboard(): string {
         <span class="logo-dot">●</span>
         <span class="logo-sent">SENT</span>
       </div>
-      <span class="logo-tag">Clearance</span>
+      <span class="logo-tag">Admin Console</span>
     </div>
     <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">
-      Authenticate with your service credentials to access queue management.
+      Sign in with your administrator credentials to access the queue console.
     </p>
 
-    <div class="auth-mode-switch">
-      <button class="auth-mode-btn active" onclick="setAuthMode('apikey')" id="mbtn-apikey">API Key</button>
-      <button class="auth-mode-btn" onclick="setAuthMode('hmac')" id="mbtn-hmac">Signed (HMAC)</button>
-    </div>
-
-    <div id="auth-apikey-form">
+    <div id="auth-login-form">
       <div class="form-control">
-        <label>Service API Key</label>
-        <input class="mono" type="password" id="ak-input" placeholder="Enter API key" autocomplete="off" />
-      </div>
-      <button class="btn-action-primary" id="btn-signin-apikey" style="margin-top:16px;" onclick="doAuth()">Sign In</button>
-    </div>
-
-    <div id="auth-hmac-form" style="display:none">
-      <div class="form-control">
-        <label>Service API Key</label>
-        <input class="mono" type="password" id="ak-input-hmac" placeholder="Enter API key" autocomplete="off" />
+        <label>Username</label>
+        <input type="text" id="login-username" placeholder="admin" autocomplete="username" />
       </div>
       <div class="form-control">
-        <label>HMAC Secret Key</label>
-        <input class="mono" type="password" id="sk-input" placeholder="Enter secret key" autocomplete="off" />
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••••••" autocomplete="current-password" />
       </div>
-      <button class="btn-action-primary" id="btn-signin-hmac" style="margin-top:16px;" onclick="doAuth()">Sign In with HMAC</button>
+      <button class="btn-action-primary" id="btn-signin" style="margin-top:16px;" onclick="doAuth()">Sign In</button>
     </div>
 
     <p id="auth-err" style="color:var(--status-failed);margin-top:14px;font-size:12.5px;display:none"></p>
 
     <div id="local-dev-hint" style="display:none;margin-top:20px;padding:14px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;font-size:12.5px;">
       <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Local Environment Detected</div>
-      <div style="color:var(--text-muted);font-size:12px;margin-bottom:10px;">Running on localhost. Use local credentials from <code>.dev.vars</code>:</div>
-      <button type="button" class="btn-subtle" style="width:100%;justify-content:center;" onclick="useDevKey()">Sign In with Local Dev Key</button>
+      <div style="color:var(--text-muted);font-size:12px;margin-bottom:10px;">Running on localhost. Use admin credentials from <code>.dev.vars</code>:</div>
+      <button type="button" class="btn-subtle" style="width:100%;justify-content:center;" onclick="useDevCredentials()">Sign In with Local Admin</button>
     </div>
   </div>
 </div>
@@ -1569,17 +1772,27 @@ export function renderDashboard(): string {
           </div>
         </div>
         <div class="toolbar-bar">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <input class="form-control" style="margin-bottom:0;width:280px;height:36px;" type="text" id="lf-q" placeholder="Filter by recipient, subject, or ID…" />
-            <select class="form-control" style="margin-bottom:0;width:130px;height:36px;" id="lf-status">
-              <option value="">All Statuses</option>
-              <option value="queued">Staged</option>
-              <option value="sending">In Transit</option>
-              <option value="sent">Dispatched</option>
-              <option value="failed">Failed</option>
-            </select>
-            <button class="btn-subtle" onclick="applyLogsFilter(this)">Apply</button>
-            <button class="btn-subtle" onclick="resetLogsFilter()">Reset</button>
+          <div class="logs-toolbar-group">
+            <div class="search-box-wrapper">
+              <span class="search-box-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </span>
+              <input class="toolbar-search-input" type="text" id="lf-q" placeholder="Filter by recipient, subject, or ID…" onkeydown="if(event.key==='Enter') applyLogsFilter();" />
+            </div>
+            <div class="custom-select-wrapper">
+              <select class="toolbar-custom-select" id="lf-status" onchange="applyLogsFilter()">
+                <option value="">All Statuses</option>
+                <option value="queued">Queued</option>
+                <option value="sending">Sending</option>
+                <option value="sent">Delivered</option>
+                <option value="failed">Failed</option>
+              </select>
+              <span class="select-chevron-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </span>
+            </div>
+            <button class="btn-subtle" id="btn-lf-apply" onclick="applyLogsFilter(this)">Filter</button>
+            <button class="btn-subtle" id="btn-lf-reset" onclick="resetLogsFilter()" style="display:none;">Clear</button>
           </div>
         </div>
         <div class="table-container">
@@ -1650,13 +1863,11 @@ export function renderDashboard(): string {
         <!-- ── SECTION 1: QUICKSTART & SDKS ─────────────────────── -->
         <div id="docs-sec-sdks">
           <div class="lang-tabs">
-            <button class="lang-tab active" id="ltab-curl" onclick="switchLangTab('curl')">cURL</button>
+            <button class="lang-tab active" id="ltab-curl" onclick="switchLangTab('curl')">cURL (Bash)</button>
             <button class="lang-tab" id="ltab-ts" onclick="switchLangTab('ts')">TypeScript / Node.js</button>
-            <button class="lang-tab" id="ltab-nextjs" onclick="switchLangTab('nextjs')">Next.js (App Router)</button>
             <button class="lang-tab" id="ltab-python" onclick="switchLangTab('python')">Python</button>
             <button class="lang-tab" id="ltab-go" onclick="switchLangTab('go')">Go</button>
-            <button class="lang-tab" id="ltab-php" onclick="switchLangTab('php')">PHP</button>
-            <button class="lang-tab" id="ltab-hmac" onclick="switchLangTab('hmac')">HMAC Signatures</button>
+            <button class="lang-tab" id="ltab-nextjs" onclick="switchLangTab('nextjs')">Next.js</button>
           </div>
 
           <div id="lang-pane-content">
@@ -1879,7 +2090,11 @@ async function buildHdrs(bodyStr, qual = '') {
 async function api(path, opts = {}) {
   const method = opts.method || 'GET';
   const bodyStr = opts.body ? JSON.stringify(opts.body) : '';
-  const hdrs = await buildHdrs(bodyStr, opts.qual || '');
+  const hdrs = { 'Content-Type': 'application/json' };
+  const sessionToken = sessionStorage.getItem('unsent_session_token');
+  if (sessionToken) {
+    hdrs['Authorization'] = 'Bearer ' + sessionToken;
+  }
   if (opts.provId) hdrs['X-Provider-Id'] = opts.provId;
   if (opts.senderEmail) hdrs['X-Sender-Email'] = opts.senderEmail;
   const res = await fetch(path, { method, headers: hdrs, body: bodyStr || undefined, credentials: 'omit' });
@@ -1917,10 +2132,28 @@ function qbar(sent, lim) {
 }
 
 function copySnippet(btn) {
-  const code = btn.closest('.code-panel').querySelector('pre code').innerText;
+  const panel = btn.closest('.code-panel');
+  const code = panel ? panel.querySelector('pre code').innerText : '';
   navigator.clipboard.writeText(code).then(() => {
     const orig = btn.textContent;
-    btn.textContent = 'Copied!';
+    btn.textContent = 'Copied! ✓';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
+function copyFullSnippet(btn) {
+  const panel = btn.closest('.code-panel');
+  if (!panel) return;
+  const snippetId = panel.getAttribute('data-snippet-id');
+  let code = '';
+  if (snippetId && typeof SNIPPET_GENERATORS !== 'undefined' && typeof SNIPPET_GENERATORS[snippetId] === 'function') {
+    code = SNIPPET_GENERATORS[snippetId](true);
+  } else {
+    code = panel.querySelector('pre code').innerText;
+  }
+  navigator.clipboard.writeText(code).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied! ✓';
     setTimeout(() => { btn.textContent = orig; }, 2000);
   });
 }
@@ -1934,33 +2167,24 @@ function copyVal(val, btn) {
 }
 
 // ── Auth ───────────────────────────────────────────────────
-function setAuthMode(m) {
-  authMode = m;
-  if (m === 'hmac' && document.getElementById('ak-input').value && !document.getElementById('ak-input-hmac').value) {
-    document.getElementById('ak-input-hmac').value = document.getElementById('ak-input').value;
-  } else if (m === 'apikey' && document.getElementById('ak-input-hmac').value && !document.getElementById('ak-input').value) {
-    document.getElementById('ak-input').value = document.getElementById('ak-input-hmac').value;
-  }
-  document.getElementById('auth-apikey-form').style.display = m === 'apikey' ? '' : 'none';
-  document.getElementById('auth-hmac-form').style.display = m === 'hmac' ? '' : 'none';
-  document.getElementById('mbtn-apikey').classList.toggle('active', m === 'apikey');
-  document.getElementById('mbtn-hmac').classList.toggle('active', m === 'hmac');
-}
-
 async function doAuth() {
   const errEl = document.getElementById('auth-err');
   errEl.style.display = 'none';
-  const btn = authMode === 'apikey' ? document.getElementById('btn-signin-apikey') : document.getElementById('btn-signin-hmac');
+  const btn = document.getElementById('btn-signin');
   const origText = btn ? btn.textContent : '';
 
-  if (authMode === 'apikey') {
-    authToken = document.getElementById('ak-input').value.trim();
-    if (!authToken) { errEl.textContent = 'Please enter your API Key'; errEl.style.display = ''; return; }
-  } else {
-    authToken = document.getElementById('ak-input-hmac').value.trim() || document.getElementById('ak-input').value.trim();
-    authSecret = document.getElementById('sk-input').value.trim();
-    if (!authToken) { errEl.textContent = 'Please enter your API Key'; errEl.style.display = ''; return; }
-    if (!authSecret) { errEl.textContent = 'Please enter your Secret Key'; errEl.style.display = ''; return; }
+  const username = (document.getElementById('login-username').value || '').trim();
+  const password = (document.getElementById('login-password').value || '').trim();
+
+  if (!username) {
+    errEl.textContent = 'Please enter your username';
+    errEl.style.display = '';
+    return;
+  }
+  if (!password) {
+    errEl.textContent = 'Please enter your password';
+    errEl.style.display = '';
+    return;
   }
 
   if (btn) {
@@ -1969,18 +2193,24 @@ async function doAuth() {
   }
 
   try {
-    const r = await api('/api/status');
-    if (r.error) {
-      errEl.textContent = 'Authentication rejected: ' + (r.reason || r.error);
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const r = await res.json();
+    if (!res.ok || r.error) {
+      errEl.textContent = r.error || 'Authentication rejected';
       errEl.style.display = '';
       return;
     }
-    sessionStorage.setItem('unsent_api_key', authToken);
-    if (authSecret) sessionStorage.setItem('unsent_api_secret', authSecret);
-    sessionStorage.setItem('unsent_auth_mode', authMode);
+
+    sessionStorage.setItem('unsent_session_token', r.token);
+    sessionStorage.setItem('unsent_admin_user', r.username || username);
     document.getElementById('auth-overlay').style.display = 'none';
     document.getElementById('qr-base').textContent = window.location.origin;
-    document.getElementById('qr-auth').textContent = authMode === 'apikey' ? 'API Key' : 'Signed (HMAC)';
+    document.getElementById('qr-auth').textContent = 'Admin: ' + (r.username || username);
+
     fetchDash();
     fetchProviders();
     fetchKeys();
@@ -1996,13 +2226,12 @@ async function doAuth() {
 }
 
 function logout() {
-  authToken = '';
-  authSecret = '';
   serverApiKey = '';
   serverApiSecret = '';
+  sessionStorage.removeItem('unsent_session_token');
+  sessionStorage.removeItem('unsent_admin_user');
   sessionStorage.removeItem('unsent_api_key');
   sessionStorage.removeItem('unsent_api_secret');
-  sessionStorage.removeItem('unsent_auth_mode');
   renderCredentialsCard();
   renderDocCodeSnippets();
   document.getElementById('auth-overlay').style.display = '';
@@ -2412,8 +2641,14 @@ async function doTestProv(ev) {
 // ── Logs ───────────────────────────────────────────────────
 async function fetchLogs(btn) {
   if (btn) { btn.textContent = 'Filtering…'; btn.disabled = true; }
-  const q = encodeURIComponent(document.getElementById('lf-q').value.trim());
-  const st = encodeURIComponent(document.getElementById('lf-status').value);
+  const rawQ = document.getElementById('lf-q').value.trim();
+  const rawSt = document.getElementById('lf-status').value;
+  const q = encodeURIComponent(rawQ);
+  const st = encodeURIComponent(rawSt);
+
+  const resetBtn = document.getElementById('btn-lf-reset');
+  if (resetBtn) resetBtn.style.display = (rawQ || rawSt) ? '' : 'none';
+
   const offset = logsPage * logsPerPage;
   const url = '/api/logs?offset=' + offset + '&limit=' + logsPerPage + (q ? '&q=' + q : '') + (st ? '&status=' + st : '');
   try {
@@ -2430,7 +2665,7 @@ async function fetchLogs(btn) {
   } catch (e) {
     toast('Error loading logs: ' + e.message, false);
   } finally {
-    if (btn) { btn.textContent = 'Apply'; btn.disabled = false; }
+    if (btn) { btn.textContent = 'Filter'; btn.disabled = false; }
   }
 }
 
@@ -2447,6 +2682,8 @@ function applyLogsFilter(btn) { logsPage = 0; fetchLogs(btn); }
 function resetLogsFilter() {
   document.getElementById('lf-q').value = '';
   document.getElementById('lf-status').value = '';
+  const resetBtn = document.getElementById('btn-lf-reset');
+  if (resetBtn) resetBtn.style.display = 'none';
   logsPage = 0;
   fetchLogs();
 }
@@ -2504,11 +2741,16 @@ function renderLogRow(e, pfx, cols) {
           + '<button class="drawer-tab active" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'preview\\')">HTML Preview</button>'
           + '<button class="drawer-tab" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'raw\\')">Raw Payload</button>'
           + '<button class="drawer-tab" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'json\\')">JSON Inspector</button>'
-          + '<button class="btn-subtle" style="margin-left:auto;height:24px;font-size:11px;padding:0 8px;" onclick="copyVal(\\'' + jsonString.replace(/'/g, "\\\\'") + '\\', this)">Copy JSON</button>'
+          + '<div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="toggleDrawerExpand(\\'' + bid + '\\', this)" title="Toggle expanded height">⤢ Expand</button>'
+            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="openDrawerPreview(\\'' + bid + '\\')" title="Open HTML in new tab">↗ Pop-out</button>'
+            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="copyDrawerHtml(\\'' + bid + '\\', this)">Copy HTML</button>'
+            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="copyVal(\\'' + jsonString.replace(/'/g, "\\\\'") + '\\', this)">Copy JSON</button>'
+          + '</div>'
         + '</div>'
-        + '<div id="' + bid + '-preview"><iframe class="drawer-frame" sandbox="allow-popups" referrerpolicy="no-referrer" srcdoc="' + esc(e.html_body || e.text_body || '(no payload available)') + '"></iframe></div>'
-        + '<div id="' + bid + '-raw" style="display:none"><div class="drawer-code">' + esc(e.html_body || e.text_body || '(empty payload)') + '</div></div>'
-        + '<div id="' + bid + '-json" style="display:none"><div class="drawer-code">' + jsonString + '</div></div>'
+        + '<div id="' + bid + '-preview" style="padding-top:4px;"><iframe id="iframe-' + bid + '" class="drawer-frame" sandbox="allow-popups allow-same-origin" referrerpolicy="no-referrer" onload="fitDrawerIframe(this)" srcdoc="' + esc(e.html_body || e.text_body || '(no payload available)') + '"></iframe></div>'
+        + '<div id="' + bid + '-raw" style="display:none;padding-top:4px;"><div class="drawer-code">' + esc(e.html_body || e.text_body || '(empty payload)') + '</div></div>'
+        + '<div id="' + bid + '-json" style="display:none;padding-top:4px;"><div class="drawer-code">' + jsonString + '</div></div>'
       + '</div>'
     + '</div></td>'
   + '</tr>';
@@ -2522,13 +2764,67 @@ function switchBodyTab(ev, bid, tab) {
   document.getElementById(bid + '-json').style.display = tab === 'json' ? '' : 'none';
 }
 
+function fitDrawerIframe(ifr) {
+  if (!ifr) return;
+  try {
+    const doc = ifr.contentDocument || ifr.contentWindow?.document;
+    if (doc && doc.body) {
+      const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+      if (h > 120) {
+        ifr.style.height = Math.min(Math.max(h + 36, 540), 1000) + 'px';
+        return;
+      }
+    }
+  } catch (err) {}
+  ifr.style.height = '540px';
+}
+
+function toggleDrawerExpand(bid, btn) {
+  const ifr = document.getElementById('iframe-' + bid);
+  if (!ifr) return;
+  const isExpanded = ifr.classList.toggle('expanded');
+  if (btn) btn.textContent = isExpanded ? '⤡ Compact' : '⤢ Expand';
+  if (isExpanded) {
+    ifr.style.height = '900px';
+    try {
+      const doc = ifr.contentDocument || ifr.contentWindow?.document;
+      if (doc && doc.body) {
+        const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+        ifr.style.height = Math.max(h + 48, 900) + 'px';
+      }
+    } catch(e) {}
+  } else {
+    fitDrawerIframe(ifr);
+  }
+}
+
+function openDrawerPreview(bid) {
+  const ifr = document.getElementById('iframe-' + bid);
+  if (!ifr) return;
+  const html = ifr.getAttribute('srcdoc') || '';
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, '_blank');
+}
+
+function copyDrawerHtml(bid, btn) {
+  const ifr = document.getElementById('iframe-' + bid);
+  const html = ifr ? (ifr.getAttribute('srcdoc') || '') : '';
+  copyCredValue(html, btn);
+}
+
 function toggleDetail(id, pfx = '') {
-  const dr = document.getElementById('detail-' + pfx + id);
-  const cr = document.getElementById('caret-' + pfx + id);
+  const bid = pfx + id;
+  const dr = document.getElementById('detail-' + bid);
+  const cr = document.getElementById('caret-' + bid);
   if (!dr) return;
-  const hidden = dr.style.display === 'none';
-  dr.style.display = hidden ? '' : 'none';
-  if (cr) cr.classList.toggle('rotated', hidden);
+  const opening = dr.style.display === 'none';
+  dr.style.display = opening ? '' : 'none';
+  if (cr) cr.classList.toggle('rotated', opening);
+  if (opening) {
+    const ifr = document.getElementById('iframe-' + bid);
+    if (ifr) setTimeout(() => fitDrawerIframe(ifr), 40);
+  }
 }
 
 // ── Export CSV & JSONL ─────────────────────────────────────
@@ -2590,14 +2886,15 @@ function exportJsonl(emails) {
 
 // ── Developer Hub & API Docs Logic ─────────────────────────
 async function fetchKeys() {
-  if (!authToken) return;
+  const sessionToken = sessionStorage.getItem('unsent_session_token');
+  if (!sessionToken && !authToken) return;
   try {
     const res = await api('/api/keys');
     if (res && res.api_key) {
       serverApiKey = res.api_key;
       serverApiSecret = res.api_secret || '';
       serverSecurityMode = res.security_mode || 'full';
-      serverBaseUrl = res.base_url || window.location.origin;
+      serverBaseUrl = res.base_url || 'https://unsent.rishibhati.in';
     }
   } catch (e) {
     console.warn('Could not fetch server keys:', e);
@@ -2609,17 +2906,18 @@ async function fetchKeys() {
 function renderCredentialsCard() {
   const el = document.getElementById('creds-container');
   if (!el) return;
+  const sessionToken = sessionStorage.getItem('unsent_session_token');
   const key = serverApiKey || authToken || '';
   const sec = serverApiSecret || authSecret || '';
-  const url = serverBaseUrl || window.location.origin;
+  const url = serverBaseUrl || 'https://unsent.rishibhati.in';
 
-  if (!key) {
+  if (!sessionToken && !key) {
     el.innerHTML = '<div class="creds-unauth-box">' +
       '<div style="display:flex;align-items:center;gap:12px;">' +
         '<span style="font-size:24px;">🔒</span>' +
         '<div>' +
           '<div style="font-weight:600;font-size:14px;color:var(--text-primary);margin-bottom:2px;">Developer Credentials Protected</div>' +
-          '<div style="font-size:12.5px;color:var(--text-muted);">Authenticate with your API Key to inspect your environment secrets, copy ready-to-use .env configuration, and auto-populate all code templates.</div>' +
+          '<div style="font-size:12.5px;color:var(--text-muted);">Sign in with administrator credentials to inspect your environment secrets, reveal API keys, and auto-populate all code templates.</div>' +
         '</div>' +
       '</div>' +
       '<button class="btn-action-primary" style="height:36px;font-size:13px;padding:0 16px;white-space:nowrap;" id="btn-unauth-login">Sign In to Reveal Credentials</button>' +
@@ -2628,9 +2926,6 @@ function renderCredentialsCard() {
     if (bLog) bLog.onclick = function() { document.getElementById('auth-overlay').style.display = ''; };
     return;
   }
-
-  const nl = String.fromCharCode(10);
-  const envSnippet = '# Unsent Email Service Configuration' + nl + 'UNSENT_BASE_URL=' + url + nl + 'UNSENT_API_KEY=' + key + (sec ? (nl + 'UNSENT_API_SECRET=' + sec) : '') + nl + 'UNSENT_SECURITY_MODE=' + serverSecurityMode;
 
   el.innerHTML = '<div class="creds-card">' +
     '<div class="creds-header">' +
@@ -2670,14 +2965,12 @@ function renderCredentialsCard() {
         '</div>' +
       '</div>' +
     '</div>' +
-    '<div class="creds-env-wrap">' +
-      '<div class="creds-env-code">' + esc(envSnippet) + '</div>' +
-      '<button class="btn-subtle" style="height:30px;font-size:12px;padding:0 10px;white-space:nowrap;" id="btn-copy-env">Copy .env</button>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border-subtle);">' +
+      '<label class="creds-toggle-row" style="margin:0;">' +
+        '<input type="checkbox" id="chk-inject-keys" ' + (injectKeysInDocs ? 'checked' : '') + ' style="accent-color:var(--border-focus);cursor:pointer;width:15px;height:15px;">' +
+        '<span>Auto-populate all code examples below with my active credentials</span>' +
+      '</label>' +
     '</div>' +
-    '<label class="creds-toggle-row">' +
-      '<input type="checkbox" id="chk-inject-keys" ' + (injectKeysInDocs ? 'checked' : '') + ' style="accent-color:var(--border-focus);cursor:pointer;width:15px;height:15px;">' +
-      '<span>Auto-populate all code examples below with my active credentials</span>' +
-    '</label>' +
   '</div>';
 
   const bUrl = document.getElementById('btn-copy-url');
@@ -2686,8 +2979,6 @@ function renderCredentialsCard() {
   if (bKey) bKey.onclick = function() { copyCredValue(key, this); };
   const bSec = document.getElementById('btn-copy-sec');
   if (bSec) bSec.onclick = function() { copyCredValue(sec, this); };
-  const bEnv = document.getElementById('btn-copy-env');
-  if (bEnv) bEnv.onclick = function() { copyCredValue(envSnippet, this); };
   const bTogKey = document.getElementById('btn-toggle-key');
   if (bTogKey) bTogKey.onclick = function() { toggleMask('cred-key', 'btn-toggle-key'); };
   const bTogSec = document.getElementById('btn-toggle-sec');
@@ -2760,375 +3051,573 @@ function switchLangTab(lang) {
   renderDocCodeSnippets();
 }
 
+// ── Code Snippets & Signing Generators ─────────────────────
+let showKeysInSnippets = false;
+
+function toggleSnippetKeys() {
+  showKeysInSnippets = !showKeysInSnippets;
+  renderDocCodeSnippets();
+}
+
+function getCreds(withRealKeys) {
+  const hasCreds = injectKeysInDocs && (serverApiKey || authToken);
+  const realKey = hasCreds ? (serverApiKey || authToken) : 'YOUR_API_KEY';
+  const realSec = (hasCreds && (serverApiSecret || authSecret)) ? (serverApiSecret || authSecret) : 'YOUR_HMAC_SECRET';
+  const maskedKey = '••••••••••••••••••••••••••••••••';
+  const maskedSec = '••••••••••••••••••••••••••••••••';
+  const defaultUrl = 'https://unsent.rishibhati.in';
+  const url = (serverBaseUrl && !serverBaseUrl.includes('localhost') && !serverBaseUrl.includes('127.0.0.1'))
+    ? serverBaseUrl
+    : defaultUrl;
+
+  return {
+    url: url,
+    key: withRealKeys ? realKey : maskedKey,
+    sec: withRealKeys ? realSec : maskedSec,
+    realKey: realKey,
+    realSec: realSec
+  };
+}
+
+const SNIPPET_GENERATORS = {
+  'curl-signed': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const SQ = String.fromCharCode(39);
+    const BS = String.fromCharCode(92);
+    return [
+      '#!/usr/bin/env bash',
+      'set -e',
+      '',
+      '# ── 1. Configuration & Credentials ──────────────────────────',
+      'UNSENT_URL="' + c.url + '/api/send"',
+      'API_KEY="' + c.key + '"',
+      'API_SECRET="' + c.sec + '"',
+      '',
+      '# ── 2. Request Body (Raw JSON) ──────────────────────────────',
+      'BODY=' + SQ + '{',
+      '  "to": "customer@example.com",',
+      '  "subject": "Production Signed Dispatch",',
+      '  "html": "<h2>Order Confirmed</h2><p>Your delivery has been queued at the edge.</p>",',
+      '  "from_name": "Unsent System"',
+      '}' + SQ,
+      '',
+      '# ── 3. Timestamp & Replay-Protection Nonce ──────────────────',
+      'TIMESTAMP=$(date +%s)',
+      'NONCE=$(openssl rand -hex 16)',
+      '',
+      '# ── 4. Cryptographic Body Hash (SHA-256 Hex) ────────────────',
+      'BODY_HASH=$(printf "%s" "$BODY" | openssl dgst -sha256 | awk ' + SQ + '{print $NF}' + SQ + ')',
+      '',
+      '# ── 5. Canonical Message & HMAC-SHA256 Signature ────────────',
+      '# Format: <timestamp>' + BS + 'n<nonce>' + BS + 'n<bodyHash>',
+      'CANONICAL_MSG=$(printf "%s' + BS + 'n%s' + BS + 'n%s" "$TIMESTAMP" "$NONCE" "$BODY_HASH")',
+      'SIGNATURE="sha256=$(printf "%s" "$CANONICAL_MSG" | openssl dgst -sha256 -hmac "$API_SECRET" | awk ' + SQ + '{print $NF}' + SQ + ')"',
+      '',
+      '# ── 6. Execute POST Request with All 5 Required Headers ─────',
+      'curl -X POST "$UNSENT_URL" ' + BS,
+      '  -H "Content-Type: application/json" ' + BS,
+      '  -H "X-API-Key: $API_KEY" ' + BS,
+      '  -H "X-Timestamp: $TIMESTAMP" ' + BS,
+      '  -H "X-Nonce: $NONCE" ' + BS,
+      '  -H "X-Signature: $SIGNATURE" ' + BS,
+      '  -d "$BODY"'
+    ].join(NL);
+  },
+
+  'curl-status': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const BS = String.fromCharCode(92);
+    return [
+      '# Check Queue Telemetry & Health Statistics',
+      'curl -X GET "' + c.url + '/api/status" ' + BS,
+      '  -H "X-API-Key: ' + c.key + '"'
+    ].join(NL);
+  },
+
+  'ts-signed': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const BS = String.fromCharCode(92);
+    return [
+      'import crypto from "node:crypto";',
+      '',
+      '// ── 1. Configuration ─────────────────────────────────────────',
+      'const UNSENT_URL = "' + c.url + '/api/send";',
+      'const API_KEY = process.env.UNSENT_API_KEY || "' + c.key + '";',
+      'const API_SECRET = process.env.UNSENT_API_SECRET || "' + c.sec + '";',
+      '',
+      '// ── 2. Payload Definition ────────────────────────────────────',
+      'const payload = {',
+      '  to: "customer@example.com",',
+      '  subject: "Welcome to the Platform",',
+      '  html: "<h1>Account Activated</h1><p>Your subscription is now live.</p>",',
+      '  from_name: "Acme Operations"',
+      '};',
+      '',
+      'const rawBody = JSON.stringify(payload);',
+      'const timestamp = Math.floor(Date.now() / 1000).toString();',
+      'const nonce = crypto.randomUUID();',
+      '',
+      '// ── 3. Cryptographic Body Hash & Canonical Signature ─────────',
+      'const bodyHash = crypto.createHash("sha256").update(rawBody).digest("hex");',
+      'const canonical = [timestamp, nonce, bodyHash].join("' + BS + 'n");',
+      'const signature = "sha256=" + crypto.createHmac("sha256", API_SECRET).update(canonical).digest("hex");',
+      '',
+      '// ── 4. Dispatch Request with All 5 Required Headers ──────────',
+      'const res = await fetch(UNSENT_URL, {',
+      '  method: "POST",',
+      '  headers: {',
+      '    "Content-Type": "application/json",',
+      '    "X-API-Key": API_KEY,',
+      '    "X-Timestamp": timestamp,',
+      '    "X-Nonce": nonce,',
+      '    "X-Signature": signature',
+      '  },',
+      '  body: rawBody',
+      '});',
+      '',
+      'if (!res.ok) {',
+      '  const error = await res.json().catch(() => ({}));',
+      '  throw new Error("Unsent dispatch failed (" + res.status + "): " + (error.reason || error.error || res.statusText));',
+      '}',
+      '',
+      'const data = await res.json();',
+      'console.log("Email queued successfully with ID:", data.id);'
+    ].join(NL);
+  },
+
+  'ts-helper': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const BS = String.fromCharCode(92);
+    return [
+      'import crypto from "node:crypto";',
+      '',
+      'export interface EmailOptions {',
+      '  to: string | string[];',
+      '  subject: string;',
+      '  html: string;',
+      '  text?: string;',
+      '  from_name?: string;',
+      '  from_email?: string;',
+      '  reply_to?: string;',
+      '  cc?: string | string[];',
+      '  bcc?: string | string[];',
+      '  provider_id?: string;',
+      '  metadata?: Record<string, any>;',
+      '}',
+      '',
+      'export async function sendEmail(opts: EmailOptions) {',
+      '  const baseUrl = process.env.UNSENT_BASE_URL || "' + c.url + '";',
+      '  const apiKey = process.env.UNSENT_API_KEY || "' + c.key + '";',
+      '  const apiSecret = process.env.UNSENT_API_SECRET || "' + c.sec + '";',
+      '',
+      '  const rawBody = JSON.stringify(opts);',
+      '  const timestamp = Math.floor(Date.now() / 1000).toString();',
+      '  const nonce = crypto.randomUUID();',
+      '  const bodyHash = crypto.createHash("sha256").update(rawBody).digest("hex");',
+      '  const canonical = [timestamp, nonce, bodyHash].join("' + BS + 'n");',
+      '  const signature = "sha256=" + crypto.createHmac("sha256", apiSecret).update(canonical).digest("hex");',
+      '',
+      '  const res = await fetch(baseUrl + "/api/send", {',
+      '    method: "POST",',
+      '    headers: {',
+      '      "Content-Type": "application/json",',
+      '      "X-API-Key": apiKey,',
+      '      "X-Timestamp": timestamp,',
+      '      "X-Nonce": nonce,',
+      '      "X-Signature": signature',
+      '    },',
+      '    body: rawBody',
+      '  });',
+      '',
+      '  if (!res.ok) {',
+      '    const error = await res.json().catch(() => ({}));',
+      '    throw new Error("Unsent dispatch failed: " + (error.reason || error.error || res.statusText));',
+      '  }',
+      '',
+      '  return res.json();',
+      '}'
+    ].join(NL);
+  },
+
+  'python-signed': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const SQ = String.fromCharCode(39);
+    const BS = String.fromCharCode(92);
+    return [
+      'import hashlib',
+      'import hmac',
+      'import json',
+      'import time',
+      'import uuid',
+      'import requests',
+      '',
+      '# ── 1. Configuration ─────────────────────────────────────────',
+      'UNSENT_URL = "' + c.url + '/api/send"',
+      'API_KEY = "' + c.key + '"',
+      'API_SECRET = "' + c.sec + '"',
+      '',
+      '# ── 2. Payload Definition ────────────────────────────────────',
+      'payload = {',
+      '    "to": "customer@example.com",',
+      '    "subject": "Order #8492 Processed",',
+      '    "html": "<p>Your transaction has cleared successfully.</p>",',
+      '    "from_name": "Billing Service"',
+      '}',
+      '',
+      '# Compact JSON (exact bytes used for body hash and transmission)',
+      'raw_body = json.dumps(payload, separators=(",", ":"))',
+      'timestamp = str(int(time.time()))',
+      'nonce = str(uuid.uuid4())',
+      '',
+      '# ── 3. Cryptographic Body Hash & Canonical Signature ─────────',
+      'body_hash = hashlib.sha256(raw_body.encode("utf-8")).hexdigest()',
+      'canonical_message = "' + BS + 'n".join([timestamp, nonce, body_hash])',
+      '',
+      'signature = "sha256=" + hmac.new(',
+      '    API_SECRET.encode("utf-8"),',
+      '    canonical_message.encode("utf-8"),',
+      '    hashlib.sha256',
+      ').hexdigest()',
+      '',
+      '# ── 4. Dispatch Request with All 5 Required Headers ──────────',
+      'headers = {',
+      '    "Content-Type": "application/json",',
+      '    "X-API-Key": API_KEY,',
+      '    "X-Timestamp": timestamp,',
+      '    "X-Nonce": nonce,',
+      '    "X-Signature": signature',
+      '}',
+      '',
+      'response = requests.post(UNSENT_URL, data=raw_body, headers=headers)',
+      'response.raise_for_status()',
+      'print("Dispatched successfully:", response.json())'
+    ].join(NL);
+  },
+
+  'python-async': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const BS = String.fromCharCode(92);
+    return [
+      'import asyncio',
+      'import hashlib',
+      'import hmac',
+      'import json',
+      'import time',
+      'import uuid',
+      'import httpx',
+      '',
+      'async def send_email(to: str, subject: str, html: str):',
+      '    unsent_url = "' + c.url + '/api/send"',
+      '    api_key = "' + c.key + '"',
+      '    api_secret = "' + c.sec + '"',
+      '',
+      '    raw_body = json.dumps({"to": to, "subject": subject, "html": html}, separators=(",", ":"))',
+      '    timestamp = str(int(time.time()))',
+      '    nonce = str(uuid.uuid4())',
+      '',
+      '    body_hash = hashlib.sha256(raw_body.encode("utf-8")).hexdigest()',
+      '    canonical = "' + BS + 'n".join([timestamp, nonce, body_hash])',
+      '    signature = "sha256=" + hmac.new(',
+      '        api_secret.encode("utf-8"),',
+      '        canonical.encode("utf-8"),',
+      '        hashlib.sha256',
+      '    ).hexdigest()',
+      '',
+      '    async with httpx.AsyncClient() as client:',
+      '        resp = await client.post(',
+      '            unsent_url,',
+      '            content=raw_body,',
+      '            headers={',
+      '                "Content-Type": "application/json",',
+      '                "X-API-Key": api_key,',
+      '                "X-Timestamp": timestamp,',
+      '                "X-Nonce": nonce,',
+      '                "X-Signature": signature',
+      '            }',
+      '        )',
+      '        resp.raise_for_status()',
+      '        return resp.json()',
+      '',
+      'asyncio.run(send_email("user@example.com", "Async Alert", "<p>Delivered via HTTPX</p>"))'
+    ].join(NL);
+  },
+
+  'go-signed': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const BT = String.fromCharCode(96);
+    const BS = String.fromCharCode(92);
+    return [
+      'package main',
+      '',
+      'import (',
+      '    "bytes"',
+      '    "context"',
+      '    "crypto/hmac"',
+      '    "crypto/rand"',
+      '    "crypto/sha256"',
+      '    "encoding/hex"',
+      '    "encoding/json"',
+      '    "fmt"',
+      '    "io"',
+      '    "net/http"',
+      '    "strconv"',
+      '    "time"',
+      ')',
+      '',
+      'const (',
+      '    unsentURL = "' + c.url + '/api/send"',
+      '    apiKey    = "' + c.key + '"',
+      '    apiSecret = "' + c.sec + '"',
+      ')',
+      '',
+      'type EmailPayload struct {',
+      '    To       string ' + BT + 'json:"to"' + BT,
+      '    Subject  string ' + BT + 'json:"subject"' + BT,
+      '    HTML     string ' + BT + 'json:"html"' + BT,
+      '    FromName string ' + BT + 'json:"from_name"' + BT,
+      '}',
+      '',
+      'func main() {',
+      '    payload := EmailPayload{',
+      '        To:       "recipient@example.com",',
+      '        Subject:  "Go Microservice Alert",',
+      '        HTML:     "<h2>Incident Resolved</h2><p>Cluster metrics returned to nominal.</p>",',
+      '        FromName: "Go Alert Manager",',
+      '    }',
+      '',
+      '    rawBody, err := json.Marshal(payload)',
+      '    if err != nil { panic(err) }',
+      '',
+      '    timestamp := strconv.FormatInt(time.Now().Unix(), 10)',
+      '',
+      '    // Generate 16-byte cryptographically secure nonce',
+      '    nonceBytes := make([]byte, 16)',
+      '    if _, err := rand.Read(nonceBytes); err != nil { panic(err) }',
+      '    nonce := hex.EncodeToString(nonceBytes)',
+      '    // 1. Compute SHA-256 body hash',
+      '    h := sha256.Sum256(rawBody)',
+      '    bodyHash := hex.EncodeToString(h[:])',
+      '',
+      '    // 2. Build canonical message: timestamp' + BS + 'nnonce' + BS + 'nbodyHash',
+      '    canonical := fmt.Sprintf("%s' + BS + 'n%s' + BS + 'n%s", timestamp, nonce, bodyHash)',
+      '',
+      '    // 3. Compute HMAC-SHA256 signature',
+      '    mac := hmac.New(sha256.New, []byte(apiSecret))',
+      '    mac.Write([]byte(canonical))',
+      '    signature := "sha256=" + hex.EncodeToString(mac.Sum(nil))',
+      '',
+      '    // 4. Send request with all 5 required authentication headers',
+      '    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)',
+      '    defer cancel()',
+      '',
+      '    req, err := http.NewRequestWithContext(ctx, "POST", unsentURL, bytes.NewReader(rawBody))',
+      '    if err != nil { panic(err) }',
+      '',
+      '    req.Header.Set("Content-Type", "application/json")',
+      '    req.Header.Set("X-API-Key", apiKey)',
+      '    req.Header.Set("X-Timestamp", timestamp)',
+      '    req.Header.Set("X-Nonce", nonce)',
+      '    req.Header.Set("X-Signature", signature)',
+      '',
+      '    resp, err := http.DefaultClient.Do(req)',
+      '    if err != nil { panic(err) }',
+      '    defer resp.Body.Close()',
+      '',
+      '    body, _ := io.ReadAll(resp.Body)',
+      '    fmt.Printf("Status: %d, Response: %s' + BS + 'n", resp.StatusCode, body)',
+      '}'
+    ].join(NL);
+  },
+
+  'nextjs-route': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const BS = String.fromCharCode(92);
+    return [
+      '// app/api/contact/route.ts',
+      'import { NextResponse } from "next/server";',
+      'import crypto from "node:crypto";',
+      '',
+      'export async function POST(req: Request) {',
+      '  try {',
+      '    const { name, email, message } = await req.json();',
+      '',
+      '    const UNSENT_URL = process.env.UNSENT_BASE_URL || "' + c.url + '/api/send";',
+      '    const API_KEY = process.env.UNSENT_API_KEY || "' + c.key + '";',
+      '    const API_SECRET = process.env.UNSENT_API_SECRET || "' + c.sec + '";',
+      '',
+      '    const rawBody = JSON.stringify({',
+      '      to: "support@yourdomain.com",',
+      '      reply_to: email,',
+      '      subject: "Inquiry from " + name,',
+      '      html: "<p><strong>From:</strong> " + name + " (" + email + ")</p><p>" + message + "</p>",',
+      '      from_name: name',
+      '    });',
+      '',
+      '    const timestamp = Math.floor(Date.now() / 1000).toString();',
+      '    const nonce = crypto.randomUUID();',
+      '    const bodyHash = crypto.createHash("sha256").update(rawBody).digest("hex");',
+      '    const canonical = [timestamp, nonce, bodyHash].join("' + BS + 'n");',
+      '    const signature = "sha256=" + crypto.createHmac("sha256", API_SECRET).update(canonical).digest("hex");',
+      '',
+      '    const res = await fetch(UNSENT_URL, {',
+      '      method: "POST",',
+      '      headers: {',
+      '        "Content-Type": "application/json",',
+      '        "X-API-Key": API_KEY,',
+      '        "X-Timestamp": timestamp,',
+      '        "X-Nonce": nonce,',
+      '        "X-Signature": signature',
+      '      },',
+      '      body: rawBody',
+      '    });',
+      '',
+      '    if (!res.ok) {',
+      '      const err = await res.json().catch(() => ({}));',
+      '      throw new Error(err.reason || err.error || "Delivery dispatch failed");',
+      '    }',
+      '',
+      '    return NextResponse.json({ ok: true, data: await res.json() });',
+      '  } catch (err: any) {',
+      '    return NextResponse.json({ error: err.message }, { status: 500 });',
+      '  }',
+      '}'
+    ].join(NL);
+  },
+
+  'nextjs-action': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const SQ = String.fromCharCode(39);
+    const BS = String.fromCharCode(92);
+    return [
+      '// actions/sendEmail.ts',
+      SQ + 'use server' + SQ + ';',
+      '',
+      'import crypto from "node:crypto";',
+      '',
+      'export async function sendWelcomeEmail(to: string, userName: string) {',
+      '  const UNSENT_URL = process.env.UNSENT_BASE_URL || "' + c.url + '/api/send";',
+      '  const API_KEY = process.env.UNSENT_API_KEY || "' + c.key + '";',
+      '  const API_SECRET = process.env.UNSENT_API_SECRET || "' + c.sec + '";',
+      '',
+      '  const rawBody = JSON.stringify({',
+      '    to,',
+      '    subject: "Welcome to the team, " + userName + "!",',
+      '    html: "<p>Hi " + userName + ", we are thrilled to have you onboard.</p>"',
+      '  });',
+      '',
+      '  const timestamp = Math.floor(Date.now() / 1000).toString();',
+      '  const nonce = crypto.randomUUID();',
+      '  const bodyHash = crypto.createHash("sha256").update(rawBody).digest("hex");',
+      '  const canonical = [timestamp, nonce, bodyHash].join("' + BS + 'n");',
+      '  const signature = "sha256=" + crypto.createHmac("sha256", API_SECRET).update(canonical).digest("hex");',
+      '',
+      '  const res = await fetch(UNSENT_URL, {',
+      '    method: "POST",',
+      '    headers: {',
+      '      "Content-Type": "application/json",',
+      '      "X-API-Key": API_KEY,',
+      '      "X-Timestamp": timestamp,',
+      '      "X-Nonce": nonce,',
+      '      "X-Signature": signature',
+      '    },',
+      '    body: rawBody',
+      '  });',
+      '',
+      '  if (!res.ok) {',
+      '    const err = await res.json().catch(() => ({}));',
+      '    throw new Error(err.reason || err.error || "Failed to dispatch email");',
+      '  }',
+      '',
+      '  return res.json();',
+      '}'
+    ].join(NL);
+  }
+};
+
+function makeCodePanel(snippetId, title, subtext) {
+  const eyeIcon = showKeysInSnippets ? '🔒' : '👁';
+  const eyeText = showKeysInSnippets ? 'Hide Keys' : 'Show Keys';
+  const code = (typeof SNIPPET_GENERATORS[snippetId] === 'function')
+    ? SNIPPET_GENERATORS[snippetId](showKeysInSnippets)
+    : '';
+
+  return (subtext ? ('<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 4px;">' + title + '</h3><p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">' + subtext + '</p>') : '') +
+    '<div class="code-panel" data-snippet-id="' + snippetId + '">' +
+      '<div class="code-panel-header">' +
+        '<span>' + title + '</span>' +
+        '<div class="code-panel-actions">' +
+          '<button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;display:flex;align-items:center;gap:4px;" onclick="toggleSnippetKeys()">' +
+            '<span>' + eyeIcon + '</span>' +
+            '<span>' + eyeText + '</span>' +
+          '</button>' +
+          '<button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;font-weight:500;" onclick="copyFullSnippet(this)">' +
+            'Copy Full Request' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      '<pre><code>' + esc(code) + '</code></pre>' +
+    '</div>';
+}
+
 function renderDocCodeSnippets() {
   const container = document.getElementById('lang-pane-content');
   if (!container) return;
 
-  const hasCreds = injectKeysInDocs && (serverApiKey || authToken);
-  const key = hasCreds ? (serverApiKey || authToken) : 'YOUR_API_KEY';
-  const sec = hasCreds && (serverApiSecret || authSecret) ? (serverApiSecret || authSecret) : 'YOUR_HMAC_SECRET';
-  const url = hasCreds ? (serverBaseUrl || window.location.origin) : 'https://reportary-email-service.nagger.workers.dev';
+  const headerNotice = '<div style="background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:16px 18px;margin-bottom:20px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">' +
+      '<div style="font-weight:600;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px;">' +
+        '<span>🔒</span> <span>Required Request Headers (Security Mode: Signed &amp; Full)</span>' +
+      '</div>' +
+      '<span class="circuit-pill" style="color:var(--status-delivered);background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2);font-size:11px;">Replay-Protected &amp; Signed</span>' +
+    '</div>' +
+    '<p style="font-size:12.5px;line-height:1.5;color:var(--text-muted);margin:0 0 10px;">' +
+      'Every POST to <code class="mono" style="color:var(--text-primary);">/api/send</code> requires all 5 headers below. Canonical signature formula: <code class="mono">sha256=HMAC(API_SECRET, timestamp + "\\n" + nonce + "\\n" + sha256(raw_json_body))</code>.' +
+    '</p>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px;font-size:12px;">' +
+      '<div style="background:var(--bg-surface);padding:8px 10px;border-radius:6px;border:1px solid var(--border-subtle);">' +
+        '<div style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">X-API-Key</div>' +
+        '<div style="color:var(--text-muted);font-size:11px;">Server API Key</div>' +
+      '</div>' +
+      '<div style="background:var(--bg-surface);padding:8px 10px;border-radius:6px;border:1px solid var(--border-subtle);">' +
+        '<div style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">X-Timestamp</div>' +
+        '<div style="color:var(--text-muted);font-size:11px;">Unix seconds (±180s)</div>' +
+      '</div>' +
+      '<div style="background:var(--bg-surface);padding:8px 10px;border-radius:6px;border:1px solid var(--border-subtle);">' +
+        '<div style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">X-Nonce</div>' +
+        '<div style="color:var(--text-muted);font-size:11px;">Unique request UUID</div>' +
+      '</div>' +
+      '<div style="background:var(--bg-surface);padding:8px 10px;border-radius:6px;border:1px solid var(--border-subtle);">' +
+        '<div style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">X-Signature</div>' +
+        '<div style="color:var(--text-muted);font-size:11px;">HMAC-SHA256 digest</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
 
-  const NL = String.fromCharCode(10);
-  let html = '';
+  let html = headerNotice;
 
   if (activeLangTab === 'curl') {
-    html = '<div>' +
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 6px;">1. Minimal Email Dispatch</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Queue an email directly with essential fields (recipient, subject, body).</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>cURL (Minimal)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          'curl -X POST ' + esc(url) + '/api/send \\\\',
-          '  -H "Content-Type: application/json" \\\\',
-          '  -H "X-API-Key: ' + esc(key) + '" \\\\',
-          '  -d &#39;{',
-          '    "to": "customer@example.com",',
-          '    "subject": "Quick Notification",',
-          '    "body": "&lt;h2&gt;Hello from Unsent&lt;/h2&gt;&lt;p&gt;Your background worker processed this message.&lt;/p&gt;"',
-          '  }&#39;'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">2. Full-Featured Payload (CC, BCC, Reply-To &amp; Specific Provider)</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Target a specific provider (e.g. Resend, SendGrid, SMTP) and attach audit metadata.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>cURL (Full Payload)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          'curl -X POST ' + esc(url) + '/api/send \\\\',
-          '  -H "Content-Type: application/json" \\\\',
-          '  -H "X-API-Key: ' + esc(key) + '" \\\\',
-          '  -d &#39;{',
-          '    "to": ["customer@example.com", "billing@example.com"],',
-          '    "cc": ["manager@example.com"],',
-          '    "reply_to": "support@example.com",',
-          '    "from_name": "Acme Billing",',
-          '    "subject": "Invoice #ORD-9402 Ready",',
-          '    "html": "&lt;p&gt;Your invoice is ready for download.&lt;/p&gt;",',
-          '    "text": "Your invoice is ready for download.",',
-          '    "provider_id": "smtp_primary",',
-          '    "metadata": { "order_id": 9402, "tier": "enterprise" }',
-          '  }&#39;'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">3. Queue Status &amp; Telemetry Probe</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Query the live queue statistics and status breakdown.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>cURL (Queue Status)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          'curl -X GET ' + esc(url) + '/api/status \\\\',
-          '  -H "X-API-Key: ' + esc(key) + '"'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-    '</div>';
+    html += makeCodePanel('curl-signed', 'cURL (Bash) — Complete Signed Request Script', 'Runnable Bash script computing timestamp, random nonce, SHA-256 body hash, HMAC signature, and executing curl with all 5 headers.');
+    html += makeCodePanel('curl-status', 'cURL — Queue Status &amp; Telemetry Probe', 'Query live queue metrics and delivery counts.');
   } else if (activeLangTab === 'ts') {
-    html = '<div>' +
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 6px;">1. Zero-Dependency Native Fetch (Node.js 18+, Bun, Deno, Workers)</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Direct HTTP call using native fetch with zero third-party dependencies.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>TypeScript (fetch)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          '<span class="ckw">interface</span> <span class="cfn">SendEmailResponse</span> {',
-          '  id: <span class="cfn">number</span>;',
-          '  status: <span class="cstr">&#39;queued&#39;</span> | <span class="cstr">&#39;sent&#39;</span>;',
-          '  message: <span class="cfn">string</span>;',
-          '}',
-          '',
-          '<span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, {',
-          '  method: <span class="cstr">&#39;POST&#39;</span>,',
-          '  headers: {',
-          '    <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
-          '    <span class="cstr">&#39;X-API-Key&#39;</span>: <span class="cstr">&#39;' + esc(key) + '&#39;</span>',
-          '  },',
-          '  body: JSON.<span class="cfn">stringify</span>({',
-          '    to: <span class="cstr">&#39;user@example.com&#39;</span>,',
-          '    subject: <span class="cstr">&#39;Welcome to the Platform&#39;</span>,',
-          '    html: <span class="cstr">&#39;&lt;h1&gt;Welcome!&lt;/h1&gt;&lt;p&gt;Your account has been activated.&lt;/p&gt;&#39;</span>,',
-          '    from_name: <span class="cstr">&#39;Acme Team&#39;</span>',
-          '  })',
-          '});',
-          '',
-          '<span class="ckw">if</span> (!res.ok) {',
-          '  <span class="ckw">const</span> error = <span class="cfn">await</span> res.<span class="cfn">json</span>();',
-          '  <span class="ckw">throw new</span> <span class="cfn">Error</span>(<span class="cstr">&#96;Failed to send email: &#36;{error.error || res.statusText}&#96;</span>);',
-          '}',
-          '',
-          '<span class="ckw">const</span> data: <span class="cfn">SendEmailResponse</span> = <span class="cfn">await</span> res.<span class="cfn">json</span>();',
-          'console.<span class="cfn">log</span>(<span class="cstr">&#39;Email enqueued with ID:&#39;</span>, data.id);'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">2. Reusable Type-Safe Client Helper</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Drop this lightweight helper function directly into your utility library.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>sendEmail.ts</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          '<span class="ckw">export interface</span> <span class="cfn">EmailOptions</span> {',
-          '  to: <span class="cfn">string</span> | <span class="cfn">string</span>[];',
-          '  subject: <span class="cfn">string</span>;',
-          '  html?: <span class="cfn">string</span>;',
-          '  text?: <span class="cfn">string</span>;',
-          '  from_name?: <span class="cfn">string</span>;',
-          '  from_email?: <span class="cfn">string</span>;',
-          '  reply_to?: <span class="cfn">string</span>;',
-          '  cc?: <span class="cfn">string</span> | <span class="cfn">string</span>[];',
-          '  bcc?: <span class="cfn">string</span> | <span class="cfn">string</span>[];',
-          '  provider_id?: <span class="cfn">string</span>;',
-          '  metadata?: <span class="cfn">Record</span>&lt;<span class="cfn">string</span>, <span class="cfn">any</span>&gt;;',
-          '}',
-          '',
-          '<span class="ckw">export async function</span> <span class="cfn">sendEmail</span>(opts: <span class="cfn">EmailOptions</span>) {',
-          '  <span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, {',
-          '    method: <span class="cstr">&#39;POST&#39;</span>,',
-          '    headers: {',
-          '      <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
-          '      <span class="cstr">&#39;X-API-Key&#39;</span>: process.env.UNSENT_API_KEY || <span class="cstr">&#39;' + esc(key) + '&#39;</span>',
-          '    },',
-          '    body: JSON.<span class="cfn">stringify</span>(opts)',
-          '  });',
-          '  <span class="ckw">if</span> (!res.ok) <span class="ckw">throw new</span> <span class="cfn">Error</span>(<span class="cstr">&#96;Unsent error: &#36;{res.status} &#36;{await res.text()}&#96;</span>);',
-          '  <span class="ckw">return</span> res.<span class="cfn">json</span>();',
-          '}'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-    '</div>';
-  } else if (activeLangTab === 'nextjs') {
-    html = '<div>' +
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 6px;">1. Next.js App Router API Route Handler</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Place in <code>app/api/contact/route.ts</code> to handle form submissions securely on the server.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>app/api/contact/route.ts</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          '<span class="ckw">import</span> { NextResponse } <span class="ckw">from</span> <span class="cstr">&#39;next/server&#39;</span>;',
-          '',
-          '<span class="ckw">export async function</span> <span class="cfn">POST</span>(request: <span class="cfn">Request</span>) {',
-          '  <span class="ckw">try</span> {',
-          '    <span class="ckw">const</span> { name, email, message } = <span class="cfn">await</span> request.<span class="cfn">json</span>();',
-          '',
-          '    <span class="ckw">const</span> response = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, {',
-          '      method: <span class="cstr">&#39;POST&#39;</span>,',
-          '      headers: {',
-          '        <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
-          '        <span class="cstr">&#39;X-API-Key&#39;</span>: process.env.UNSENT_API_KEY || <span class="cstr">&#39;' + esc(key) + '&#39;</span>',
-          '      },',
-          '      body: JSON.<span class="cfn">stringify</span>({',
-          '        to: <span class="cstr">&#39;support@yourdomain.com&#39;</span>,',
-          '        reply_to: email,',
-          '        subject: <span class="cstr">&#96;New Contact Message from &#36;{name}&#96;</span>,',
-          '        html: <span class="cstr">&#96;&lt;p&gt;&lt;strong&gt;From:&lt;/strong&gt; &#36;{name} (&#36;{email})&lt;/p&gt;&lt;p&gt;&#36;{message}&lt;/p&gt;&#96;</span>',
-          '      })',
-          '    });',
-          '',
-          '    <span class="ckw">if</span> (!response.ok) <span class="ckw">throw new</span> <span class="cfn">Error</span>(<span class="cstr">&#39;Delivery dispatch failed&#39;</span>);',
-          '    <span class="ckw">return</span> NextResponse.<span class="cfn">json</span>({ ok: <span class="ckw">true</span> });',
-          '  } <span class="ckw">catch</span> (err: <span class="cfn">any</span>) {',
-          '    <span class="ckw">return</span> NextResponse.<span class="cfn">json</span>({ error: err.message }, { status: <span class="cnum">500</span> });',
-          '  }',
-          '}'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">2. Next.js Server Action</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Execute directly from React Server Components or forms.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>actions/sendEmail.ts</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          '<span class="cstr">&#39;use server&#39;</span>;',
-          '',
-          '<span class="ckw">export async function</span> <span class="cfn">sendWelcomeEmail</span>(to: <span class="cfn">string</span>, userName: <span class="cfn">string</span>) {',
-          '  <span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, {',
-          '    method: <span class="cstr">&#39;POST&#39;</span>,',
-          '    headers: {',
-          '      <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
-          '      <span class="cstr">&#39;X-API-Key&#39;</span>: process.env.UNSENT_API_KEY || <span class="cstr">&#39;' + esc(key) + '&#39;</span>',
-          '    },',
-          '    body: JSON.<span class="cfn">stringify</span>({',
-          '      to,',
-          '      subject: <span class="cstr">&#96;Welcome to the team, &#36;{userName}!&#96;</span>,',
-          '      html: <span class="cstr">&#96;&lt;p&gt;Hi &#36;{userName}, we are thrilled to have you.&lt;/p&gt;&#96;</span>',
-          '    })',
-          '  });',
-          '  <span class="ckw">return</span> res.<span class="cfn">json</span>();',
-          '}'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-    '</div>';
+    html += makeCodePanel('ts-signed', 'TypeScript / Node.js — Native Signed Fetch', 'Direct execution using Node 18+ native fetch and standard node:crypto library.');
+    html += makeCodePanel('ts-helper', 'TypeScript — Reusable Signed Client Helper (sendEmail.ts)', 'Drop-in helper function that automatically signs and dispatches emails.');
   } else if (activeLangTab === 'python') {
-    html = '<div>' +
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 6px;">1. Python (Requests)</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Synchronous delivery using the popular requests library.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>Python (requests)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          '<span class="ckw">import</span> requests',
-          '',
-          'UNSENT_URL = <span class="cstr">&quot;' + esc(url) + '/api/send&quot;</span>',
-          'API_KEY = <span class="cstr">&quot;' + esc(key) + '&quot;</span>',
-          '',
-          'payload = {',
-          '    <span class="cstr">&quot;to&quot;</span>: <span class="cstr">&quot;developer@example.com&quot;</span>,',
-          '    <span class="cstr">&quot;subject&quot;</span>: <span class="cstr">&quot;Python Dispatch Test&quot;</span>,',
-          '    <span class="cstr">&quot;html&quot;</span>: <span class="cstr">&quot;&lt;h2&gt;Dispatched from Python&lt;/h2&gt;&lt;p&gt;Delivery handled by Unsent edge worker.&lt;/p&gt;&quot;</span>,',
-          '    <span class="cstr">&quot;from_name&quot;</span>: <span class="cstr">&quot;Python Worker&quot;</span>',
-          '}',
-          '',
-          'headers = {',
-          '    <span class="cstr">&quot;Content-Type&quot;</span>: <span class="cstr">&quot;application/json&quot;</span>,',
-          '    <span class="cstr">&quot;X-API-Key&quot;</span>: API_KEY',
-          '}',
-          '',
-          'response = requests.post(UNSENT_URL, json=payload, headers=headers)',
-          'response.raise_for_status()',
-          'print(<span class="cstr">&quot;Enqueued:&quot;</span>, response.json())'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:24px 0 6px;">2. Asynchronous Python (HTTPX / FastAPI / Celery)</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">High-throughput async execution for FastAPI or background tasks.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>Python (httpx)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          '<span class="ckw">import</span> httpx',
-          '<span class="ckw">import</span> asyncio',
-          '',
-          '<span class="ckw">async def</span> <span class="cfn">send_async_email</span>(recipient: <span class="cfn">str</span>, subject: <span class="cfn">str</span>, body_html: <span class="cfn">str</span>):',
-          '    <span class="ckw">async with</span> httpx.AsyncClient() <span class="ckw">as</span> client:',
-          '        resp = <span class="ckw">await</span> client.post(',
-          '            <span class="cstr">&quot;' + esc(url) + '/api/send&quot;</span>,',
-          '            headers={<span class="cstr">&quot;X-API-Key&quot;</span>: <span class="cstr">&quot;' + esc(key) + '&quot;</span>},',
-          '            json={<span class="cstr">&quot;to&quot;</span>: recipient, <span class="cstr">&quot;subject&quot;</span>: subject, <span class="cstr">&quot;html&quot;</span>: body_html}',
-          '        )',
-          '        resp.raise_for_status()',
-          '        <span class="ckw">return</span> resp.json()',
-          '',
-          'asyncio.run(send_async_email(<span class="cstr">&quot;user@example.com&quot;</span>, <span class="cstr">&quot;Async Alert&quot;</span>, <span class="cstr">&quot;&lt;p&gt;Async delivery completed.&lt;/p&gt;&quot;</span>))'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-    '</div>';
+    html += makeCodePanel('python-signed', 'Python 3 — Synchronous Requests with HMAC-SHA256', 'Production script using requests, hashlib, and hmac.');
+    html += makeCodePanel('python-async', 'Python — Asynchronous Dispatch (HTTPX / FastAPI)', 'Non-blocking async dispatch for high-throughput ASGI workers.');
   } else if (activeLangTab === 'go') {
-    html = '<div>' +
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 6px;">Go (Standard Library net/http)</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Idiomatic Go with typed structs and context cancellation support.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>main.go</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          '<span class="ckw">package</span> main',
-          '',
-          '<span class="ckw">import</span> (',
-          '    <span class="cstr">&quot;bytes&quot;</span>',
-          '    <span class="cstr">&quot;context&quot;</span>',
-          '    <span class="cstr">&quot;encoding/json&quot;</span>',
-          '    <span class="cstr">&quot;fmt&quot;</span>',
-          '    <span class="cstr">&quot;net/http&quot;</span>',
-          '    <span class="cstr">&quot;time&quot;</span>',
-          ')',
-          '',
-          '<span class="ckw">type</span> <span class="cfn">EmailPayload</span> <span class="ckw">struct</span> {',
-          '    To      <span class="cfn">string</span> <span class="cstr">&#96;json:&quot;to&quot;&#96;</span>',
-          '    Subject <span class="cfn">string</span> <span class="cstr">&#96;json:&quot;subject&quot;&#96;</span>',
-          '    HTML    <span class="cfn">string</span> <span class="cstr">&#96;json:&quot;html&quot;&#96;</span>',
-          '}',
-          '',
-          '<span class="ckw">func</span> <span class="cfn">main</span>() {',
-          '    payload := <span class="cfn">EmailPayload</span>{',
-          '        To:      <span class="cstr">&quot;client@domain.com&quot;</span>,',
-          '        Subject: <span class="cstr">&quot;Go Service Notification&quot;</span>,',
-          '        HTML:    <span class="cstr">&quot;&lt;p&gt;Sent directly from Go standard library&lt;/p&gt;&quot;</span>,',
-          '    }',
-          '    bodyBytes, _ := json.<span class="cfn">Marshal</span>(payload)',
-          '',
-          '    ctx, cancel := context.<span class="cfn">WithTimeout</span>(context.<span class="cfn">Background</span>(), 5*time.Second)',
-          '    <span class="ckw">defer</span> cancel()',
-          '',
-          '    req, _ := http.<span class="cfn">NewRequestWithContext</span>(ctx, <span class="cstr">&quot;POST&quot;</span>, <span class="cstr">&quot;' + esc(url) + '/api/send&quot;</span>, bytes.<span class="cfn">NewReader</span>(bodyBytes))',
-          '    req.Header.<span class="cfn">Set</span>(<span class="cstr">&quot;Content-Type&quot;</span>, <span class="cstr">&quot;application/json&quot;</span>)',
-          '    req.Header.<span class="cfn">Set</span>(<span class="cstr">&quot;X-API-Key&quot;</span>, <span class="cstr">&quot;' + esc(key) + '&quot;</span>)',
-          '',
-          '    resp, err := http.DefaultClient.<span class="cfn">Do</span>(req)',
-          '    <span class="ckw">if</span> err != nil { panic(err) }',
-          '    <span class="ckw">defer</span> resp.Body.<span class="cfn">Close</span>()',
-          '',
-          '    fmt.<span class="cfn">Println</span>(<span class="cstr">&quot;Status:&quot;</span>, resp.Status)',
-          '}'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-    '</div>';
-  } else if (activeLangTab === 'php') {
-    html = '<div>' +
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 6px;">PHP (cURL)</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Native PHP integration with robust error handling and HTTP status verification.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>send.php</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          '&lt;?php',
-          '$payload = [',
-          '    <span class="cstr">&quot;to&quot;</span> =&gt; <span class="cstr">&quot;customer@example.com&quot;</span>,',
-          '    <span class="cstr">&quot;subject&quot;</span> =&gt; <span class="cstr">&quot;PHP Dispatch Order&quot;</span>,',
-          '    <span class="cstr">&quot;html&quot;</span> =&gt; <span class="cstr">&quot;&lt;h1&gt;Invoice Ready&lt;/h1&gt;&lt;p&gt;Your payment was confirmed.&lt;/p&gt;&quot;</span>',
-          '];',
-          '',
-          '$ch = <span class="cfn">curl_init</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>);',
-          '<span class="cfn">curl_setopt_array</span>($ch, [',
-          '    CURLOPT_POST =&gt; <span class="ckw">true</span>,',
-          '    CURLOPT_RETURNTRANSFER =&gt; <span class="ckw">true</span>,',
-          '    CURLOPT_HTTPHEADER =&gt; [',
-          '        <span class="cstr">&#39;Content-Type: application/json&#39;</span>,',
-          '        <span class="cstr">&#39;X-API-Key: ' + esc(key) + '&#39;</span>',
-          '    ],',
-          '    CURLOPT_POSTFIELDS =&gt; <span class="cfn">json_encode</span>($payload)',
-          ']);',
-          '',
-          '$response = <span class="cfn">curl_exec</span>($ch);',
-          '$statusCode = <span class="cfn">curl_getinfo</span>($ch, CURLINFO_HTTP_CODE);',
-          '<span class="cfn">curl_close</span>($ch);',
-          '',
-          '<span class="ckw">if</span> ($statusCode === <span class="cnum">200</span>) {',
-          '    echo <span class="cstr">&quot;Enqueued: &quot;</span> . $response;',
-          '} <span class="ckw">else</span> {',
-          '    echo <span class="cstr">&quot;Error: &quot;</span> . $response;',
-          '}'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-    '</div>';
-  } else if (activeLangTab === 'hmac') {
-    html = '<div>' +
-      '<h3 style="font-size:14px;font-weight:600;color:var(--text-primary);margin:0 0 6px;">Cryptographic HMAC-SHA256 Signatures</h3>' +
-      '<p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">Protect requests against replay attacks and tampering in <code>signed</code> or <code>full</code> security modes.</p>' +
-      '<div class="code-panel">' +
-        '<div class="code-panel-header"><span>JavaScript (Node.js / Web Crypto)</span><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy Code</button></div>' +
-        '<pre><code>' + [
-          '<span class="ckw">import</span> crypto <span class="ckw">from</span> <span class="cstr">&#39;node:crypto&#39;</span>;',
-          '',
-          '<span class="ckw">const</span> API_KEY = <span class="cstr">&#39;' + esc(key) + '&#39;</span>;',
-          '<span class="ckw">const</span> API_SECRET = <span class="cstr">&#39;' + esc(sec) + '&#39;</span>;',
-          '',
-          '<span class="ckw">const</span> timestamp = Math.<span class="cfn">floor</span>(Date.<span class="cfn">now</span>() / <span class="cnum">1000</span>).<span class="cfn">toString</span>();',
-          '<span class="ckw">const</span> nonce = crypto.<span class="cfn">randomUUID</span>();',
-          '<span class="ckw">const</span> bodyStr = JSON.<span class="cfn">stringify</span>({ to: <span class="cstr">&#39;user@example.com&#39;</span>, subject: <span class="cstr">&#39;Signed Request&#39;</span>, body: <span class="cstr">&#39;Secure message&#39;</span> });',
-          '',
-          '<span class="ccm">// 1. Compute SHA-256 of the raw body</span>',
-          '<span class="ckw">const</span> bodyHash = crypto.<span class="cfn">createHash</span>(<span class="cstr">&#39;sha256&#39;</span>).<span class="cfn">update</span>(bodyStr).<span class="cfn">digest</span>(<span class="cstr">&#39;hex&#39;</span>);',
-          '',
-          '<span class="ccm">// 2. Build canonical message: timestamp + newline + nonce + newline + bodyHash</span>',
-          '<span class="ckw">const</span> canonical = [timestamp, nonce, bodyHash].<span class="cfn">join</span>(String.fromCharCode(10));',
-          '',
-          '<span class="ccm">// 3. Compute HMAC-SHA256 signature</span>',
-          '<span class="ckw">const</span> signature = <span class="cstr">&#39;sha256=&#39;</span> + crypto.<span class="cfn">createHmac</span>(<span class="cstr">&#39;sha256&#39;</span>, API_SECRET).<span class="cfn">update</span>(canonical).<span class="cfn">digest</span>(<span class="cstr">&#39;hex&#39;</span>);',
-          '',
-          '<span class="ccm">// 4. Attach authentication headers</span>',
-          '<span class="ckw">const</span> headers = {',
-          '  <span class="cstr">&#39;Content-Type&#39;</span>: <span class="cstr">&#39;application/json&#39;</span>,',
-          '  <span class="cstr">&#39;X-API-Key&#39;</span>: API_KEY,',
-          '  <span class="cstr">&#39;X-Timestamp&#39;</span>: timestamp,',
-          '  <span class="cstr">&#39;X-Nonce&#39;</span>: nonce,',
-          '  <span class="cstr">&#39;X-Signature&#39;</span>: signature',
-          '};',
-          '',
-          '<span class="ckw">const</span> res = <span class="cfn">await</span> <span class="cfn">fetch</span>(<span class="cstr">&#39;' + esc(url) + '/api/send&#39;</span>, { method: <span class="cstr">&#39;POST&#39;</span>, headers, body: bodyStr });'
-        ].join(NL) + '</code></pre>' +
-      '</div>' +
-    '</div>';
+    html += makeCodePanel('go-signed', 'Go — Standard Library (net/http &amp; crypto/hmac)', 'Idiomatic, zero-dependency Go implementation with context timeout and all 5 authentication headers.');
+  } else if (activeLangTab === 'nextjs') {
+    html += makeCodePanel('nextjs-route', 'Next.js App Router — Route Handler (app/api/contact/route.ts)', 'Secure server-side route handler for contact and inquiry forms.');
+    html += makeCodePanel('nextjs-action', 'Next.js — Server Action (actions/sendEmail.ts)', 'Server Action for React Server Components and client form bindings.');
   }
 
   container.innerHTML = html;
@@ -3340,20 +3829,37 @@ function renderEmailTemplates() {
   if (!container) return;
 
   container.innerHTML = EMAIL_TEMPLATES.map(t => {
-    return '<div class="tpl-card">' +
+    return '<div class="tpl-card" id="tpl-card-' + t.id + '">' +
       '<div class="tpl-card-header">' +
         '<div class="tpl-info">' +
           '<h4>' + esc(t.title) + '</h4>' +
           '<p>' + esc(t.desc) + '</p>' +
         '</div>' +
-        '<div class="tpl-actions">' +
-          '<button class="btn-subtle btn-copy-tpl" data-tpl-id="' + t.id + '" style="height:32px;font-size:12px;padding:0 12px;">Copy HTML</button>' +
-          '<button class="btn-action-primary btn-load-tpl" data-tpl-id="' + t.id + '" style="height:32px;font-size:12px;padding:0 12px;">Load in Dispatcher ↗</button>' +
+        '<div class="tpl-header-controls">' +
+          '<div class="tpl-view-switcher" role="tablist">' +
+            '<button class="tpl-view-btn active" data-view="preview" onclick="switchTplView(\\'' + t.id + '\\', \\'preview\\')">' +
+              '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ' +
+              'Preview' +
+            '</button>' +
+            '<button class="tpl-view-btn" data-view="code" onclick="switchTplView(\\'' + t.id + '\\', \\'code\\')">' +
+              '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> ' +
+              'HTML Code' +
+            '</button>' +
+            '<button class="tpl-view-btn" data-view="split" onclick="switchTplView(\\'' + t.id + '\\', \\'split\\')">' +
+              '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg> ' +
+              'Split' +
+            '</button>' +
+          '</div>' +
+          '<div class="tpl-actions">' +
+            '<button class="btn-subtle" onclick="openTemplatePreview(\\'' + t.id + '\\')" style="height:30px;font-size:12px;padding:0 10px;" title="Open in new tab">↗ Full</button>' +
+            '<button class="btn-subtle btn-copy-tpl" data-tpl-id="' + t.id + '" style="height:30px;font-size:12px;padding:0 12px;">Copy HTML</button>' +
+            '<button class="btn-action-primary btn-load-tpl" data-tpl-id="' + t.id + '" style="height:30px;font-size:12px;padding:0 12px;">Load in Dispatcher ↗</button>' +
+          '</div>' +
         '</div>' +
       '</div>' +
-      '<div class="tpl-body">' +
+      '<div class="tpl-body tpl-mode-preview" id="tpl-body-' + t.id + '">' +
         '<div class="tpl-preview-pane">' +
-          '<iframe class="tpl-preview-frame" id="iframe-' + t.id + '" sandbox="allow-same-origin" title="' + esc(t.title) + '"></iframe>' +
+          '<iframe class="tpl-preview-frame" id="iframe-' + t.id + '" sandbox="allow-same-origin" title="' + esc(t.title) + '" onload="fitTemplateIframe(this)"></iframe>' +
         '</div>' +
         '<div class="tpl-code-pane">' +
           '<pre><code>' + esc(t.html) + '</code></pre>' +
@@ -3380,9 +3886,51 @@ function renderEmailTemplates() {
   setTimeout(() => {
     EMAIL_TEMPLATES.forEach(t => {
       const ifr = document.getElementById('iframe-' + t.id);
-      if (ifr) ifr.srcdoc = t.html;
+      if (ifr) {
+        ifr.srcdoc = t.html;
+        ifr.onload = function() { fitTemplateIframe(ifr); };
+      }
     });
-  }, 50);
+  }, 40);
+}
+
+function switchTplView(tplId, mode) {
+  const card = document.getElementById('tpl-card-' + tplId);
+  const body = document.getElementById('tpl-body-' + tplId);
+  if (!card || !body) return;
+  card.querySelectorAll('.tpl-view-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
+  });
+  body.classList.remove('tpl-mode-preview', 'tpl-mode-code', 'tpl-mode-split');
+  body.classList.add('tpl-mode-' + mode);
+
+  if (mode === 'preview' || mode === 'split') {
+    const ifr = document.getElementById('iframe-' + tplId);
+    if (ifr) fitTemplateIframe(ifr);
+  }
+}
+
+function fitTemplateIframe(ifr) {
+  if (!ifr) return;
+  try {
+    const doc = ifr.contentDocument || ifr.contentWindow?.document;
+    if (doc && doc.body) {
+      const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
+      if (h > 100) {
+        ifr.style.height = Math.min(Math.max(h + 40, 520), 1000) + 'px';
+        return;
+      }
+    }
+  } catch (err) {}
+  ifr.style.height = '520px';
+}
+
+function openTemplatePreview(tplId) {
+  const t = EMAIL_TEMPLATES.find(x => x.id === tplId);
+  if (!t) return;
+  const blob = new Blob([t.html], { type: 'text/html;charset=utf-8' });
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, '_blank');
 }
 
 function copyTemplateHtml(tplId, btn) {
@@ -3507,14 +4055,15 @@ function renderApiReference() {
 }
 
 // ── Local Dev Helper & Init ────────────────────────────────
-function useDevKey() {
-  document.getElementById('ak-input').value = 'Ddj1ZHJYculiA34hussZFzLdgDupBzIE';
-  if (document.getElementById('ak-input-hmac')) document.getElementById('ak-input-hmac').value = 'Ddj1ZHJYculiA34hussZFzLdgDupBzIE';
-  if (document.getElementById('sk-input')) document.getElementById('sk-input').value = 'zuLydZWeDvZXk5t230UDWrqaeqtTwQ3K';
+function useDevCredentials() {
+  const u = document.getElementById('login-username');
+  const p = document.getElementById('login-password');
+  if (u) u.value = 'admin';
+  if (p) p.value = 'unsent_admin_2026!';
   doAuth();
 }
 
-['ak-input', 'ak-input-hmac', 'sk-input'].forEach(id => {
+['login-username', 'login-password'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('keydown', ev => { if (ev.key === 'Enter') doAuth(); });
 });
@@ -3546,24 +4095,16 @@ if (initialRoute.docsSubTab) {
 }
 switchView(initialRoute.viewId, false);
 
-const urlParams = new URLSearchParams(window.location.search);
-const queryKey = urlParams.get('key');
-const savedKey = queryKey || sessionStorage.getItem('unsent_api_key');
-const savedSecret = sessionStorage.getItem('unsent_api_secret');
-const savedMode = sessionStorage.getItem('unsent_auth_mode') || 'apikey';
+const savedSession = sessionStorage.getItem('unsent_session_token');
+const savedUser = sessionStorage.getItem('unsent_admin_user');
 
-if (savedKey) {
-  authToken = savedKey;
-  authSecret = savedSecret || '';
-  authMode = savedMode;
-  if (document.getElementById('ak-input')) document.getElementById('ak-input').value = savedKey;
-  if (document.getElementById('ak-input-hmac')) document.getElementById('ak-input-hmac').value = savedKey;
-  if (document.getElementById('sk-input') && savedSecret) document.getElementById('sk-input').value = savedSecret;
-  setAuthMode(authMode);
-  doAuth().then(function() {
-    const route = resolveCurrentRoute();
-    switchView(route.viewId, false);
-  });
+if (savedSession) {
+  document.getElementById('auth-overlay').style.display = 'none';
+  document.getElementById('qr-base').textContent = window.location.origin;
+  document.getElementById('qr-auth').textContent = 'Admin: ' + (savedUser || 'admin');
+  fetchDash();
+  fetchProviders();
+  fetchKeys();
 } else {
   if (initialRoute.viewId === 'v-docs') {
     renderCredentialsCard();

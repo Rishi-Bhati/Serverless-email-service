@@ -123,6 +123,25 @@ export async function verifyRequest(
 ): Promise<AuthResult> {
   const mode = (env.SECURITY_MODE || 'full').toLowerCase();
 
+  // ── Step 0: Dashboard authenticated session (Bearer token) ──────────────
+  const authHeader = request.headers.get('Authorization') || '';
+  const sessionToken = authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7).trim()
+    : request.headers.get('X-Session-Token');
+
+  if (sessionToken) {
+    const session = await verifySessionToken(sessionToken, env.API_SECRET || env.API_KEY || 'unsent_secret');
+    if (session.ok) {
+      const headerSender = request.headers.get('X-Sender-Email') || '';
+      const headerProviderId = request.headers.get('X-Provider-Id') || '';
+      return {
+        ok: true,
+        explicitSenderEmail: headerSender || undefined,
+        explicitProviderId: headerProviderId || undefined,
+      };
+    }
+  }
+
   // ── Step 1: API key (all modes) ──────────────────────────────────────────
   if (!env.API_KEY) {
     return { ok: false, reason: 'Server misconfiguration: API_KEY not set' };
@@ -273,3 +292,62 @@ export async function verifyRequest(
     explicitProviderId: headerProviderId || undefined,
   };
 }
+
+/**
+ * Create a signed session token for authenticated dashboard sessions.
+ * Token structure: base64(username:expiresAt) + "." + signature
+ */
+export async function createSessionToken(username: string, secret: string): Promise<string> {
+  const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  const payload = `${username}:${expiresAt}`;
+  const payloadB64 = btoa(payload);
+  const sig = await hmacSha256Hex(secret, payload);
+  return `${payloadB64}.${sig}`;
+}
+
+/**
+ * Verify a signed dashboard session token.
+ */
+export async function verifySessionToken(
+  token: string,
+  secret: string
+): Promise<{ ok: boolean; username?: string }> {
+  if (!token || typeof token !== 'string') return { ok: false };
+  const parts = token.split('.');
+  if (parts.length !== 2) return { ok: false };
+  const [payloadB64, sig] = parts;
+  try {
+    const payload = atob(payloadB64);
+    const colonIdx = payload.lastIndexOf(':');
+    if (colonIdx === -1) return { ok: false };
+    const username = payload.slice(0, colonIdx);
+    const expiresAt = parseInt(payload.slice(colonIdx + 1), 10);
+    if (isNaN(expiresAt) || Date.now() > expiresAt) return { ok: false };
+
+    const expectedSig = await hmacSha256Hex(secret, payload);
+    if (!timingSafeEqual(sig.toLowerCase(), expectedSig.toLowerCase())) {
+      return { ok: false };
+    }
+    return { ok: true, username };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/**
+ * Verify username & password against env variables.
+ */
+export async function verifyAdminCredentials(
+  user: string,
+  pass: string,
+  env: Env
+): Promise<boolean> {
+  const expectedUser = env.ADMIN_USERNAME || env.DASHBOARD_USERNAME || 'admin';
+  const expectedPass = env.ADMIN_PASSWORD || env.DASHBOARD_PASSWORD || env.API_SECRET || env.API_KEY || 'unsent_admin_2026!';
+
+  if (!user || !pass) return false;
+  const userOk = timingSafeEqual(user.trim(), expectedUser.trim());
+  const passOk = timingSafeEqual(pass.trim(), expectedPass.trim());
+  return userOk && passOk;
+}
+

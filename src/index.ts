@@ -1,6 +1,13 @@
 import { type Env, processQueue } from './queue';
 import { renderDashboard } from './dashboard';
-import { verifyRequest, verifyApiKey, validateSenderAuthorization } from './auth';
+import {
+  verifyRequest,
+  verifyApiKey,
+  validateSenderAuthorization,
+  createSessionToken,
+  verifySessionToken,
+  verifyAdminCredentials,
+} from './auth';
 import { encryptCredentials, decryptCredentials } from './crypto';
 import {
   getAllProviders,
@@ -87,6 +94,30 @@ export default {
         d1: 'bound',
         timestamp: Date.now(),
       });
+    }
+
+    // 2c. POST /api/auth/login — Dashboard administrator authentication
+    if (url.pathname === '/api/auth/login' && request.method === 'POST') {
+      try {
+        const body: any = await request.json();
+        const username = String(body.username || '');
+        const password = String(body.password || '');
+
+        const valid = await verifyAdminCredentials(username, password, env);
+        if (!valid) {
+          return jsonResponse({ error: 'Invalid username or password' }, 401);
+        }
+
+        const token = await createSessionToken(username, env.API_SECRET || env.API_KEY || 'unsent_secret');
+        return jsonResponse({
+          success: true,
+          token,
+          username,
+          expires_in: 86400,
+        });
+      } catch (err: any) {
+        return jsonResponse({ error: 'Authentication failed: ' + (err.message || String(err)) }, 400);
+      }
     }
 
     // 3. POST /api/send — Queue an email for sending
@@ -212,12 +243,34 @@ export default {
       }
     }
 
-    // 4. Authenticate all other /api/* endpoints with API Key
+    // 4. Authenticate all other /api/* endpoints
+    // Accepts either:
+    // - Dashboard session: Authorization: Bearer <sessionToken> or X-Session-Token
+    // - Programmatic API Client: X-API-Key
     if (url.pathname.startsWith('/api/')) {
-      const authorized = await verifyApiKey(request, env);
+      let authorized = false;
+
+      // Check Bearer session token first (from dashboard username/password login)
+      const authHeader = request.headers.get('Authorization') || '';
+      const sessionToken = authHeader.startsWith('Bearer ')
+        ? authHeader.slice(7).trim()
+        : request.headers.get('X-Session-Token');
+
+      if (sessionToken) {
+        const session = await verifySessionToken(sessionToken, env.API_SECRET || env.API_KEY || 'unsent_secret');
+        if (session.ok) {
+          authorized = true;
+        }
+      }
+
+      // Check programmatic API Key (for external API scripts / developers)
+      if (!authorized) {
+        authorized = await verifyApiKey(request, env);
+      }
+
       if (!authorized) {
         return jsonResponse(
-          { error: 'Unauthorized: Invalid or missing API Key' },
+          { error: 'Unauthorized: Invalid credentials or expired session' },
           401
         );
       }
@@ -226,11 +279,16 @@ export default {
     // 4b. GET /api/keys — Securely return environment keys and configuration for authenticated sessions
     if (url.pathname === '/api/keys' && request.method === 'GET') {
       try {
+        const defaultBaseUrl = 'https://unsent.rishibhati.in';
+        const baseUrl = (url.origin && !url.origin.includes('localhost') && !url.origin.includes('127.0.0.1'))
+          ? url.origin
+          : defaultBaseUrl;
+
         return jsonResponse({
           api_key: env.API_KEY || '',
           api_secret: env.API_SECRET || '',
           security_mode: env.SECURITY_MODE || 'full',
-          base_url: url.origin,
+          base_url: baseUrl,
         });
       } catch (err: any) {
         return jsonResponse({ error: err.message || String(err) }, 500);
