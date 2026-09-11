@@ -116,6 +116,7 @@ export async function processQueue(env: Env): Promise<void> {
   let sharedSmtpMailerKey: string | null = null;
   let processedCount = 0;
   const MAX_PER_BATCH = 25;
+  const batchStartTime = Date.now();
 
   try {
     while (processedCount < MAX_PER_BATCH) {
@@ -236,6 +237,11 @@ export async function processQueue(env: Env): Promise<void> {
             console.log(`Attempting send for email ${emailRow.id} via provider "${provider.name}" (${provider.type}, Priority ${provider.priority})...`);
 
             const mailerToPass = (provider.type === 'smtp' && sharedSmtpMailerKey === provider.id) ? sharedSmtpMailer : null;
+            if (provider.type === 'smtp' && sharedSmtpMailer && sharedSmtpMailerKey !== provider.id) {
+              try { await sharedSmtpMailer.close(); } catch (_) {}
+              sharedSmtpMailer = null;
+              sharedSmtpMailerKey = null;
+            }
             const result = await sendEmailViaProvider(provider, emailMessage, mailerToPass, env.API_SECRET);
             if (provider.type === 'smtp' && result.mailerInstance) {
               sharedSmtpMailer = result.mailerInstance;
@@ -248,6 +254,7 @@ export async function processQueue(env: Env): Promise<void> {
             usedFromEmail = emailRow.from_email || provider.from_email;
             usedFromName = emailRow.from_name || provider.from_name || '';
 
+            provider.daily_sent_count++;
             await incrementProviderDailySent(env.DB, provider.id);
             console.log(`Email ID ${emailRow.id} sent successfully via "${provider.name}".`);
             break;
@@ -326,7 +333,7 @@ export async function processQueue(env: Env): Promise<void> {
             sharedSmtpMailer = null;
           }
         }
-      } else {
+      } else if (!sendSuccess) {
         failoverHistory.push({
           provider: 'None',
           type: 'none',
@@ -376,10 +383,14 @@ export async function processQueue(env: Env): Promise<void> {
         ).run();
       }
 
-      // 9. Throttle delay before next message
-      const throttleDelay = parseInt(env.SMTP_THROTTLE_DELAY_MS || '1000', 10);
+      // 9. Throttle delay & wall-clock budget protection (prevent Cloudflare 30s isolate kill)
+      if (Date.now() - batchStartTime > 20000) {
+        console.log('Batch execution reached 20s wall-clock threshold; yielding to subsequent invocation.');
+        break;
+      }
+      const throttleDelay = parseInt(env.SMTP_THROTTLE_DELAY_MS || '250', 10);
       if (throttleDelay > 0) {
-        await new Promise((resolve) => setTimeout(resolve, throttleDelay));
+        await new Promise((resolve) => setTimeout(resolve, Math.min(throttleDelay, 500)));
       }
     }
   } finally {

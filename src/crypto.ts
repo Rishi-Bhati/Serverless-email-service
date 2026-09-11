@@ -10,6 +10,9 @@ export function bufToHex(buf: ArrayBuffer): string {
 
 export function hexToBuf(hex: string): ArrayBuffer {
   const clean = hex.replace(/[^0-9a-fA-F]/g, '');
+  if (clean.length % 2 !== 0) {
+    throw new Error('Invalid hex string: odd character length');
+  }
   const bytes = new Uint8Array(clean.length / 2);
   for (let i = 0; i < bytes.length; i++) {
     bytes[i] = parseInt(clean.substring(i * 2, i * 2 + 2), 16);
@@ -46,21 +49,26 @@ export function timingSafeEqual(a: string, b: string): boolean {
   const encoder = new TextEncoder();
   const aBytes = encoder.encode(a);
   const bBytes = encoder.encode(b);
-  const maxLen = Math.max(aBytes.length, bBytes.length);
-  let diff = aBytes.length ^ bBytes.length;
-  for (let i = 0; i < maxLen; i++) {
-    const byteA = i < aBytes.length ? aBytes[i] : 0;
-    const byteB = i < bBytes.length ? bBytes[i] : 0;
-    diff |= byteA ^ byteB;
+  if (aBytes.length !== bBytes.length) {
+    let dummy = 0;
+    for (let i = 0; i < aBytes.length; i++) {
+      dummy |= aBytes[i] ^ aBytes[i];
+    }
+    return false;
+  }
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) {
+    diff |= aBytes[i] ^ bBytes[i];
   }
   return diff === 0;
 }
 
 /**
- * Derive a 256-bit AES-GCM CryptoKey from secret using SHA-256
+ * Derive a 256-bit AES-GCM CryptoKey from secret using domain-separated SHA-256
  */
-async function getAesGcmKey(secret: string): Promise<CryptoKey> {
-  const keyMaterial = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+async function getAesGcmKey(secret: string, legacy = false): Promise<CryptoKey> {
+  const keyTag = legacy ? secret : `unsent:aes-256-gcm:v1:${secret}`;
+  const keyMaterial = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(keyTag));
   return crypto.subtle.importKey(
     'raw',
     keyMaterial,
@@ -116,14 +124,25 @@ export async function decryptCredentials(
     if (!secret) {
       throw new Error('API_SECRET is required to decrypt provider credentials');
     }
-    const key = await getAesGcmKey(secret);
+    let decryptedBuf: ArrayBuffer;
     const iv = hexToBuf(parsed.iv);
     const data = hexToBuf(parsed.data);
-    const decryptedBuf = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: new Uint8Array(iv) },
-      key,
-      data
-    );
+    try {
+      const key = await getAesGcmKey(secret, false);
+      decryptedBuf = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: new Uint8Array(iv) },
+        key,
+        data
+      );
+    } catch {
+      // Fall back to legacy non-domain-separated key
+      const legacyKey = await getAesGcmKey(secret, true);
+      decryptedBuf = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: new Uint8Array(iv) },
+        legacyKey,
+        data
+      );
+    }
     const decryptedText = new TextDecoder().decode(decryptedBuf);
     return JSON.parse(decryptedText);
   }

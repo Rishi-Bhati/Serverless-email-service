@@ -248,8 +248,9 @@ export async function sendEmailViaProvider(
     throw new Error(`Invalid or undecryptable credentials for provider "${provider.name}": ${err.message}`);
   }
 
-  const senderEmail = message.fromEmail || provider.from_email;
-  const senderName = message.fromName || provider.from_name || '';
+  const senderEmail = (message.fromEmail || provider.from_email || '').replace(/[\r\n\0]+/g, '').trim();
+  const senderName = (message.fromName || provider.from_name || '').replace(/[\r\n\0]+/g, '').trim();
+  const cleanSubject = (message.subject || '').replace(/[\r\n\0]+/g, ' ').trim();
   const isHtml = message.body.trim().startsWith('<') || message.body.toLowerCase().includes('html');
 
   switch (provider.type) {
@@ -284,7 +285,7 @@ export async function sendEmailViaProvider(
         to: message.to,
         cc: message.cc && message.cc.length ? message.cc : undefined,
         bcc: message.bcc && message.bcc.length ? message.bcc : undefined,
-        subject: message.subject,
+        subject: cleanSubject,
         text: isHtml ? undefined : message.body,
         html: isHtml ? message.body : undefined,
       });
@@ -308,7 +309,7 @@ export async function sendEmailViaProvider(
           to: message.to,
           cc: message.cc && message.cc.length ? message.cc : undefined,
           bcc: message.bcc && message.bcc.length ? message.bcc : undefined,
-          subject: message.subject,
+          subject: cleanSubject,
           text: isHtml ? undefined : message.body,
           html: isHtml ? message.body : undefined,
         }),
@@ -340,7 +341,7 @@ export async function sendEmailViaProvider(
       const payload = {
         personalizations: [personalizations],
         from: { email: senderEmail, ...(senderName ? { name: senderName } : {}) },
-        subject: message.subject,
+        subject: cleanSubject,
         content: [
           {
             type: isHtml ? 'text/html' : 'text/plain',
@@ -389,7 +390,7 @@ export async function sendEmailViaProvider(
       message.to.forEach(r => formData.append('to', r));
       if (message.cc) message.cc.forEach(r => formData.append('cc', r));
       if (message.bcc) message.bcc.forEach(r => formData.append('bcc', r));
-      formData.append('subject', message.subject);
+      formData.append('subject', cleanSubject);
       if (isHtml) {
         formData.append('html', message.body);
       } else {
@@ -422,7 +423,7 @@ export async function sendEmailViaProvider(
         To: message.to.join(', '),
         Cc: message.cc && message.cc.length ? message.cc.join(', ') : undefined,
         Bcc: message.bcc && message.bcc.length ? message.bcc.join(', ') : undefined,
-        Subject: message.subject,
+        Subject: cleanSubject,
         HtmlBody: isHtml ? message.body : undefined,
         TextBody: isHtml ? undefined : message.body,
       };

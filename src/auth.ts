@@ -130,7 +130,11 @@ export async function verifyRequest(
     : request.headers.get('X-Session-Token');
 
   if (sessionToken) {
-    const session = await verifySessionToken(sessionToken, env.API_SECRET || env.API_KEY || 'unsent_secret');
+    const sessionSecret = (env.API_SECRET || env.API_KEY);
+    if (!sessionSecret) {
+      return { ok: false, reason: 'Server misconfiguration: session secrets missing' };
+    }
+    const session = await verifySessionToken(sessionToken, `unsent:session:v1:${sessionSecret}`);
     if (session.ok) {
       const headerSender = request.headers.get('X-Sender-Email') || '';
       const headerProviderId = request.headers.get('X-Provider-Id') || '';
@@ -218,16 +222,23 @@ export async function verifyRequest(
   let isValidSig = false;
 
   if (headerSender || headerProviderId) {
-    // Header-bound only: timestamp + "\n" + nonce + "\n" + qualifier + "\n" + bodyHash
-    const senderQualifier = headerProviderId
-      ? `provider:${headerProviderId}`
-      : `email:${headerSender}`;
+    // Header-bound: bind both routing headers deterministically when present
+    const qualifiers = [];
+    if (headerProviderId) qualifiers.push(`provider:${headerProviderId}`);
+    if (headerSender) qualifiers.push(`email:${headerSender}`);
+    const senderQualifier = qualifiers.join('&');
     const headerBoundMsg = timestampStr.trim() + '\n' + nonce + '\n' + senderQualifier + '\n' + bodyHash;
     const expectedSigHeader = await hmacSha256Hex(env.API_SECRET, headerBoundMsg);
     isValidSig = timingSafeEqual(normalizedSig, expectedSigHeader);
 
-    // Also try legacy qualifier format (just the raw header value, no prefix) for
-    // backward compatibility with clients that signed before the prefix convention.
+    // Backward compatibility fallback for single-qualifier signatures
+    if (!isValidSig) {
+      const fallbackQualifier = headerProviderId ? `provider:${headerProviderId}` : `email:${headerSender}`;
+      const fallbackMsg = timestampStr.trim() + '\n' + nonce + '\n' + fallbackQualifier + '\n' + bodyHash;
+      isValidSig = timingSafeEqual(normalizedSig, await hmacSha256Hex(env.API_SECRET, fallbackMsg));
+    }
+
+    // Legacy qualifier fallback (raw header without prefix)
     if (!isValidSig) {
       const legacyQualifier = headerSender || headerProviderId;
       const legacyMsg = timestampStr.trim() + '\n' + nonce + '\n' + legacyQualifier + '\n' + bodyHash;
@@ -245,6 +256,7 @@ export async function verifyRequest(
     return { ok: false, reason: 'Invalid signature (request headers or body may have been tampered with)' };
   }
 
+  // ── Step 5: Atomic Nonce Replay Protection (full mode only) ─────────────
   if (mode !== 'full') {
     return {
       ok: true,
@@ -253,16 +265,13 @@ export async function verifyRequest(
     };
   }
 
-  // ── Step 5: Atomic Nonce Replay Protection ──────────────────────────────
   const ttlSeconds = parseInt(env.NONCE_TTL_SECONDS || '300', 10);
-  const nowSecs = Math.floor(Date.now() / 1000);
-  // Guarantee nonce expires strictly AFTER the timestamp acceptance window closes
-  const nonceExpiresAt = Math.max(nowSecs, timestamp) + ttlSeconds + 180;
+  const nonceExpiresAt = Math.max(nowSec, timestamp) + ttlSeconds + 180;
 
   // Nonce sweep runs asynchronously / opportunistically (non-blocking)
   try {
     await env.DB.prepare('DELETE FROM used_nonces WHERE expires_at < ?1')
-      .bind(nowSecs)
+      .bind(nowSec)
       .run();
   } catch (e) {
     console.error('Nonce sweep failed:', e);
@@ -336,6 +345,7 @@ export async function verifySessionToken(
 
 /**
  * Verify username & password against env variables.
+ * Fails closed if passwords are not configured.
  */
 export async function verifyAdminCredentials(
   user: string,
@@ -343,7 +353,12 @@ export async function verifyAdminCredentials(
   env: Env
 ): Promise<boolean> {
   const expectedUser = env.ADMIN_USERNAME || env.DASHBOARD_USERNAME || 'admin';
-  const expectedPass = env.ADMIN_PASSWORD || env.DASHBOARD_PASSWORD || env.API_SECRET || env.API_KEY || 'unsent_admin_2026!';
+  const expectedPass = env.ADMIN_PASSWORD || env.DASHBOARD_PASSWORD;
+
+  if (!expectedPass) {
+    console.error('Security critical: Neither ADMIN_PASSWORD nor DASHBOARD_PASSWORD is configured in Worker environment.');
+    return false;
+  }
 
   if (!user || !pass) return false;
   const userOk = timingSafeEqual(user.trim(), expectedUser.trim());

@@ -2745,7 +2745,7 @@ function renderLogRow(e, pfx, cols) {
             + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="toggleDrawerExpand(\\'' + bid + '\\', this)" title="Toggle expanded height">⤢ Expand</button>'
             + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="openDrawerPreview(\\'' + bid + '\\')" title="Open HTML in new tab">↗ Pop-out</button>'
             + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="copyDrawerHtml(\\'' + bid + '\\', this)">Copy HTML</button>'
-            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="copyVal(\\'' + jsonString.replace(/'/g, "\\\\'") + '\\', this)">Copy JSON</button>'
+            + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="copyDrawerJson(\\'' + bid + '\\', this)">Copy JSON</button>'
           + '</div>'
         + '</div>'
         + '<div id="' + bid + '-preview" style="padding-top:4px;"><iframe id="iframe-' + bid + '" class="drawer-frame" sandbox="allow-popups allow-same-origin" referrerpolicy="no-referrer" onload="fitDrawerIframe(this)" srcdoc="' + esc(e.html_body || e.text_body || '(no payload available)') + '"></iframe></div>'
@@ -2802,9 +2802,31 @@ function openDrawerPreview(bid) {
   const ifr = document.getElementById('iframe-' + bid);
   if (!ifr) return;
   const html = ifr.getAttribute('srcdoc') || '';
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const blobUrl = URL.createObjectURL(blob);
-  window.open(blobUrl, '_blank');
+  const newWin = window.open('', '_blank');
+  if (!newWin) return;
+  try {
+    newWin.opener = null;
+    newWin.document.open();
+    newWin.document.write(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Email Preview</title>'
+      + '<meta http-equiv="Content-Security-Policy" content="default-src \\'none\\'; style-src \\'unsafe-inline\\'; img-src data: https: http:; font-src data: https:;">'
+      + '<style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#111;}</style>'
+      + '</head><body>'
+      + html
+      + '</body></html>'
+    );
+    newWin.document.close();
+  } catch(e) {
+    console.error('Failed to open preview window', e);
+  }
+}
+
+function copyDrawerJson(bid, btn) {
+  const container = document.getElementById(bid + '-json');
+  if (!container) return;
+  const codeEl = container.querySelector('.drawer-code');
+  const text = codeEl ? codeEl.textContent : '';
+  copyVal(text, btn);
 }
 
 function copyDrawerHtml(bid, btn) {

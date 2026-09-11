@@ -49,7 +49,7 @@ const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers':
-    'Content-Type, X-API-Key, X-Timestamp, X-Nonce, X-Signature, X-Sender-Email, X-Provider-Id',
+    'Content-Type, Authorization, X-Session-Token, X-API-Key, X-Timestamp, X-Nonce, X-Signature, X-Sender-Email, X-Provider-Id',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -76,7 +76,8 @@ export default {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'X-Frame-Options': 'DENY',
-          'Content-Security-Policy': "frame-ancestors 'none'",
+          'Content-Security-Policy':
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';",
         },
       });
     }
@@ -108,7 +109,12 @@ export default {
           return jsonResponse({ error: 'Invalid username or password' }, 401);
         }
 
-        const token = await createSessionToken(username, env.API_SECRET || env.API_KEY || 'unsent_secret');
+        const sessionSecret = env.API_SECRET || env.API_KEY;
+        if (!sessionSecret) {
+          return jsonResponse({ error: 'Server misconfiguration: session secrets not set' }, 500);
+        }
+
+        const token = await createSessionToken(username, `unsent:session:v1:${sessionSecret}`);
         return jsonResponse({
           success: true,
           token,
@@ -243,6 +249,8 @@ export default {
       }
     }
 
+    let isAdminSession = false;
+
     // 4. Authenticate all other /api/* endpoints
     // Accepts either:
     // - Dashboard session: Authorization: Bearer <sessionToken> or X-Session-Token
@@ -257,9 +265,13 @@ export default {
         : request.headers.get('X-Session-Token');
 
       if (sessionToken) {
-        const session = await verifySessionToken(sessionToken, env.API_SECRET || env.API_KEY || 'unsent_secret');
-        if (session.ok) {
-          authorized = true;
+        const sessionSecret = env.API_SECRET || env.API_KEY;
+        if (sessionSecret) {
+          const session = await verifySessionToken(sessionToken, `unsent:session:v1:${sessionSecret}`);
+          if (session.ok) {
+            authorized = true;
+            isAdminSession = true;
+          }
         }
       }
 
@@ -279,6 +291,13 @@ export default {
     // 4b. GET /api/keys — Securely return environment keys and configuration for authenticated sessions
     if (url.pathname === '/api/keys' && request.method === 'GET') {
       try {
+        if (!isAdminSession) {
+          return jsonResponse(
+            { error: 'Forbidden: Admin session required to view API credentials' },
+            403
+          );
+        }
+
         const defaultBaseUrl = 'https://unsent.rishibhati.in';
         const baseUrl = (url.origin && !url.origin.includes('localhost') && !url.origin.includes('127.0.0.1'))
           ? url.origin
@@ -501,6 +520,9 @@ export default {
           await env.DB.prepare('UPDATE providers SET is_default = 0 WHERE is_default = 1').run();
         }
 
+        const cleanFromEmail = body.from_email.replace(/[\r\n\0]+/g, '').trim();
+        const cleanFromName = body.from_name ? body.from_name.replace(/[\r\n\0]+/g, '').trim() : null;
+
         await env.DB.prepare(`
           INSERT INTO providers (
             id, name, type, credentials_json, from_email, from_name,
@@ -513,8 +535,8 @@ export default {
           body.name.trim(),
           body.type,
           credsJson,
-          body.from_email.trim(),
-          body.from_name ? body.from_name.trim() : null,
+          cleanFromEmail,
+          cleanFromName,
           priority,
           isDefault,
           dailyLimit,
@@ -559,8 +581,8 @@ export default {
 
         const name = body.name !== undefined ? body.name.trim() : existing.name;
         const type = body.type !== undefined ? body.type : existing.type;
-        const fromEmail = body.from_email !== undefined ? body.from_email.trim() : existing.from_email;
-        const fromName = body.from_name !== undefined ? (body.from_name ? body.from_name.trim() : null) : existing.from_name;
+        const fromEmail = body.from_email !== undefined ? body.from_email.replace(/[\r\n\0]+/g, '').trim() : existing.from_email;
+        const fromName = body.from_name !== undefined ? (body.from_name ? body.from_name.replace(/[\r\n\0]+/g, '').trim() : null) : existing.from_name;
         const priority = body.priority !== undefined ? parseInt(String(body.priority), 10) : existing.priority;
         const dailyLimit = body.daily_limit !== undefined ? parseInt(String(body.daily_limit), 10) : existing.daily_limit;
         const isActive = body.is_active !== undefined ? (body.is_active ? 1 : 0) : existing.is_active;
@@ -673,7 +695,7 @@ export default {
       try {
         const body: any = await request.json();
         const id = body.id || body.provider_id;
-        const testTo = body.to || body.from_email || 'test@example.com';
+        const testTo = (body.to || body.from_email || 'test@example.com').replace(/[\r\n\0]+/g, '').trim();
 
         let provider: ProviderRecord | null = null;
 
@@ -692,8 +714,8 @@ export default {
             name: body.name || 'Ad-hoc Test Provider',
             type: body.type,
             credentials_json: typeof body.credentials === 'string' ? body.credentials : JSON.stringify(body.credentials),
-            from_email: body.from_email,
-            from_name: body.from_name || 'ESET Mail Tester',
+            from_email: body.from_email.replace(/[\r\n\0]+/g, '').trim(),
+            from_name: body.from_name ? body.from_name.replace(/[\r\n\0]+/g, '').trim() : 'ESET Mail Tester',
             priority: 1,
             is_default: 0,
             daily_limit: 0,
