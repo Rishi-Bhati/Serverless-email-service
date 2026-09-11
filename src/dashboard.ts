@@ -2783,36 +2783,52 @@ function switchBodyTab(ev, bid, tab) {
 
 function fitDrawerIframe(ifr) {
   if (!ifr) return;
+  if (ifr.classList.contains('expanded')) return;
   try {
     const doc = ifr.contentDocument || ifr.contentWindow?.document;
     if (doc && doc.body) {
       const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
-      if (h > 120) {
-        ifr.style.height = Math.min(Math.max(h + 36, 540), 1000) + 'px';
+      if (h > 120 && h < 800) {
+        ifr.style.height = Math.min(Math.max(h + 36, 520), 700) + 'px';
         return;
       }
     }
   } catch (err) {}
-  ifr.style.height = '540px';
+  ifr.style.height = '520px';
 }
 
 function toggleDrawerExpand(bid, btn) {
   const ifr = document.getElementById('iframe-' + bid);
-  if (!ifr) return;
-  const isExpanded = ifr.classList.toggle('expanded');
-  if (btn) btn.textContent = isExpanded ? '⤡ Compact' : '⤢ Expand';
-  if (isExpanded) {
-    ifr.style.height = '900px';
-    try {
-      const doc = ifr.contentDocument || ifr.contentWindow?.document;
-      if (doc && doc.body) {
-        const h = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
-        ifr.style.height = Math.max(h + 48, 900) + 'px';
-      }
-    } catch(e) {}
-  } else {
-    fitDrawerIframe(ifr);
+  const rawEl = document.querySelector('#' + bid + '-raw .drawer-code');
+  const jsonEl = document.querySelector('#' + bid + '-json .drawer-code');
+
+  const isExpanded = btn ? btn.getAttribute('data-expanded') === 'true' : (ifr && ifr.classList.contains('expanded'));
+  const nextExpanded = !isExpanded;
+
+  if (btn) {
+    btn.setAttribute('data-expanded', nextExpanded ? 'true' : 'false');
+    btn.textContent = nextExpanded ? '⤡ Compact' : '⤢ Expand';
+    btn.title = nextExpanded ? 'Collapse to standard height' : 'Toggle expanded height';
   }
+
+  if (ifr) {
+    if (nextExpanded) {
+      ifr.classList.add('expanded');
+      try {
+        const doc = ifr.contentDocument || ifr.contentWindow?.document;
+        const h = doc && doc.body ? Math.max(doc.body.scrollHeight, 900) : 900;
+        ifr.style.height = Math.max(h + 48, 900) + 'px';
+      } catch (e) {
+        ifr.style.height = '900px';
+      }
+    } else {
+      ifr.classList.remove('expanded');
+      ifr.style.height = '520px';
+    }
+  }
+
+  if (rawEl) rawEl.style.maxHeight = nextExpanded ? '900px' : '520px';
+  if (jsonEl) jsonEl.style.maxHeight = nextExpanded ? '900px' : '520px';
 }
 
 function openDrawerPreview(bid) {
