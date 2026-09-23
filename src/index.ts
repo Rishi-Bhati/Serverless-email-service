@@ -7,6 +7,8 @@ import {
   createSessionToken,
   verifySessionToken,
   verifyAdminCredentials,
+  getSessionSecret,
+  getValidSessionSecrets,
 } from './auth';
 import { encryptCredentials, decryptCredentials } from './crypto';
 import {
@@ -147,12 +149,12 @@ export default {
           return jsonResponse({ error: 'Invalid username or password' }, 401);
         }
 
-        const sessionSecret = env.API_SECRET;
+        const sessionSecret = (await getSessionSecret(env)) || (env.API_SECRET ? `unsent:session:v1:${env.API_SECRET}` : null);
         if (!sessionSecret) {
           return jsonResponse({ error: 'Server misconfiguration: session secrets not set' }, 500);
         }
 
-        const token = await createSessionToken(username, `unsent:session:v1:${sessionSecret}`);
+        const token = await createSessionToken(username, sessionSecret);
         return jsonResponse({
           success: true,
           token,
@@ -317,20 +319,13 @@ export default {
         : request.headers.get('X-Session-Token');
 
       if (sessionToken) {
-        // Session tokens are only valid when a server-configured secret exists.
-        // Never fall back to a public/default secret: that would let anyone forge
-        // an administrator token and access every authenticated API endpoint.
-        const sessionSecret = env.API_SECRET;
-        if (sessionSecret) {
-          let session = await verifySessionToken(sessionToken, `unsent:session:v1:${sessionSecret}`);
-          // Accept tokens issued by older deployments that used the raw secret,
-          // but still require the configured secret to verify them.
-          if (!session.ok) {
-            session = await verifySessionToken(sessionToken, sessionSecret);
-          }
+        const candidateSecrets = await getValidSessionSecrets(env);
+        for (const secret of candidateSecrets) {
+          const session = await verifySessionToken(sessionToken, secret);
           if (session.ok) {
             authorized = true;
             isAdminSession = true;
+            break;
           }
         }
       }

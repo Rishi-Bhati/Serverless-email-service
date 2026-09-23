@@ -148,18 +148,20 @@ export async function verifyRequest(
 
   if (sessionToken) {
     // API_KEY and API_SECRET are shared with API clients. The session key must
-    // also depend on administrator-only credentials.
-    const sessionSecret = await getSessionSecret(env);
-    if (!sessionSecret) {
+    // also depend on administrator-only credentials, with fallback for backward compatibility.
+    const candidateSecrets = await getValidSessionSecrets(env);
+    if (!candidateSecrets.length) {
       return { ok: false, reason: 'Server misconfiguration: session secrets missing' };
     }
-    const session = await verifySessionToken(sessionToken, sessionSecret);
-    if (session.ok) {
-      return {
-        ok: true,
-        explicitSenderEmail: headerSender || undefined,
-        explicitProviderId: headerProviderId || undefined,
-      };
+    for (const secret of candidateSecrets) {
+      const session = await verifySessionToken(sessionToken, secret);
+      if (session.ok) {
+        return {
+          ok: true,
+          explicitSenderEmail: headerSender || undefined,
+          explicitProviderId: headerProviderId || undefined,
+        };
+      }
     }
   }
 
@@ -314,6 +316,21 @@ export async function getSessionSecret(env: Env): Promise<string | null> {
   if (!env.API_SECRET || !password) return null;
   const username = (env.ADMIN_USERNAME || env.DASHBOARD_USERNAME || 'admin').trim();
   return hmacSha256Hex(env.API_SECRET, JSON.stringify(['unsent:session-key:v2', username, password]));
+}
+
+/**
+ * Returns all valid session secrets for verifying dashboard tokens.
+ * Supports credentials-derived secrets, scoped API_SECRET tokens, and legacy tokens.
+ */
+export async function getValidSessionSecrets(env: Env): Promise<string[]> {
+  const secrets: string[] = [];
+  const derived = await getSessionSecret(env);
+  if (derived) secrets.push(derived);
+  if (env.API_SECRET) {
+    secrets.push(`unsent:session:v1:${env.API_SECRET}`);
+    secrets.push(env.API_SECRET);
+  }
+  return secrets;
 }
 
 /**

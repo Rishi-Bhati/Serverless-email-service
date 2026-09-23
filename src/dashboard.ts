@@ -884,6 +884,161 @@ export function renderDashboard(): string {
       justify-content: center;
     }
 
+    /* ── CUSTOM DROPDOWN COMPONENT (Fixes Linux / OS click-and-hold bug) ── */
+    .c-select-wrapper {
+      position: relative;
+      width: 100%;
+      user-select: none;
+    }
+
+    .c-select-trigger {
+      width: 100%;
+      height: 38px;
+      padding: 0 34px 0 12px;
+      font-size: 13.5px;
+      font-family: var(--font-sans);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      text-align: left;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .c-select-trigger.mono {
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    .c-select-trigger:hover {
+      border-color: var(--border-hover);
+    }
+
+    .c-select-wrapper.open .c-select-trigger,
+    .c-select-trigger:focus-visible {
+      border-color: var(--border-focus);
+      background: var(--bg-surface);
+      box-shadow: 0 0 0 1px var(--border-focus);
+    }
+
+    .c-select-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      padding-right: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .c-select-arrow {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      color: var(--text-muted);
+      pointer-events: none;
+      transition: transform 0.15s ease;
+    }
+
+    .c-select-wrapper.open .c-select-arrow {
+      transform: translateY(-50%) rotate(180deg);
+      color: var(--text-primary);
+    }
+
+    .c-select-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-focus);
+      border-radius: 6px;
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.15);
+      z-index: 1200;
+      max-height: 230px;
+      overflow-y: auto;
+      padding: 4px 0;
+      display: none;
+    }
+
+    .c-select-wrapper.open .c-select-menu {
+      display: block;
+    }
+
+    .c-select-option {
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: background 0.1s ease, color 0.1s ease;
+      border-left: 2px solid transparent;
+    }
+
+    .c-select-option.mono {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+    }
+
+    .c-select-option:hover,
+    .c-select-option.highlighted {
+      background: rgba(79, 70, 229, 0.09);
+      color: var(--text-primary);
+      border-left-color: var(--border-focus);
+    }
+
+    .c-select-option.selected {
+      background: rgba(79, 70, 229, 0.16);
+      font-weight: 600;
+      color: var(--text-primary);
+      border-left-color: var(--status-staged);
+    }
+
+    .c-select-check {
+      color: var(--status-staged);
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .c-select-native-hidden {
+      position: absolute !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      height: 0 !important;
+      width: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      overflow: hidden !important;
+    }
+
+    .logs-toolbar-group .c-select-wrapper,
+    .logs-toolbar .c-select-wrapper {
+      width: auto;
+      min-width: 145px;
+    }
+
+    .logs-toolbar-group .c-select-trigger,
+    .logs-toolbar .c-select-trigger {
+      height: 36px;
+      font-size: 13px;
+    }
+
     .code-panel-actions {
       display: flex;
       align-items: center;
@@ -1775,17 +1930,14 @@ export function renderDashboard(): string {
               </span>
               <input class="toolbar-search-input" type="text" id="lf-q" placeholder="Filter by recipient, subject, or ID…" onkeydown="if(event.key==='Enter') applyLogsFilter();" />
             </div>
-            <div class="custom-select-wrapper">
-              <select class="toolbar-custom-select" id="lf-status" onchange="applyLogsFilter()">
+            <div style="min-width:145px;">
+              <select id="lf-status" onchange="applyLogsFilter()">
                 <option value="">All Statuses</option>
                 <option value="queued">Queued</option>
                 <option value="sending">Sending</option>
                 <option value="sent">Delivered</option>
                 <option value="failed">Failed</option>
               </select>
-              <span class="select-chevron-icon">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-              </span>
             </div>
             <button class="btn-subtle" id="btn-lf-apply" onclick="applyLogsFilter(this)">Filter</button>
             <button class="btn-subtle" id="btn-lf-reset" onclick="resetLogsFilter()" style="display:none;">Clear</button>
@@ -1919,7 +2071,7 @@ export function renderDashboard(): string {
 
         <div class="form-control">
           <label>Provider Type *</label>
-          <select class="mono" id="pf-type" onchange="onTypeChange()" required>
+          <select class="mono" id="pf-type" onchange="onTypeChange()">
             <option value="">Select a provider type</option>
             <option value="smtp">SMTP</option>
             <option value="resend">Resend API</option>
@@ -2129,6 +2281,199 @@ const fmt = iso => {
   const d = new Date(iso);
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
+
+// ── Custom Dropdown Component (Fixes OS / Linux select click-and-hold bug) ──
+function initCustomSelect(selectId) {
+  const sel = typeof selectId === 'string' ? document.getElementById(selectId) : selectId;
+  if (!sel) return;
+
+  let wrapper = sel.closest('.c-select-wrapper');
+  if (wrapper) {
+    syncCustomSelect(sel.id);
+    return;
+  }
+
+  wrapper = document.createElement('div');
+  wrapper.className = 'c-select-wrapper' + (sel.className.includes('mono') ? ' mono' : '');
+  wrapper.setAttribute('data-target-id', sel.id);
+
+  sel.parentNode.insertBefore(wrapper, sel);
+  wrapper.appendChild(sel);
+  sel.classList.add('c-select-native-hidden');
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'c-select-trigger' + (sel.className.includes('mono') ? ' mono' : '');
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  trigger.innerHTML = '<span class="c-select-label"></span><svg class="c-select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+  wrapper.appendChild(trigger);
+
+  const menu = document.createElement('div');
+  menu.className = 'c-select-menu';
+  menu.setAttribute('role', 'listbox');
+  wrapper.appendChild(menu);
+
+  trigger.addEventListener('click', function(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const wasOpen = wrapper.classList.contains('open');
+    closeAllCustomSelects();
+    if (!wasOpen) {
+      syncCustomSelect(sel.id);
+      const card = sel.closest('.modal-card');
+      const containerRect = card ? card.getBoundingClientRect() : { bottom: window.innerHeight, top: 0 };
+      const rect = trigger.getBoundingClientRect();
+      const spaceBelow = containerRect.bottom - rect.bottom;
+      if (spaceBelow < 200 && (rect.top - containerRect.top) > 180) {
+        menu.style.top = 'auto';
+        menu.style.bottom = 'calc(100% + 4px)';
+      } else {
+        menu.style.top = 'calc(100% + 4px)';
+        menu.style.bottom = 'auto';
+      }
+      wrapper.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+  });
+
+  trigger.addEventListener('keydown', function(ev) {
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      if (!wrapper.classList.contains('open')) {
+        trigger.click();
+      } else {
+        const options = sel.options;
+        if (!options.length) return;
+        let newIdx = sel.selectedIndex + (ev.key === 'ArrowDown' ? 1 : -1);
+        if (newIdx < 0) newIdx = 0;
+        if (newIdx >= options.length) newIdx = options.length - 1;
+        sel.selectedIndex = newIdx;
+        sel.value = options[newIdx].value;
+        syncCustomSelect(sel.id);
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  });
+
+  sel.addEventListener('change', function() {
+    syncCustomSelect(sel.id);
+  });
+
+  syncCustomSelect(sel.id);
+}
+
+function syncCustomSelect(selectId) {
+  const sel = typeof selectId === 'string' ? document.getElementById(selectId) : selectId;
+  if (!sel) return;
+  const wrapper = sel.closest('.c-select-wrapper');
+  if (!wrapper) return;
+
+  const labelEl = wrapper.querySelector('.c-select-label');
+  const menu = wrapper.querySelector('.c-select-menu');
+  if (!labelEl || !menu) return;
+
+  let idx = sel.selectedIndex;
+  if ((idx < 0 || idx >= sel.options.length) && sel.options.length > 0) {
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === sel.value) {
+        idx = i;
+        sel.selectedIndex = i;
+        break;
+      }
+    }
+  }
+  if (idx < 0) idx = 0;
+
+  const selectedOpt = sel.options[idx] || sel.options[0];
+  const isRouting = sel.id === 'pf-routing-policy';
+
+  if (isRouting && selectedOpt) {
+    if (selectedOpt.value === 'direct_only') {
+      labelEl.innerHTML = '<span class="tag-dot" style="background:#ef4444;flex-shrink:0;">●</span><span style="font-weight:600;color:#ef4444;">Target Only</span> <span style="font-size:12px;color:var(--text-muted);">(Excluded)</span>';
+    } else if (selectedOpt.value === 'last_resort') {
+      labelEl.innerHTML = '<span class="tag-dot" style="background:#f59e0b;flex-shrink:0;">●</span><span style="font-weight:600;color:#f59e0b;">Last Resort Backup</span>';
+    } else {
+      labelEl.innerHTML = '<span class="tag-dot" style="background:#3b82f6;flex-shrink:0;">●</span><span style="font-weight:600;">Priority Waterfall</span> <span style="font-size:12px;color:var(--text-muted);">(Default)</span>';
+    }
+  } else {
+    labelEl.textContent = selectedOpt ? selectedOpt.textContent : '';
+  }
+
+  menu.innerHTML = '';
+  Array.from(sel.options).forEach((opt, optIdx) => {
+    const item = document.createElement('div');
+    item.className = 'c-select-option' + (sel.className.includes('mono') ? ' mono' : '');
+    item.setAttribute('role', 'option');
+    if (optIdx === idx) {
+      item.classList.add('selected');
+      item.setAttribute('aria-selected', 'true');
+    }
+
+    if (isRouting) {
+      let iconColor = '#3b82f6';
+      let title = 'Include in Priority Waterfall';
+      let sub = 'Standard priority failover (Default)';
+      let badge = '';
+      if (opt.value === 'direct_only') {
+        iconColor = '#ef4444';
+        title = 'Exclude from Priority: Target Only';
+        sub = 'Direct request only (provider_id or header). Never in fallback.';
+        badge = '<span class="status-tag" style="background:rgba(239,68,68,0.12);color:#ef4444;font-size:10.5px;padding:1px 6px;">Excluded</span>';
+      } else if (opt.value === 'last_resort') {
+        iconColor = '#f59e0b';
+        title = 'Exclude from Priority: Last Resort Backup';
+        sub = 'Attempted if all normal priority providers fail (before env fallback).';
+        badge = '<span class="status-tag" style="background:rgba(245,158,11,0.12);color:#f59e0b;font-size:10.5px;padding:1px 6px;">Backup</span>';
+      }
+      item.innerHTML = '<div style="display:flex;align-items:flex-start;gap:8px;flex:1;">'
+        + '<span class="tag-dot" style="background:' + iconColor + ';margin-top:4px;flex-shrink:0;">●</span>'
+        + '<div style="flex:1;">'
+          + '<div style="font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px;">' + title + ' ' + badge + '</div>'
+          + '<div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;font-weight:normal;line-height:1.35;">' + sub + '</div>'
+        + '</div>'
+      + '</div>'
+      + (optIdx === idx ? '<span class="c-select-check">✓</span>' : '');
+    } else {
+      item.innerHTML = '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;">' + esc(opt.textContent) + '</span>'
+        + (optIdx === idx ? '<span class="c-select-check">✓</span>' : '');
+    }
+
+    item.addEventListener('click', function(ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      sel.value = opt.value;
+      sel.selectedIndex = optIdx;
+      wrapper.classList.remove('open');
+      const tr = wrapper.querySelector('.c-select-trigger');
+      if (tr) tr.setAttribute('aria-expanded', 'false');
+      syncCustomSelect(sel.id);
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    menu.appendChild(item);
+  });
+}
+
+function closeAllCustomSelects() {
+  document.querySelectorAll('.c-select-wrapper.open').forEach(w => {
+    w.classList.remove('open');
+    const tr = w.querySelector('.c-select-trigger');
+    if (tr) tr.setAttribute('aria-expanded', 'false');
+  });
+}
+
+document.addEventListener('click', function(ev) {
+  if (!ev.target.closest('.c-select-wrapper')) {
+    closeAllCustomSelects();
+  }
+});
+
+document.addEventListener('keydown', function(ev) {
+  if (ev.key === 'Escape') {
+    closeAllCustomSelects();
+  }
+});
 
 // ── Status Tags ───────────────────────────────────────────
 function sbadge(s) {
@@ -2509,6 +2854,8 @@ function fillTestSelect(provs) {
         return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + esc(p.type) + ')' + tag + '</option>';
       }).join('');
   sel.value = cur;
+  initCustomSelect('te-prov');
+  syncCustomSelect('te-prov');
 }
 
 function onRoutingPolicyChange() {
@@ -2544,6 +2891,10 @@ function openAddProv() {
   document.getElementById('pf-routing-policy').value = 'priority';
   onRoutingPolicyChange();
   onTypeChange();
+  initCustomSelect('pf-type');
+  initCustomSelect('pf-routing-policy');
+  syncCustomSelect('pf-type');
+  syncCustomSelect('pf-routing-policy');
   document.getElementById('prov-modal').classList.add('show');
 }
 
@@ -2563,6 +2914,10 @@ function openEditProv(id) {
   document.getElementById('pf-limit').value = p.daily_limit || 0;
   onRoutingPolicyChange();
   onTypeChange();
+  initCustomSelect('pf-type');
+  initCustomSelect('pf-routing-policy');
+  syncCustomSelect('pf-type');
+  syncCustomSelect('pf-routing-policy');
   if (p.type === 'smtp') {
     const creds = p.credentials || {};
     document.getElementById('pf-smtp-host').value = creds.host || p.smtp_host || '';
@@ -2579,6 +2934,7 @@ function openEditProv(id) {
 }
 
 function closeProvModal() {
+  closeAllCustomSelects();
   document.getElementById('prov-modal').classList.remove('show');
 }
 
@@ -2590,6 +2946,13 @@ async function saveProv(ev) {
   const editingId = document.getElementById('prov-editing-id').value;
   const isEdit = Boolean(editingId);
   const type = document.getElementById('pf-type').value;
+
+  if (!type) {
+    toast('Please select a provider type', false);
+    btn.disabled = false;
+    btn.textContent = 'Save Provider';
+    return;
+  }
 
   let creds = {};
   if (type === 'smtp') {
@@ -2739,6 +3102,7 @@ function applyLogsFilter(btn) { logsPage = 0; fetchLogs(btn); }
 function resetLogsFilter() {
   document.getElementById('lf-q').value = '';
   document.getElementById('lf-status').value = '';
+  syncCustomSelect('lf-status');
   const resetBtn = document.getElementById('btn-lf-reset');
   if (resetBtn) resetBtn.style.display = 'none';
   logsPage = 0;
@@ -4635,6 +4999,10 @@ function renderApiReference() {
 ['login-username', 'login-password'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('keydown', ev => { if (ev.key === 'Enter') doAuth(); });
+});
+
+['pf-type', 'pf-routing-policy', 'te-prov', 'lf-status'].forEach(id => {
+  initCustomSelect(id);
 });
 
 window.addEventListener('popstate', function() {
