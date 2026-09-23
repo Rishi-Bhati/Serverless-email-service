@@ -357,7 +357,7 @@ export default {
           );
         }
 
-        const defaultBaseUrl = 'https://unsent.rishibhati.in';
+        const defaultBaseUrl = 'https://unsent.rishi.website';
         const baseUrl = (url.origin && !url.origin.includes('localhost') && !url.origin.includes('127.0.0.1'))
           ? url.origin
           : defaultBaseUrl;

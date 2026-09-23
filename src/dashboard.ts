@@ -2945,7 +2945,7 @@ async function fetchKeys() {
       serverApiKey = res.api_key;
       serverApiSecret = res.api_secret || '';
       serverSecurityMode = res.security_mode || 'full';
-      serverBaseUrl = res.base_url || 'https://unsent.rishibhati.in';
+      serverBaseUrl = res.base_url || 'https://unsent.rishi.website';
     }
   } catch (e) {
     console.warn('Could not fetch server keys:', e);
@@ -2960,7 +2960,7 @@ function renderCredentialsCard() {
   const sessionToken = sessionStorage.getItem('unsent_session_token');
   const key = serverApiKey || authToken || '';
   const sec = serverApiSecret || authSecret || '';
-  const url = serverBaseUrl || 'https://unsent.rishibhati.in';
+  const url = serverBaseUrl || 'https://unsent.rishi.website';
 
   if (!sessionToken && !key) {
     el.innerHTML = '<div class="creds-unauth-box">' +
@@ -3116,7 +3116,7 @@ function getCreds(withRealKeys) {
   const realSec = (hasCreds && (serverApiSecret || authSecret)) ? (serverApiSecret || authSecret) : 'YOUR_HMAC_SECRET';
   const maskedKey = '••••••••••••••••••••••••••••••••';
   const maskedSec = '••••••••••••••••••••••••••••••••';
-  const defaultUrl = 'https://unsent.rishibhati.in';
+  const defaultUrl = 'https://unsent.rishi.website';
   const url = (serverBaseUrl && !serverBaseUrl.includes('localhost') && !serverBaseUrl.includes('127.0.0.1'))
     ? serverBaseUrl
     : defaultUrl;

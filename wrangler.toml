@@ -6,7 +6,7 @@ compatibility_flags = [ "nodejs_compat" ]
 account_id = "1a03d3cc2ce43f055e1019c46aa677cf"
 
 routes = [
-  { pattern = "unsent.rishibhati.in", custom_domain = true }
+  { pattern = "unsent.rishi.website", custom_domain = true }
 ]
 
 [[d1_databases]]
