@@ -60,14 +60,22 @@ export interface ProviderRecord {
   updated_at: number;
 }
 
+export interface EmailAttachment {
+  filename: string;
+  content: string;   // base64-encoded file bytes
+  mimeType?: string; // optional; auto-detected from extension if omitted
+}
+
 export interface EmailMessage {
   to: string[];
   cc?: string[];
   bcc?: string[];
   subject: string;
-  body: string;
+  body: string;       // HTML body (or plain-text if html not provided)
+  text?: string;      // Optional plain-text alternative (multipart/alternative)
   fromEmail?: string;
   fromName?: string;
+  attachments?: EmailAttachment[];
 }
 
 export interface SendResult {
@@ -265,7 +273,15 @@ export async function sendEmailViaProvider(
   const senderEmail = (message.fromEmail || provider.from_email || '').replace(/[\r\n\0]+/g, '').trim();
   const senderName = (message.fromName || provider.from_name || '').replace(/[\r\n\0]+/g, '').trim();
   const cleanSubject = (message.subject || '').replace(/[\r\n\0]+/g, ' ').trim();
+
+  // Determine body parts. Both html and text may coexist (multipart/alternative).
   const isHtml = message.body.trim().startsWith('<') || message.body.toLowerCase().includes('html');
+  const htmlBody: string | undefined = isHtml ? message.body : undefined;
+  const textBody: string | undefined = message.text || (!isHtml ? message.body : undefined);
+
+  const attachments = message.attachments && message.attachments.length > 0
+    ? message.attachments
+    : undefined;
 
   switch (provider.type) {
     case 'smtp': {
@@ -300,8 +316,11 @@ export async function sendEmailViaProvider(
         cc: message.cc && message.cc.length ? message.cc : undefined,
         bcc: message.bcc && message.bcc.length ? message.bcc : undefined,
         subject: cleanSubject,
-        text: isHtml ? undefined : message.body,
-        html: isHtml ? message.body : undefined,
+        text: textBody,
+        html: htmlBody,
+        attachments: attachments
+          ? attachments.map(a => ({ filename: a.filename, content: a.content, mimeType: a.mimeType }))
+          : undefined,
       });
 
       return { success: true, mailerInstance: mailer };
@@ -324,8 +343,11 @@ export async function sendEmailViaProvider(
           cc: message.cc && message.cc.length ? message.cc : undefined,
           bcc: message.bcc && message.bcc.length ? message.bcc : undefined,
           subject: cleanSubject,
-          text: isHtml ? undefined : message.body,
-          html: isHtml ? message.body : undefined,
+          text: textBody,
+          html: htmlBody,
+          attachments: attachments
+            ? attachments.map(a => ({ filename: a.filename, content: a.content }))
+            : undefined,
         }),
       });
 
@@ -352,17 +374,26 @@ export async function sendEmailViaProvider(
         personalizations.bcc = message.bcc.map(e => ({ email: e }));
       }
 
-      const payload = {
+      const content: Array<{ type: string; value: string }> = [];
+      if (textBody) content.push({ type: 'text/plain', value: textBody });
+      if (htmlBody) content.push({ type: 'text/html', value: htmlBody });
+      if (!content.length) content.push({ type: 'text/plain', value: message.body });
+
+      const payload: any = {
         personalizations: [personalizations],
         from: { email: senderEmail, ...(senderName ? { name: senderName } : {}) },
         subject: cleanSubject,
-        content: [
-          {
-            type: isHtml ? 'text/html' : 'text/plain',
-            value: message.body,
-          },
-        ],
+        content,
       };
+
+      if (attachments) {
+        payload.attachments = attachments.map(a => ({
+          filename: a.filename,
+          content: a.content,
+          type: a.mimeType || 'application/octet-stream',
+          disposition: 'attachment',
+        }));
+      }
 
       const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
@@ -405,10 +436,19 @@ export async function sendEmailViaProvider(
       if (message.cc) message.cc.forEach(r => formData.append('cc', r));
       if (message.bcc) message.bcc.forEach(r => formData.append('bcc', r));
       formData.append('subject', cleanSubject);
-      if (isHtml) {
-        formData.append('html', message.body);
-      } else {
-        formData.append('text', message.body);
+      if (htmlBody) formData.append('html', htmlBody);
+      if (textBody) formData.append('text', textBody);
+      if (!htmlBody && !textBody) formData.append('text', message.body);
+
+      if (attachments) {
+        for (const att of attachments) {
+          // Decode base64 to binary
+          const binaryStr = atob(att.content);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+          const blob = new Blob([bytes], { type: att.mimeType || 'application/octet-stream' });
+          formData.append('attachment', blob, att.filename);
+        }
       }
 
       const basicAuth = btoa(`api:${apiKey}`);
@@ -432,15 +472,23 @@ export async function sendEmailViaProvider(
       const serverToken = creds.server_token;
       if (!serverToken) throw new Error('Missing Postmark Server Token');
 
-      const payload = {
+      const payload: any = {
         From: senderName ? `${senderName} <${senderEmail}>` : senderEmail,
         To: message.to.join(', '),
         Cc: message.cc && message.cc.length ? message.cc.join(', ') : undefined,
         Bcc: message.bcc && message.bcc.length ? message.bcc.join(', ') : undefined,
         Subject: cleanSubject,
-        HtmlBody: isHtml ? message.body : undefined,
-        TextBody: isHtml ? undefined : message.body,
+        HtmlBody: htmlBody,
+        TextBody: textBody,
       };
+
+      if (attachments) {
+        payload.Attachments = attachments.map(a => ({
+          Name: a.filename,
+          Content: a.content,
+          ContentType: a.mimeType || 'application/octet-stream',
+        }));
+      }
 
       const res = await fetch('https://api.postmarkapp.com/email', {
         method: 'POST',

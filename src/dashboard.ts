@@ -1540,6 +1540,170 @@ export function renderDashboard(): string {
       color: var(--text-muted);
     }
 
+    /* ── DOCS: SEND + REFERENCE ─────────────────────────────── */
+    .docs-h {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 28px 0 8px;
+    }
+    .docs-sub {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-muted);
+      margin: 0 0 10px;
+    }
+    .docs-sub code, .docs-var-note code, .docs-var-extra code, .docs-ol code, .docs-table code, .docs-step-d code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-primary);
+      background: var(--bg-subtle);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .docs-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+    .docs-step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 14px 16px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      background: var(--bg-surface);
+      min-width: 0;
+    }
+    .docs-step > div { min-width: 0; }
+    .docs-step-n {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--btn-primary-bg);
+      color: var(--btn-primary-fg);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .docs-step-t {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .docs-step-d {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .docs-step-d code {
+      display: inline-block;
+      white-space: nowrap;
+      margin: 0 2px 3px 0;
+    }
+    .docs-step-code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+    .docs-details {
+      margin: 4px 0 8px;
+    }
+    .docs-details > summary {
+      cursor: pointer;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--text-muted);
+      padding: 4px 0;
+      user-select: none;
+    }
+    .docs-details > summary:hover { color: var(--text-primary); }
+    .docs-details[open] > summary { margin-bottom: 6px; }
+    .docs-ol {
+      margin: 4px 0 12px 18px;
+      padding: 0;
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text-muted);
+    }
+    .docs-ol b { color: var(--text-primary); font-weight: 600; }
+    .docs-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 12px 0 10px;
+    }
+    .docs-chip {
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 15px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .docs-chip:hover { color: var(--text-primary); border-color: var(--text-muted); }
+    .docs-chip.active {
+      background: var(--bg-subtle);
+      color: var(--text-primary);
+      border-color: var(--text-muted);
+      font-weight: 600;
+    }
+    .docs-var-note {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-muted);
+      margin: 0 0 6px;
+    }
+    .docs-var-extra {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 2;
+    }
+    .docs-chip-id { cursor: pointer; }
+    .docs-endpoint {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 18px 0 8px;
+    }
+    .docs-endpoint-path {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .docs-endpoint-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .docs-table {
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      overflow-x: auto;
+    }
+    .docs-table td { font-size: 12.5px; vertical-align: top; }
+    .docs-ref-section + .docs-ref-section {
+      border-top: 1px solid var(--border-subtle);
+      margin-top: 28px;
+      padding-top: 20px;
+    }
+    .method-delete {
+      background: rgba(220, 38, 38, 0.1);
+      color: var(--status-failed);
+      border: 1px solid rgba(220, 38, 38, 0.25);
+    }
+
     /* ── MODALS ──────────────────────────────────────────────── */
     .modal-overlay {
       position: fixed;
@@ -1854,6 +2018,15 @@ export function renderDashboard(): string {
                 <label>Body (HTML)</label>
                 <textarea id="te-body" placeholder="<p>Write HTML message...</p>" spellcheck="false">&lt;p&gt;This is a test delivery from Unsent queue service.&lt;/p&gt;</textarea>
               </div>
+              <div class="form-control">
+                <label>Plain Text Alternative <span style="font-weight:400;color:var(--text-muted)">(optional — multipart/alternative)</span></label>
+                <textarea id="te-text" placeholder="Plain text version of the email..." spellcheck="false" style="min-height:60px;font-size:12.5px;"></textarea>
+              </div>
+              <div class="form-control">
+                <label>Attachments <span style="font-weight:400;color:var(--text-muted)">(optional, max 20 files, ~1.4 MB total)</span></label>
+                <input type="file" id="te-files" multiple accept="*/*" style="display:block;width:100%;padding:7px 10px;background:var(--bg-input,var(--bg-secondary));border:1px solid var(--border);border-radius:6px;font-size:12.5px;color:var(--text-primary);cursor:pointer;" onchange="updateFileList(this)" />
+                <div id="te-file-list" style="margin-top:6px;display:none;"></div>
+              </div>
               <button type="submit" class="btn-action-primary" id="te-btn">Send Dispatch</button>
             </form>
           </div>
@@ -1983,10 +2156,8 @@ export function renderDashboard(): string {
       <div class="card" style="padding:28px;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
           <div>
-            <h2 class="card-title" style="font-size:18px;margin-bottom:6px;">Developer Hub &amp; Integration Docs</h2>
-            <p style="font-size:13.5px;color:var(--text-muted);margin:0;">
-              High-throughput edge-accelerated transactional email dispatch with multi-provider failover. Copy live credentials, production SDK snippets, and responsive HTML email templates.
-            </p>
+            <h2 class="card-title" style="font-size:18px;margin-bottom:6px;">API Docs</h2>
+            <p style="font-size:13.5px;color:var(--text-muted);margin:0;">Send email with one POST request. Examples below use your live credentials when you are signed in.</p>
           </div>
         </div>
 
@@ -1998,18 +2169,20 @@ export function renderDashboard(): string {
         <!-- ── DOCS SUB-NAVIGATION ──────────────────────────────── -->
         <div class="docs-subnav">
           <button class="docs-subtab active" id="dtab-sdks" onclick="switchDocsSubTab('sdks')">
-            <span>⚡</span> Quickstart &amp; Code Examples
-          </button>
-          <button class="docs-subtab" id="dtab-templates" onclick="switchDocsSubTab('templates')">
-            <span>📧</span> HTML Email Templates
+            Send an email
           </button>
           <button class="docs-subtab" id="dtab-reference" onclick="switchDocsSubTab('reference')">
-            <span>📖</span> REST API Reference &amp; Schemas
+            API reference
+          </button>
+          <button class="docs-subtab" id="dtab-templates" onclick="switchDocsSubTab('templates')">
+            Email templates
           </button>
         </div>
 
         <!-- ── SECTION 1: QUICKSTART & SDKS ─────────────────────── -->
         <div id="docs-sec-sdks">
+          <div id="docs-send-steps"></div>
+          <div class="docs-h">Full example</div>
           <div class="lang-tabs">
             <button class="lang-tab active" id="ltab-curl" onclick="switchLangTab('curl')">cURL (Bash)</button>
             <button class="lang-tab" id="ltab-ts" onclick="switchLangTab('ts')">TypeScript / Node.js</button>
@@ -2021,6 +2194,7 @@ export function renderDashboard(): string {
           <div id="lang-pane-content">
             <!-- Populated dynamically by renderDocCodeSnippets() -->
           </div>
+          <div id="docs-variations"></div>
         </div>
 
         <!-- ── SECTION 2: HTML EMAIL TEMPLATES ──────────────────── -->
@@ -2756,6 +2930,37 @@ async function fetchDash(btn) {
 }
 
 // ── Quick Dispatch ─────────────────────────────────────────
+function updateFileList(input) {
+  const listEl = document.getElementById('te-file-list');
+  if (!input.files || input.files.length === 0) {
+    listEl.style.display = 'none';
+    listEl.innerHTML = '';
+    return;
+  }
+  listEl.style.display = 'block';
+  listEl.innerHTML = Array.from(input.files).map(function(f) {
+    const sz = f.size < 1024 ? f.size + ' B'
+              : f.size < 1024*1024 ? (f.size/1024).toFixed(1) + ' KB'
+              : (f.size/(1024*1024)).toFixed(1) + ' MB';
+    return '<div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;">'
+         + '<span>📎</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(f.name) + '</span>'
+         + '<span style="color:var(--text-muted);flex-shrink:0;">' + sz + '</span></div>';
+  }).join('');
+}
+
+function readFileAsBase64(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = function() {
+      const result = reader.result;
+      const b64 = result.split(',')[1] || '';
+      resolve({ filename: file.name, content: b64, mimeType: file.type || 'application/octet-stream' });
+    };
+    reader.onerror = function() { reject(new Error('Failed to read file: ' + file.name)); };
+    reader.readAsDataURL(file);
+  });
+}
+
 async function sendTest(ev) {
   ev.preventDefault();
   const btn = document.getElementById('te-btn');
@@ -2764,18 +2969,44 @@ async function sendTest(ev) {
   const to = document.getElementById('te-to').value.trim();
   const subj = document.getElementById('te-subj').value.trim() || 'Test Message from Unsent';
   const html = document.getElementById('te-body').value.trim() || '<p>This is a test delivery from Unsent.</p>';
+  const textVal = document.getElementById('te-text').value.trim();
   const provId = document.getElementById('te-prov').value;
+  const filesInput = document.getElementById('te-files');
   try {
+    // Convert selected files to base64 attachments
+    let attachments = [];
+    if (filesInput && filesInput.files && filesInput.files.length > 0) {
+      if (filesInput.files.length > 20) {
+        toast('Too many attachments (max 20)', false);
+        btn.textContent = 'Send Dispatch';
+        btn.disabled = false;
+        return;
+      }
+      const totalBytes = Array.from(filesInput.files).reduce(function(n, f) { return n + f.size; }, 0);
+      if (totalBytes > 1.4 * 1024 * 1024) {
+        toast('Attachments too large (max ~1.4 MB total)', false);
+        btn.textContent = 'Send Dispatch';
+        btn.disabled = false;
+        return;
+      }
+      btn.textContent = 'Reading files…';
+      attachments = await Promise.all(Array.from(filesInput.files).map(readFileAsBase64));
+    }
+
     const payload = { to, subject: subj, html };
+    if (textVal) payload.text = textVal;
     if (provId) payload.provider_id = provId;
-    const qual = provId ? 'provider:' + provId : '';
-    const opts = { method: 'POST', body: payload, qual };
+    if (attachments.length > 0) payload.attachments = attachments;
+
+    const opts = { method: 'POST', body: payload };
     if (provId) opts.provId = provId;
+    btn.textContent = 'Sending…';
     const r = await api('/api/send', opts);
     if (r.error) {
       toast('Dispatch rejected: ' + r.error, false);
     } else {
       toast('Transmission queued successfully (ID #' + (r.id || 'OK') + ')');
+      if (filesInput) { filesInput.value = ''; updateFileList(filesInput); }
       fetchDash();
     }
   } catch (e) {
@@ -3119,11 +3350,41 @@ function renderLogRow(e, pfx, cols) {
   const latency = (e.updated_at && e.created_at) ? Math.max(14, e.updated_at - e.created_at) : 38;
   const rawPayload = e.html_body || e.text_body || '(no payload available)';
   const sanitizedIframeHtml = rawPayload.replace(new RegExp('<' + 'script[\\s\\S]*?<\\/' + 'script>', 'gi'), '');
+  const attachments = Array.isArray(e.attachments) ? e.attachments : [];
+  const attachCount = attachments.length;
+
+  // Build attachments panel HTML
+  let attachHtml = '';
+  if (attachCount > 0) {
+    const attItems = attachments.map(function(a, i) {
+      const approxBytes = Number(a.size) || 0;
+      const sizeStr = approxBytes < 1024 ? approxBytes + ' B'
+                    : approxBytes < 1024 * 1024 ? (approxBytes / 1024).toFixed(1) + ' KB'
+                    : (approxBytes / (1024 * 1024)).toFixed(1) + ' MB';
+      const mime = esc(a.mimeType || 'application/octet-stream');
+      const fname = esc(a.filename || 'attachment-' + (i + 1));
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">'
+           + '<span style="font-size:22px;line-height:1;">📎</span>'
+           + '<div style="flex:1;min-width:0;">'
+           + '<div style="font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + fname + '</div>'
+           + '<div style="font-size:11px;color:var(--text-muted);">' + mime + ' · ' + sizeStr + '</div>'
+           + '</div>'
+           + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;flex-shrink:0;" onclick="event.stopPropagation();downloadAttachment(\\'' + esc(e.id) + '\\',' + i + ',this)" title="Download">↓ Download</button>'
+           + '</div>';
+    }).join('');
+    attachHtml = '<div style="padding-top:4px;">' + attItems + '</div>';
+  } else {
+    attachHtml = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No attachments on this email.</div>';
+  }
+
+  const attBadge = attachCount > 0
+    ? ' <span style="display:inline-flex;align-items:center;gap:3px;background:var(--accent-muted,rgba(99,102,241,0.12));color:var(--accent,#6366f1);border-radius:10px;padding:1px 7px;font-size:10.5px;font-weight:600;vertical-align:middle;">📎 ' + attachCount + '</span>'
+    : '';
 
   return '<tr onclick="toggleDetail(\\'' + esc(e.id) + '\\',\\'' + pfx + '\\')">'
     + '<td style="text-align:center"><span class="caret-btn" id="caret-' + bid + '">▶</span></td>'
     + '<td class="mono" style="font-size:13px;font-weight:500">' + esc(to) + '</td>'
-    + '<td>' + esc(e.subject || '(no subject)') + '</td>'
+    + '<td>' + esc(e.subject || '(no subject)') + attBadge + '</td>'
     + '<td>' + sbadge(e.status) + '</td>'
     + '<td>' + tbadge(e.provider_used || 'auto') + '</td>'
     + (cols === 7 ? '<td class="mono" style="font-size:12.5px">' + (e.attempts || 0) + '</td>' : '')
@@ -3163,6 +3424,7 @@ function renderLogRow(e, pfx, cols) {
         + '<div class="drawer-tabs">'
           + '<button class="drawer-tab active" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'preview\\')">HTML Preview</button>'
           + '<button class="drawer-tab" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'raw\\')">Raw Payload</button>'
+          + (attachCount > 0 ? '<button class="drawer-tab" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'attachments\\')">📎 Attachments (' + attachCount + ')</button>' : '')
           + '<button class="drawer-tab" onclick="switchBodyTab(event,\\'' + bid + '\\',\\'json\\')">JSON Inspector</button>'
           + '<div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
             + '<button class="btn-subtle" style="height:24px;font-size:11px;padding:0 8px;" onclick="toggleDrawerExpand(\\'' + bid + '\\', this)" title="Toggle expanded height">⤢ Expand</button>'
@@ -3173,10 +3435,42 @@ function renderLogRow(e, pfx, cols) {
         + '</div>'
         + '<div id="' + bid + '-preview" style="padding-top:4px;"><iframe id="iframe-' + bid + '" class="drawer-frame" sandbox="allow-popups allow-same-origin" referrerpolicy="no-referrer" onload="fitDrawerIframe(this)" srcdoc="' + esc(sanitizedIframeHtml) + '"></iframe></div>'
         + '<div id="' + bid + '-raw" style="display:none;padding-top:4px;"><div class="drawer-code">' + esc(e.html_body || e.text_body || '(empty payload)') + '</div></div>'
+        + '<div id="' + bid + '-attachments" style="display:none;padding-top:4px;">' + attachHtml + '</div>'
         + '<div id="' + bid + '-json" style="display:none;padding-top:4px;"><div class="drawer-code">' + jsonString + '</div></div>'
       + '</div>'
     + '</div></td>'
   + '</tr>';
+}
+
+// The logs list only carries attachment metadata, so fetch the full email for the bytes.
+async function downloadAttachment(emailId, idx, btn) {
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const r = await api('/api/emails/' + encodeURIComponent(emailId));
+    const att = r && r.email && Array.isArray(r.email.attachments) ? r.email.attachments[idx] : null;
+    if (!att || !att.content) {
+      toast('Attachment not available', false);
+      return;
+    }
+    const binaryStr = atob(att.content);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const blob = new Blob([bytes], { type: att.mimeType || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = att.filename || 'attachment';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  } catch (err) {
+    console.error('Download failed:', err);
+    toast('Download failed', false);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
 }
 
 function switchBodyTab(ev, bid, tab) {
@@ -3184,6 +3478,8 @@ function switchBodyTab(ev, bid, tab) {
   ev.target.classList.add('active');
   document.getElementById(bid + '-preview').style.display = tab === 'preview' ? '' : 'none';
   document.getElementById(bid + '-raw').style.display = tab === 'raw' ? '' : 'none';
+  const attEl = document.getElementById(bid + '-attachments');
+  if (attEl) attEl.style.display = tab === 'attachments' ? '' : 'none';
   document.getElementById(bid + '-json').style.display = tab === 'json' ? '' : 'none';
 }
 
@@ -4386,130 +4682,139 @@ function makeCodePanel(snippetId, title, subtext) {
     '</div>';
 }
 
-function renderDocCodeSnippets() {
-  const container = document.getElementById('lang-pane-content');
-  if (!container) return;
+// One complete example per language; the rest sit behind "More examples".
+const DOC_LANGS = {
+  curl:   { file: 'send-email.sh', main: 'curl-signed',   more: [['curl-provider', 'Send through a specific provider'], ['curl-status', 'Check queue status']] },
+  ts:     { file: 'send-email.ts', main: 'ts-signed',     more: [['ts-helper', 'Reusable sendEmail() helper'], ['ts-provider', 'Send through a specific provider']] },
+  python: { file: 'send_email.py', main: 'python-signed', more: [['python-async', 'Async client (httpx)'], ['python-provider', 'Send through a specific provider']] },
+  go:     { file: 'main.go',       main: 'go-signed',     more: [['go-provider', 'Send through a specific provider']] },
+  nextjs: { file: 'app/api/contact/route.ts', main: 'nextjs-route', more: [['nextjs-action', 'Server Action'], ['nextjs-provider', 'Pick a provider per email category']] }
+};
 
-  const headerNotice = '<div style="background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:16px 18px;margin-bottom:16px;">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">' +
-      '<div style="font-weight:600;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px;">' +
-        '<span>🔒</span> <span>Required Request Headers (Security Mode: Signed &amp; Full)</span>' +
-      '</div>' +
-      '<span class="circuit-pill" style="color:var(--status-delivered);background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2);font-size:11px;">Replay-Protected &amp; Signed</span>' +
-    '</div>' +
-    '<p style="font-size:12.5px;line-height:1.5;color:var(--text-muted);margin:0 0 10px;">' +
-      'Every POST to <code class="mono" style="color:var(--text-primary);">/api/send</code> requires all 5 headers below. Canonical signature formula: <code class="mono">sha256=HMAC(API_SECRET, timestamp + "\\n" + nonce + "\\n" + sha256(raw_json_body))</code>.' +
-    '</p>' +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px;font-size:12px;">' +
-      '<div style="background:var(--bg-surface);padding:8px 10px;border-radius:6px;border:1px solid var(--border-subtle);">' +
-        '<div style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">X-API-Key</div>' +
-        '<div style="color:var(--text-muted);font-size:11px;">Server API Key</div>' +
-      '</div>' +
-      '<div style="background:var(--bg-surface);padding:8px 10px;border-radius:6px;border:1px solid var(--border-subtle);">' +
-        '<div style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">X-Timestamp</div>' +
-        '<div style="color:var(--text-muted);font-size:11px;">Unix seconds (±180s)</div>' +
-      '</div>' +
-      '<div style="background:var(--bg-surface);padding:8px 10px;border-radius:6px;border:1px solid var(--border-subtle);">' +
-        '<div style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">X-Nonce</div>' +
-        '<div style="color:var(--text-muted);font-size:11px;">Unique request UUID</div>' +
-      '</div>' +
-      '<div style="background:var(--bg-surface);padding:8px 10px;border-radius:6px;border:1px solid var(--border-subtle);">' +
-        '<div style="font-family:var(--font-mono);font-weight:600;color:var(--text-primary);">X-Signature</div>' +
-        '<div style="color:var(--text-muted);font-size:11px;">HMAC-SHA256 digest</div>' +
-      '</div>' +
-    '</div>' +
-  '</div>';
+const DOC_AUTH_MODES = {
+  'api-key-only': { headers: ['X-API-Key'], note: 'Only the API key is checked. The examples still sign requests, so they keep working if you switch to a stricter mode.' },
+  'signed': { headers: ['X-API-Key', 'X-Timestamp', 'X-Signature'], note: 'Requests must be signed with your HMAC secret and be under 3 minutes old. X-Nonce is optional.' },
+  'full': { headers: ['X-API-Key', 'X-Timestamp', 'X-Nonce', 'X-Signature'], note: 'Requests must be signed, under 3 minutes old, and carry a nonce that has never been used.' }
+};
 
-  const provs = Array.isArray(provsCache) ? provsCache : [];
-  let provItemsHtml = '';
-  if (provs.length > 0) {
-    provItemsHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:8px;margin-bottom:12px;">' +
-      provs.map(p => {
-        const badge = p.is_default
-          ? '<span class="circuit-pill" style="color:var(--status-delivered);background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2);font-size:10.5px;">Default</span>'
-          : '<span class="circuit-pill" style="font-size:10.5px;">Priority ' + (p.priority || 1) + '</span>';
-        const typeBadge = '<span class="circuit-pill" style="font-size:10.5px;text-transform:uppercase;">' + esc(p.type) + '</span>';
-        const activeDot = p.is_active
-          ? '<span style="color:var(--status-delivered);font-size:10px;">● Active</span>'
-          : '<span style="color:var(--text-muted);font-size:10px;">○ Inactive</span>';
-        return '<div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">' +
-            '<div style="font-weight:600;font-size:12.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.name) + '</div>' +
-            '<div style="display:flex;align-items:center;gap:4px;">' + typeBadge + badge + '</div>' +
-          '</div>' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;">' +
-            '<code class="mono" style="font-size:11.5px;color:var(--brand-accent);background:var(--bg-subtle);padding:2px 6px;border-radius:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;cursor:pointer;" title="Click to copy ID" data-circuit-id="' + esc(p.id) + '" onclick="copyCredValue(this.dataset.circuitId, this)">' + esc(p.id) + '</code>' +
-            '<div style="display:flex;align-items:center;gap:6px;">' +
-              activeDot +
-              '<button type="button" class="btn-subtle" style="height:22px;font-size:11px;padding:0 6px;" data-circuit-id="' + esc(p.id) + '" onclick="copyCredValue(this.dataset.circuitId, this)">Copy ID</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-      }).join('') +
-    '</div>';
-  } else {
-    provItemsHtml = '<div style="background:var(--bg-surface);border:1px dashed var(--border-subtle);border-radius:6px;padding:12px 14px;margin-bottom:12px;color:var(--text-muted);font-size:12.5px;">' +
-      'No custom provider circuits configured yet. Visit the <a href="javascript:void(0)" data-view="v-prov" onclick="switchView(this.dataset.view)" style="color:var(--brand-accent);font-weight:500;">Circuits</a> tab to connect SMTP, Resend, Postmark, Brevo, or AWS SES backends.' +
-    '</div>';
-  }
+let activeDocVariation = 'basic';
 
-  const multiProviderNotice = '<div style="background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:16px 18px;margin-bottom:20px;">' +
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">' +
-      '<div style="font-weight:600;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px;">' +
-        '<span>⚡</span> <span>Configured Provider Circuits &amp; Signature Routing</span>' +
-      '</div>' +
-      '<span class="circuit-pill" style="font-size:11px;">' + (provs.filter(p => p.is_active).length) + ' Active Circuits</span>' +
-    '</div>' +
-    '<p style="font-size:12.5px;line-height:1.5;color:var(--text-muted);margin:0 0 12px;">' +
-      'Unsent automatically routes across active circuits based on priority and sender domains with zero-downtime failover. To bypass auto-routing and target a specific circuit, use one of the two methods below:' +
-    '</p>' +
-    provItemsHtml +
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:10px;font-size:12px;margin-top:8px;">' +
-      '<div style="background:var(--bg-surface);padding:10px 12px;border-radius:6px;border:1px solid var(--border-subtle);">' +
-        '<div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' +
-          '<span style="color:var(--status-delivered);">●</span> Method A: Payload Routing <span class="circuit-pill" style="font-size:10px;color:var(--status-delivered);background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2);">Recommended</span>' +
-        '</div>' +
-        '<div style="color:var(--text-muted);font-size:11.5px;line-height:1.5;">' +
-          'Include <code class="mono" style="color:var(--text-primary);">"provider_id": "&lt;id&gt;"</code> in the JSON payload body. Cryptographically signed inside <code class="mono">bodyHash</code>; uses standard 3-line HMAC canonical string.' +
-        '</div>' +
-      '</div>' +
-      '<div style="background:var(--bg-surface);padding:10px 12px;border-radius:6px;border:1px solid var(--border-subtle);">' +
-        '<div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' +
-          '<span style="color:var(--text-muted);">●</span> Method B: Header-Bound Routing' +
-        '</div>' +
-        '<div style="color:var(--text-muted);font-size:11.5px;line-height:1.5;">' +
-          'Send <code class="mono" style="color:var(--text-primary);">X-Provider-Id: &lt;id&gt;</code> header. In signed/full security modes, HMAC strictly binds provider into line 3 of canonical message: <code class="mono">ts\\nnonce\\nprovider:&lt;id&gt;\\nbodyHash</code>.' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-  '</div>';
-
-  let html = headerNotice + multiProviderNotice;
-
-  if (activeLangTab === 'curl') {
-    html += makeCodePanel('curl-signed', 'cURL (Bash) — Standard Signed Request Script', 'Runnable Bash script computing timestamp, random nonce, SHA-256 body hash, HMAC signature, and executing curl with all 5 headers.');
-    html += makeCodePanel('curl-provider', 'cURL (Bash) — Multi-Provider Circuit Targeting', 'Explicitly route delivery through a specific provider circuit using Payload Routing (Method A) or Header-Bound Routing (Method B).');
-    html += makeCodePanel('curl-status', 'cURL — Queue Status &amp; Telemetry Probe', 'Query live queue metrics and delivery counts.');
-  } else if (activeLangTab === 'ts') {
-    html += makeCodePanel('ts-signed', 'TypeScript / Node.js — Native Signed Fetch', 'Direct execution using Node 18+ native fetch and standard node:crypto library.');
-    html += makeCodePanel('ts-provider', 'TypeScript / Node.js — Targeted Circuit Dispatch', 'Explicit provider routing demonstrating both JSON payload targeting and header-bound HMAC signing.');
-    html += makeCodePanel('ts-helper', 'TypeScript — Reusable Signed Client Helper (sendEmail.ts)', 'Drop-in helper function that automatically signs and dispatches emails.');
-  } else if (activeLangTab === 'python') {
-    html += makeCodePanel('python-signed', 'Python 3 — Synchronous Requests with HMAC-SHA256', 'Production script using requests, hashlib, and hmac.');
-    html += makeCodePanel('python-provider', 'Python 3 — Multi-Provider Targeted Circuit Dispatch', 'Target specific providers using Python requests with payload and header-bound signature options.');
-    html += makeCodePanel('python-async', 'Python — Asynchronous Dispatch (HTTPX / FastAPI)', 'Non-blocking async dispatch for high-throughput ASGI workers.');
-  } else if (activeLangTab === 'go') {
-    html += makeCodePanel('go-signed', 'Go — Standard Library (net/http &amp; crypto/hmac)', 'Idiomatic, zero-dependency Go implementation with context timeout and all 5 authentication headers.');
-    html += makeCodePanel('go-provider', 'Go — Multi-Provider Circuit Targeting', 'Target specific provider circuits with EmailPayload ProviderID and HMAC canonical signing in Go.');
-  } else if (activeLangTab === 'nextjs') {
-    html += makeCodePanel('nextjs-provider', 'Next.js App Router — Multi-Circuit Category Router', 'Route transactional, marketing, or OTP security emails to dedicated provider circuits dynamically.');
-    html += makeCodePanel('nextjs-route', 'Next.js App Router — Route Handler (app/api/contact/route.ts)', 'Secure server-side route handler for contact and inquiry forms.');
-    html += makeCodePanel('nextjs-action', 'Next.js — Server Action (actions/sendEmail.ts)', 'Server Action for React Server Components and client form bindings.');
-  }
-
-  container.innerHTML = html;
+function getDocVariations() {
+  const provs = (Array.isArray(provsCache) ? provsCache : []).filter(p => p && p.is_active);
+  const prov = provs.find(p => p.is_default) || provs[0];
+  const provId = prov ? prov.id : 'your_provider_id';
+  const sender = prov && prov.from_email ? prov.from_email : 'hello@yourdomain.com';
+  return [
+    {
+      id: 'basic', label: 'Basic',
+      note: 'The minimum request: a recipient, a subject and an HTML body. <code>body</code> also works in place of <code>html</code>.',
+      body: { to: 'user@example.com', subject: 'Welcome aboard', html: '<p>Thanks for signing up.</p>' }
+    },
+    {
+      id: 'recipients', label: 'Several recipients',
+      note: '<code>to</code>, <code>cc</code> and <code>bcc</code> each take one address, a comma-separated string, or an array. Up to 100 addresses per field.',
+      body: { to: ['alice@example.com', 'bob@example.com'], cc: 'manager@example.com', bcc: ['audit@example.com'], subject: 'Weekly report', html: '<p>Report attached below.</p>' }
+    },
+    {
+      id: 'text', label: 'Plain-text version',
+      note: 'Add <code>text</code> and both versions are sent together. Mail clients that don’t render HTML show the text.',
+      body: { to: 'user@example.com', subject: 'Your receipt', html: '<p>Total: <b>$42.00</b></p>', text: 'Total: $42.00' }
+    },
+    {
+      id: 'attachments', label: 'Attachments',
+      note: 'Up to 20 files. <code>content</code> is the file encoded as base64. <code>mimeType</code> is optional. Files and body together must stay under about 1.4 MB.',
+      extra: '<div class="docs-var-extra">Encode a file: '
+        + '<code>base64 -w0 invoice.pdf</code> · '
+        + '<code>fs.readFileSync(path).toString("base64")</code> · '
+        + '<code>base64.b64encode(open(path, "rb").read()).decode()</code></div>',
+      body: {
+        to: 'user@example.com', subject: 'Your invoice', html: '<p>Invoice attached.</p>',
+        attachments: [{ filename: 'hello.txt', mimeType: 'text/plain', content: 'SGVsbG8gZnJvbSBVbnNlbnQ=' }]
+      }
+    },
+    {
+      id: 'sender', label: 'Custom sender',
+      note: '<code>from_email</code> must be the address of an active provider, or the request is rejected. Send <code>from_name</code> on its own to change only the display name. <code>"from": { "email", "name" }</code> also works.',
+      body: { to: 'user@example.com', subject: 'Payment received', html: '<p>Thanks!</p>', from_email: sender, from_name: 'Acme Billing' }
+    },
+    {
+      id: 'provider', label: 'Choose a provider',
+      note: 'With <code>provider_id</code> the email goes through that provider only. It does not fail over to others. Leave it out to use automatic priority routing.',
+      extra: provs.length
+        ? '<div class="docs-var-extra">Your provider IDs (click to copy): ' + provs.map(p =>
+            '<code class="docs-chip-id" title="' + esc(p.name) + '" data-circuit-id="' + esc(p.id) + '" onclick="copyCredValue(this.dataset.circuitId, this)">' + esc(p.id) + '</code>'
+          ).join(' ') + '</div>'
+        : '<div class="docs-var-extra">No active providers yet. Add one in the <a href="javascript:void(0)" data-view="v-prov" onclick="switchView(this.dataset.view)">Circuits</a> tab.</div>',
+      body: { to: 'user@example.com', subject: 'Your login code', html: '<p>Code: 492018</p>', provider_id: provId }
+    }
+  ];
 }
 
+function setDocVariation(id) {
+  activeDocVariation = id;
+  renderDocVariations();
+}
+
+function renderDocVariations() {
+  const el = document.getElementById('docs-variations');
+  if (!el) return;
+  const vars = getDocVariations();
+  const v = vars.find(x => x.id === activeDocVariation) || vars[0];
+  const json = JSON.stringify(v.body, null, 2);
+  el.innerHTML =
+    '<div class="docs-h">Request body variations</div>' +
+    '<p class="docs-sub">Every request uses the same headers and signing. Only the JSON body changes. Paste any of these into the example above.</p>' +
+    '<div class="docs-chips">' + vars.map(x =>
+      '<button type="button" class="docs-chip' + (x.id === v.id ? ' active' : '') + '" data-var="' + x.id + '" onclick="setDocVariation(this.dataset.var)">' + esc(x.label) + '</button>'
+    ).join('') + '</div>' +
+    '<p class="docs-var-note">' + v.note + '</p>' +
+    (v.extra || '') +
+    '<div class="code-panel" style="margin-top:10px;">' +
+      '<div class="code-panel-header"><span>body.json</span>' +
+        '<div class="code-panel-actions"><button class="btn-subtle" style="height:26px;font-size:11px;padding:0 8px;" onclick="copySnippet(this)">Copy</button></div>' +
+      '</div>' +
+      '<pre><code>' + esc(json) + '</code></pre>' +
+    '</div>';
+}
+
+function renderDocSteps() {
+  const el = document.getElementById('docs-send-steps');
+  if (!el) return;
+  const c = getCreds(false);
+  const mode = DOC_AUTH_MODES[serverSecurityMode] ? serverSecurityMode : 'full';
+  const info = DOC_AUTH_MODES[mode];
+  el.innerHTML =
+    '<div class="docs-steps">' +
+      '<div class="docs-step"><span class="docs-step-n">1</span><div><div class="docs-step-t">POST JSON to</div><code class="docs-step-code">' + esc(c.url) + '/api/send</code></div></div>' +
+      '<div class="docs-step"><span class="docs-step-n">2</span><div><div class="docs-step-t">Add auth headers</div><div class="docs-step-d">' + info.headers.map(h => '<code>' + h + '</code>').join(' ') + '</div></div></div>' +
+      '<div class="docs-step"><span class="docs-step-n">3</span><div><div class="docs-step-t">Get back 202 and an id</div><div class="docs-step-d">The email is queued and sent within about a minute.</div></div></div>' +
+    '</div>' +
+    '<p class="docs-sub" style="margin-top:12px;">Security mode <code>' + esc(mode) + '</code>: ' + info.note + '</p>' +
+    '<details class="docs-details">' +
+      '<summary>How the signature is computed</summary>' +
+      '<ol class="docs-ol">' +
+        '<li>Serialize the JSON body once. Sign and send those exact bytes.</li>' +
+        '<li><code>bodyHash = sha256_hex(body)</code></li>' +
+        '<li><code>message = timestamp + "&#92;n" + nonce + "&#92;n" + bodyHash</code> (use an empty nonce if you don’t send one)</li>' +
+        '<li><code>X-Signature: sha256=</code> + <code>hmac_sha256_hex(API_SECRET, message)</code></li>' +
+      '</ol>' +
+    '</details>';
+}
+
+function renderDocCodeSnippets() {
+  renderDocSteps();
+  const container = document.getElementById('lang-pane-content');
+  if (container) {
+    const lang = DOC_LANGS[activeLangTab] || DOC_LANGS.curl;
+    container.innerHTML = makeCodePanel(lang.main, lang.file, '') +
+      (lang.more.length
+        ? '<details class="docs-details"><summary>More examples</summary>' +
+            lang.more.map(m => makeCodePanel(m[0], m[1], '')).join('') +
+          '</details>'
+        : '');
+  }
+  renderDocVariations();
+}
 
 // ── HTML Email Templates ───────────────────────────────────
 const EMAIL_TEMPLATES = [
@@ -4838,162 +5143,96 @@ function loadTemplateInDispatcher(tplId) {
 }
 
 // ── REST API Reference & Schemas ───────────────────────────
+function docTable(head, rows) {
+  return '<div class="table-container docs-table"><table>' +
+    '<thead><tr>' + head.map(h => '<th>' + h + '</th>').join('') + '</tr></thead>' +
+    '<tbody>' + rows.map(r => '<tr>' + r.map((c, i) => '<td' + (i === 0 ? ' class="mono"' : '') + '>' + c + '</td>').join('') + '</tr>').join('') + '</tbody>' +
+  '</table></div>';
+}
+
+function docEndpoint(method, path, desc) {
+  return '<div class="docs-endpoint">' +
+    '<span class="method-badge method-' + method.toLowerCase() + '">' + method + '</span>' +
+    '<code class="docs-endpoint-path">' + path + '</code>' +
+    '<span class="docs-endpoint-desc">' + desc + '</span>' +
+  '</div>';
+}
+
 function renderApiReference() {
   const container = document.getElementById('docs-ref-container');
   if (!container) return;
+  const req = '<span class="param-pill-req">Required</span>';
+  const opt = '<span class="param-pill-opt">Optional</span>';
+  const NL = String.fromCharCode(10);
 
-  container.innerHTML = '<div>' +
-    '<div style="margin-bottom:32px;">' +
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-        '<span class="method-badge method-post">POST</span>' +
-        '<span style="font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--text-primary);">/api/send</span>' +
-      '</div>' +
-      '<p style="font-size:13.5px;color:var(--text-muted);margin-bottom:16px;">Queue a transactional email for delivery across configured providers with automatic failover.</p>' +
+  container.innerHTML =
+    '<section class="docs-ref-section">' +
+      docEndpoint('POST', '/api/send', 'Queue an email') +
+      '<div class="docs-h">Body fields</div>' +
+      docTable(['Field', 'Type', '', 'Notes'], [
+        ['to', 'string | string[]', req, 'Up to 100 addresses. A comma-separated string also works.'],
+        ['subject', 'string', req, 'Up to 1000 characters.'],
+        ['html', 'string', req, 'HTML body. <code>body</code> is accepted as an alias.'],
+        ['text', 'string', opt, 'Plain-text version, sent together with the HTML.'],
+        ['cc, bcc', 'string | string[]', opt, 'Same format as <code>to</code>.'],
+        ['from_email', 'string', opt, 'Must match the address of an active provider.'],
+        ['from_name', 'string', opt, 'Sender display name.'],
+        ['from', 'string | {email, name}', opt, 'Shorthand for the two fields above.'],
+        ['provider_id', 'string', opt, 'Send through this provider only (no failover). Alias: <code>provider</code>.'],
+        ['attachments', 'object[]', opt, 'Up to 20 items of <code>{ filename, content, mimeType? }</code>. <code>content</code> is base64.']
+      ]) +
 
-      '<h4 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin:16px 0 8px;">Request Headers</h4>' +
-      '<div class="table-container" style="margin-bottom:20px;border:1px solid var(--border-subtle);border-radius:6px;">' +
-        '<table>' +
-          '<thead><tr><th>Header</th><th>Requirement</th><th>Description</th></tr></thead>' +
-          '<tbody>' +
-            '<tr><td class="mono">X-API-Key</td><td><span class="param-pill-req">Required</span></td><td>Authentication key configured in server environment.</td></tr>' +
-            '<tr><td class="mono">Content-Type</td><td><span class="param-pill-req">Required</span></td><td>Must be <code>application/json</code>.</td></tr>' +
-            '<tr><td class="mono">X-Timestamp</td><td><span class="param-pill-opt">HMAC Only</span></td><td>Unix epoch seconds. Must be within ±3 minutes of server UTC.</td></tr>' +
-            '<tr><td class="mono">X-Nonce</td><td><span class="param-pill-opt">Full Mode</span></td><td>Unique nonce (8-128 chars). Enforces atomic replay protection via D1.</td></tr>' +
-            '<tr><td class="mono">X-Signature</td><td><span class="param-pill-opt">HMAC Only</span></td><td>HMAC-SHA256 signature formatted as <code>sha256=&lt;hex&gt;</code>.</td></tr>' +
-            '<tr><td class="mono">X-Provider-Id</td><td><span class="param-pill-opt">Optional</span></td><td>Direct routing override to target a specific provider circuit. Requires 4-line HMAC canonical string.</td></tr>' +
-            '<tr><td class="mono">X-Sender-Email</td><td><span class="param-pill-opt">Optional</span></td><td>Direct routing to match an active provider registered with this email. Requires header-bound HMAC.</td></tr>' +
-          '</tbody>' +
-        '</table>' +
-      '</div>' +
+      '<div class="docs-h">Headers</div>' +
+      docTable(['Header', 'api-key-only', 'signed', 'full'], [
+        ['X-API-Key', req, req, req],
+        ['X-Timestamp', '—', req, req],
+        ['X-Nonce', '—', opt, req],
+        ['X-Signature', '—', req, req],
+        ['X-Provider-Id', opt, opt, opt],
+        ['X-Sender-Email', opt, opt, opt]
+      ]) +
+      '<p class="docs-sub">X-Timestamp is Unix seconds (±3 min). X-Nonce is 8–128 characters of <code>A-Z a-z 0-9 _ -</code>. ' +
+        'If you send X-Provider-Id or X-Sender-Email, they become an extra line in the signed message:</p>' +
+      docTable(['Routing headers sent', 'Signed message lines (joined by newlines)'], [
+        ['none', '<code>timestamp</code> · <code>nonce</code> · <code>bodyHash</code>'],
+        ['X-Provider-Id', '<code>timestamp</code> · <code>nonce</code> · <code>provider:&lt;id&gt;</code> · <code>bodyHash</code>'],
+        ['X-Sender-Email', '<code>timestamp</code> · <code>nonce</code> · <code>email:&lt;addr&gt;</code> · <code>bodyHash</code>'],
+        ['both', '<code>timestamp</code> · <code>nonce</code> · <code>provider:&lt;id&gt;&amp;email:&lt;addr&gt;</code> · <code>bodyHash</code>']
+      ]) +
 
-      '<h4 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin:16px 0 8px;">JSON Payload Parameters</h4>' +
-      '<div class="table-container" style="margin-bottom:20px;border:1px solid var(--border-subtle);border-radius:6px;">' +
-        '<table>' +
-          '<thead><tr><th>Field</th><th>Type</th><th>Requirement</th><th>Description</th></tr></thead>' +
-          '<tbody>' +
-            '<tr><td class="mono">to</td><td class="mono">string | string[]</td><td><span class="param-pill-req">Required</span></td><td>Recipient email address or array of recipient addresses.</td></tr>' +
-            '<tr><td class="mono">subject</td><td class="mono">string</td><td><span class="param-pill-req">Required</span></td><td>Subject line (maximum 500 characters, CRLF-sanitized).</td></tr>' +
-            '<tr><td class="mono">body | html</td><td class="mono">string</td><td><span class="param-pill-req">Required</span></td><td>Email body content. HTML strings are automatically rendered as HTML.</td></tr>' +
-            '<tr><td class="mono">text</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Plain-text fallback representation for non-HTML email clients.</td></tr>' +
-            '<tr><td class="mono">from_name</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Sender display name (e.g. "Acme Security"). Overrides provider default.</td></tr>' +
-            '<tr><td class="mono">from_email</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Sender email override. Must match provider authorized domain.</td></tr>' +
-            '<tr><td class="mono">reply_to</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Address to populate in the Reply-To header.</td></tr>' +
-            '<tr><td class="mono">cc</td><td class="mono">string | string[]</td><td><span class="param-pill-opt">Optional</span></td><td>Carbon copy recipient email address(es).</td></tr>' +
-            '<tr><td class="mono">bcc</td><td class="mono">string | string[]</td><td><span class="param-pill-opt">Optional</span></td><td>Blind carbon copy recipient email address(es).</td></tr>' +
-            '<tr><td class="mono">provider_id</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Explicit provider circuit ID (bypasses auto-priority). Uses standard 3-line HMAC signing.</td></tr>' +
-            '<tr><td class="mono">priority</td><td class="mono">number</td><td><span class="param-pill-opt">Optional</span></td><td>Dispatch priority: <code>1</code> (Urgent), <code>2</code> (Normal, default), <code>3</code> (Bulk).</td></tr>' +
-            '<tr><td class="mono">metadata</td><td class="mono">object</td><td><span class="param-pill-opt">Optional</span></td><td>Arbitrary JSON key-values stored in D1 audit trail for tracing.</td></tr>' +
-          '</tbody>' +
-        '</table>' +
-      '</div>' +
+      '<div class="docs-h">Responses</div>' +
+      docTable(['Status', 'Meaning'], [
+        ['202', 'Queued. Body: <code>{ "success": true, "id": 142, "targetProvider": "..." }</code>'],
+        ['400', 'Invalid body, bad attachment, or a sender/provider that is not configured. See <code>error</code> and <code>reason</code>.'],
+        ['401', 'Missing or wrong API key, bad signature, old timestamp, or reused nonce. See <code>reason</code>.'],
+        ['413', 'Too large. <code>html</code> and <code>text</code> max 900,000 characters each, and the stored email (body + base64 attachments) max about 1.9 MB.']
+      ]) +
 
-      '<h4 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin:16px 0 8px;">Response Format (202 Accepted)</h4>' +
-      '<div class="code-panel" style="margin-bottom:20px;">' +
-        '<pre><code>' + [
-          '{',
-          '  "success": true,',
-          '  "id": 142,',
-          '  "message": "Email successfully queued for sending",',
-          '  "targetProvider": "resend_marketing"',
-          '}'
-        ].join(String.fromCharCode(10)) + '</code></pre>' +
-      '</div>' +
+      '<div class="docs-h">Which provider sends it</div>' +
+      '<ol class="docs-ol">' +
+        '<li><b>provider_id</b> (or X-Provider-Id): that provider only.</li>' +
+        '<li><b>from_email</b>: active providers with that address, by priority.</li>' +
+        '<li>Otherwise: all active providers by priority, failing over on errors. <i>Last resort</i> providers go last and <i>direct only</i> providers are skipped.</li>' +
+      '</ol>' +
+    '</section>' +
 
-      '<div style="background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:18px 20px;margin:24px 0 28px;">' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
-          '<span>⚡</span>' +
-          '<span style="font-size:14px;font-weight:600;color:var(--text-primary);">Multi-Provider Circuit Routing &amp; Failover Architecture</span>' +
-        '</div>' +
-        '<p style="font-size:13px;line-height:1.5;color:var(--text-muted);margin:0 0 14px;">' +
-          'Unsent supports both high-availability automatic failover and deterministic provider circuit targeting. When processing a queued dispatch, the edge worker applies the following precedence waterfall:' +
-        '</p>' +
-        '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">' +
-          '<div style="background:var(--bg-surface);padding:10px 14px;border-radius:6px;border:1px solid var(--border-subtle);">' +
-            '<div style="font-weight:600;font-size:12.5px;color:var(--text-primary);margin-bottom:4px;">1. Explicit Targeted Circuit (Highest Precedence)</div>' +
-            '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">' +
-              'Specified via <code class="mono">"provider_id": "&lt;id&gt;"</code> in the JSON payload (recommended) or <code class="mono">X-Provider-Id</code> header. The worker pins this delivery exclusively to the target circuit. If the provider is inactive or delivery fails, it is recorded without cascading to other providers.' +
-            '</div>' +
-          '</div>' +
-          '<div style="background:var(--bg-surface);padding:10px 14px;border-radius:6px;border:1px solid var(--border-subtle);">' +
-            '<div style="font-weight:600;font-size:12.5px;color:var(--text-primary);margin-bottom:4px;">2. Sender Domain Affinity Matching</div>' +
-            '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">' +
-              'If no provider is explicitly pinned, Unsent inspects <code class="mono">from_email</code>. Any active provider matching the sender address or verified domain is selected as candidate. If multiple matches exist, they fail over among each other in priority order.' +
-            '</div>' +
-          '</div>' +
-          '<div style="background:var(--bg-surface);padding:10px 14px;border-radius:6px;border:1px solid var(--border-subtle);">' +
-            '<div style="font-weight:600;font-size:12.5px;color:var(--text-primary);margin-bottom:4px;">3. Automatic Priority Waterfall Failover (Zero Downtime)</div>' +
-            '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">' +
-              'When no explicit provider or matching sender is configured, Unsent iterates over all active providers sorted by <code class="mono">priority ASC, is_default DESC</code>. If the primary circuit encounters rate limits or upstream 5xx outages, Unsent logs telemetry and immediately attempts delivery via the next healthy circuit.' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-
-        '<h5 style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin:16px 0 8px;">HMAC Canonical Message Signature Matrix</h5>' +
-        '<div class="table-container" style="border:1px solid var(--border-subtle);border-radius:6px;">' +
-          '<table>' +
-            '<thead><tr><th>Routing Method</th><th>Canonical Signing Formula</th><th>Security Details</th></tr></thead>' +
-            '<tbody>' +
-              '<tr>' +
-                '<td class="mono" style="font-weight:600;">Payload Routing<br><span style="font-weight:400;color:var(--status-delivered);font-size:11px;">Recommended</span></td>' +
-                '<td class="mono" style="font-size:11.5px;">timestamp + "\\n" + nonce + "\\n" + sha256(raw_json_body)</td>' +
-                '<td style="font-size:12px;">Standard 3-line format. <code class="mono">provider_id</code> is embedded in JSON payload and hashed inside bodyHash.</td>' +
-              '</tr>' +
-              '<tr>' +
-                '<td class="mono" style="font-weight:600;">Header Routing<br><span style="font-weight:400;color:var(--text-muted);font-size:11px;">X-Provider-Id</span></td>' +
-                '<td class="mono" style="font-size:11.5px;">timestamp + "\\n" + nonce + "\\nprovider:&lt;id&gt;\\n" + sha256(body)</td>' +
-                '<td style="font-size:12px;">4-line header-bound format. Cryptographically prevents header tampering and man-in-the-middle circuit redirection.</td>' +
-              '</tr>' +
-              '<tr>' +
-                '<td class="mono" style="font-weight:600;">Dual Header Routing<br><span style="font-weight:400;color:var(--text-muted);font-size:11px;">Provider + Sender</span></td>' +
-                '<td class="mono" style="font-size:11.5px;">timestamp + "\\n" + nonce + "\\nprovider:&lt;id&gt;&amp;email:&lt;addr&gt;\\n" + sha256(body)</td>' +
-                '<td style="font-size:12px;">Binds both <code class="mono">X-Provider-Id</code> and <code class="mono">X-Sender-Email</code> deterministically into the signature string.</td>' +
-              '</tr>' +
-            '</tbody>' +
-          '</table>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-
-    '<div style="margin-bottom:32px;border-top:1px solid var(--border-subtle);padding-top:24px;">' +
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-        '<span class="method-badge method-get">GET</span>' +
-        '<span style="font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--text-primary);">/api/status</span>' +
-      '</div>' +
-      '<p style="font-size:13.5px;color:var(--text-muted);margin-bottom:12px;">Query aggregate transmission counts categorized by queue state.</p>' +
-      '<div class="code-panel">' +
-        '<pre><code>' + [
-          '{',
-          '  "queued": 0,',
-          '  "sending": 0,',
-          '  "sent": 284,',
-          '  "failed": 2',
-          '}'
-        ].join(String.fromCharCode(10)) + '</code></pre>' +
-      '</div>' +
-    '</div>' +
-
-    '<div style="border-top:1px solid var(--border-subtle);padding-top:24px;">' +
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-        '<span class="method-badge method-get">GET</span>' +
-        '<span style="font-family:var(--font-mono);font-size:16px;font-weight:600;color:var(--text-primary);">/api/logs</span>' +
-      '</div>' +
-      '<p style="font-size:13.5px;color:var(--text-muted);margin-bottom:12px;">Query paginated transmission audit trail with status and date filtering.</p>' +
-      '<div class="table-container" style="border:1px solid var(--border-subtle);border-radius:6px;">' +
-        '<table>' +
-          '<thead><tr><th>Query Parameter</th><th>Default</th><th>Description</th></tr></thead>' +
-          '<tbody>' +
-            '<tr><td class="mono">limit</td><td class="mono">100</td><td>Max records returned (1-200).</td></tr>' +
-            '<tr><td class="mono">offset</td><td class="mono">0</td><td>Pagination offset.</td></tr>' +
-            '<tr><td class="mono">status</td><td class="mono">—</td><td>Filter by status: <code>queued</code>, <code>sending</code>, <code>sent</code>, <code>failed</code>.</td></tr>' +
-            '<tr><td class="mono">search | q</td><td class="mono">—</td><td>Text search across subject, recipient, or sender.</td></tr>' +
-            '<tr><td class="mono">from</td><td class="mono">—</td><td>Start date filter (YYYY-MM-DD).</td></tr>' +
-            '<tr><td class="mono">to</td><td class="mono">—</td><td>End date filter (YYYY-MM-DD).</td></tr>' +
-            '<tr><td class="mono">sort</td><td class="mono">updated_at_desc</td><td>Sorting order (<code>updated_at_desc</code>, <code>created_at_desc</code>, <code>created_at_asc</code>).</td></tr>' +
-          '</tbody>' +
-        '</table>' +
-      '</div>' +
-    '</div>' +
-  '</div>';
+    '<section class="docs-ref-section">' +
+      '<div class="docs-h" style="margin-top:0;">Other endpoints</div>' +
+      '<p class="docs-sub">These need only the <code>X-API-Key</code> header. No signing.</p>' +
+      docEndpoint('GET', '/api/emails/:id', 'One email, including attachment content') +
+      docEndpoint('DELETE', '/api/emails/:id', 'Delete an email record') +
+      docEndpoint('GET', '/api/status', 'Counts by status') +
+      '<div class="code-panel"><pre><code>' + ['{ "queued": 0, "sending": 0, "sent": 284, "failed": 2 }'].join(NL) + '</code></pre></div>' +
+      docEndpoint('GET', '/api/logs', 'List emails. Attachments are listed as <code>{ filename, mimeType, size }</code> without content.') +
+      docTable(['Query', 'Default', 'Notes'], [
+        ['limit', '100', '1–200'],
+        ['offset', '0', ''],
+        ['status', '—', '<code>queued</code>, <code>sending</code>, <code>sent</code>, <code>failed</code>'],
+        ['q', '—', 'Search in subject, recipients, sender, provider, body and error. Alias: <code>search</code>.'],
+        ['from, to', '—', 'Date range, <code>YYYY-MM-DD</code>'],
+        ['sort', 'updated_at_desc', '<code>updated_at_asc</code>, <code>created_at_desc</code>, <code>created_at_asc</code>, <code>attempts_desc</code>']
+      ]) +
+    '</section>';
 }
 
 ['login-username', 'login-password'].forEach(id => {

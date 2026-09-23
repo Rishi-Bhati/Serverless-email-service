@@ -39,6 +39,8 @@ export interface EmailRow {
   bcc_json: string | null;
   subject: string;
   body: string;
+  text_body: string | null;
+  attachments_json: string | null;
   status: string;
   attempts: number;
   error: string | null;
@@ -167,8 +169,18 @@ export async function processQueue(env: Env): Promise<void> {
         bcc,
         subject: emailRow.subject,
         body: emailRow.body,
+        text: emailRow.text_body || undefined,
         fromEmail: emailRow.from_email || undefined,
         fromName: emailRow.from_name || undefined,
+        attachments: (() => {
+          if (!emailRow.attachments_json) return undefined;
+          try {
+            const parsed = JSON.parse(emailRow.attachments_json);
+            return Array.isArray(parsed) && parsed.length > 0 ? parsed : undefined;
+          } catch {
+            return undefined;
+          }
+        })(),
       };
 
       // 5. Determine candidate providers
@@ -320,6 +332,8 @@ export async function processQueue(env: Env): Promise<void> {
           const fallbackFromEmail = emailRow.from_email || env.SMTP_FROM_EMAIL || env.SMTP_USERNAME;
           const fallbackFromName = emailRow.from_name || env.SMTP_FROM_NAME || '';
           const isHtml = emailRow.body.trim().startsWith('<') || emailRow.body.toLowerCase().includes('html');
+          const htmlBody: string | undefined = isHtml ? emailRow.body : undefined;
+          const textBody: string | undefined = emailRow.text_body || (!isHtml ? emailRow.body : undefined);
 
           await sharedSmtpMailer.send({
             from: { name: fallbackFromName, email: fallbackFromEmail },
@@ -327,8 +341,11 @@ export async function processQueue(env: Env): Promise<void> {
             cc,
             bcc,
             subject: emailRow.subject,
-            text: isHtml ? undefined : emailRow.body,
-            html: isHtml ? emailRow.body : undefined,
+            text: textBody,
+            html: htmlBody,
+            attachments: emailMessage.attachments
+              ? emailMessage.attachments.map(a => ({ filename: a.filename, content: a.content, mimeType: a.mimeType }))
+              : undefined,
           });
 
           sendSuccess = true;

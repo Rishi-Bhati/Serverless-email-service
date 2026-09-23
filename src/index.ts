@@ -20,13 +20,19 @@ import {
   type ProviderRecord,
   type ProviderType,
   type RoutingPolicy,
+  type EmailAttachment,
 } from './providers';
 
-const MAX_SEND_BODY_BYTES = 1024 * 1024;
+// D1 caps a single row at 2,000,000 bytes, and attachments are stored inline in the
+// emails row, so the request ceiling only needs to be slightly above that.
+const MAX_SEND_BODY_BYTES = 3 * 1024 * 1024;
+const MAX_STORED_EMAIL_BYTES = 1_900_000;
 const MAX_EMAIL_BODY_CHARS = 900_000;
 const MAX_RECIPIENTS_PER_FIELD = 100;
 const MAX_RECIPIENT_LENGTH = 320;
 const MAX_PROVIDER_CREDENTIALS_CHARS = 16_384;
+const MAX_ATTACHMENTS = 20;
+const MAX_ATTACHMENT_FILENAME_LEN = 255;
 
 function isValidMailbox(value: string): boolean {
   return value.length <= 254 && /^[^\s@<>]+@[^\s@<>]+$/.test(value);
@@ -220,6 +226,64 @@ export default {
         }
         const htmlBody = htmlBodyValue;
 
+        // Optional plain-text alternative body
+        let textBody: string | null = null;
+        if (body.text !== undefined && body.text !== null) {
+          if (typeof body.text !== 'string') {
+            return jsonResponse({ error: '"text" field must be a string' }, 400);
+          }
+          if (body.text.length > MAX_EMAIL_BODY_CHARS) {
+            return jsonResponse({ error: '"text" body is too large' }, 413);
+          }
+          textBody = body.text.trim() || null;
+        }
+
+        // Optional attachments
+        let attachmentsJson: string | null = null;
+        if (body.attachments !== undefined && body.attachments !== null) {
+          if (!Array.isArray(body.attachments)) {
+            return jsonResponse({ error: '"attachments" must be an array' }, 400);
+          }
+          if (body.attachments.length > MAX_ATTACHMENTS) {
+            return jsonResponse({ error: `Too many attachments (max ${MAX_ATTACHMENTS})` }, 400);
+          }
+          const cleanAttachments: EmailAttachment[] = [];
+          for (let i = 0; i < body.attachments.length; i++) {
+            const att = body.attachments[i];
+            if (!att || typeof att !== 'object' || Array.isArray(att)) {
+              return jsonResponse({ error: `attachments[${i}] must be an object` }, 400);
+            }
+            if (typeof att.filename !== 'string' || !att.filename.trim()) {
+              return jsonResponse({ error: `attachments[${i}].filename is required` }, 400);
+            }
+            if (att.filename.length > MAX_ATTACHMENT_FILENAME_LEN) {
+              return jsonResponse({ error: `attachments[${i}].filename exceeds ${MAX_ATTACHMENT_FILENAME_LEN} characters` }, 400);
+            }
+            if (typeof att.content !== 'string') {
+              return jsonResponse({ error: `attachments[${i}].content must be a non-empty base64 string` }, 400);
+            }
+            // Tolerate line-wrapped base64 (e.g. output of the `base64` CLI)
+            const cleanContent = att.content.replace(/\s+/g, '');
+            if (!cleanContent || cleanContent.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(cleanContent)) {
+              return jsonResponse({ error: `attachments[${i}].content must be valid base64` }, 400);
+            }
+            const cleanFilename = String(att.filename).replace(/[\r\n\0]/g, '').trim();
+            const cleanMime = att.mimeType ? String(att.mimeType).replace(/[\r\n\0\s]/g, '').slice(0, 127) : undefined;
+            cleanAttachments.push({ filename: cleanFilename, content: cleanContent, mimeType: cleanMime || undefined });
+          }
+          attachmentsJson = cleanAttachments.length > 0 ? JSON.stringify(cleanAttachments) : null;
+        }
+
+        const encoder = new TextEncoder();
+        const storedBytes = encoder.encode(htmlBody).byteLength
+          + (textBody ? encoder.encode(textBody).byteLength : 0)
+          + (attachmentsJson ? encoder.encode(attachmentsJson).byteLength : 0);
+        if (storedBytes > MAX_STORED_EMAIL_BYTES) {
+          return jsonResponse({
+            error: 'Email is too large: body + base64 attachments must total under ~1.9 MB (about 1.4 MB of raw attachment data)',
+          }, 413);
+        }
+
         // Determine sender email & name
         let senderEmail: string | undefined = authResult.explicitSenderEmail;
         let senderName: string | undefined;
@@ -262,11 +326,11 @@ export default {
 
         const insertResult = await env.DB.prepare(`
           INSERT INTO emails (
-            to_json, cc_json, bcc_json, subject, body,
+            to_json, cc_json, bcc_json, subject, body, text_body, attachments_json,
             from_email, from_name, provider_id, status,
             attempts, created_at, updated_at
           )
-          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'queued', 0, ?9, ?10)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'queued', 0, ?11, ?12)
           RETURNING id
         `)
           .bind(
@@ -275,6 +339,8 @@ export default {
             bccJSON,
             cleanSubject,
             htmlBody,
+            textBody,
+            attachmentsJson,
             senderEmail || null,
             senderName || null,
             explicitProviderId || null,
@@ -403,7 +469,16 @@ export default {
         const limit = limitParam ? Math.min(200, Math.max(1, parseInt(limitParam, 10))) : 100;
         const offset = offsetParam ? Math.max(0, parseInt(offsetParam, 10)) : 0;
 
-        let query = `SELECT id, to_json, cc_json, bcc_json, subject, body, from_email, from_name, provider_id, provider_used, failover_history, status, attempts, error, created_at, updated_at FROM emails`;
+        // Attachment content is left out of the list response; only metadata is returned.
+        // The dashboard fetches /api/emails/:id when a file is downloaded.
+        let query = `SELECT id, to_json, cc_json, bcc_json, subject, body, text_body,
+          (SELECT json_group_array(json_object(
+             'filename', json_extract(a.value, '$.filename'),
+             'mimeType', json_extract(a.value, '$.mimeType'),
+             'size', length(json_extract(a.value, '$.content')) * 3 / 4
+               - (length(json_extract(a.value, '$.content')) - length(rtrim(json_extract(a.value, '$.content'), '=')))
+           )) FROM json_each(emails.attachments_json) AS a) AS attachments_meta,
+          from_email, from_name, provider_id, provider_used, failover_history, status, attempts, error, created_at, updated_at FROM emails`;
         const conditions: string[] = [];
         const bindings: any[] = [];
 
@@ -459,19 +534,24 @@ export default {
         const total = countResult?.total || 0;
 
         const formatted = (logs.results || []).map((row: any) => {
-          let to = [];
+          let to: string[] = [];
           let cc = undefined;
           let bcc = undefined;
+          let attachments: any[] = [];
           try { to = JSON.parse(row.to_json); } catch { to = [row.to_json]; }
           try { if (row.cc_json) cc = JSON.parse(row.cc_json); } catch {}
           try { if (row.bcc_json) bcc = JSON.parse(row.bcc_json); } catch {}
+          try { if (row.attachments_meta) attachments = JSON.parse(row.attachments_meta); } catch {}
+          const { attachments_meta, ...rest } = row;
           return {
-            ...row,
+            ...rest,
             to,
             cc,
             bcc,
             html_body: row.body,
-            text_body: row.body,
+            text_body: row.text_body || row.body,
+            attachments,
+            attachment_count: attachments.length,
             error_message: row.error,
           };
         });
@@ -495,20 +575,25 @@ export default {
       if (request.method === 'GET') {
         const row = await env.DB.prepare('SELECT * FROM emails WHERE id = ?1').bind(emailId).first<any>();
         if (!row) return jsonResponse({ error: 'Email not found' }, 404);
-        let to = [];
+        let to: string[] = [];
         try { to = JSON.parse(row.to_json); } catch { to = [row.to_json]; }
         let cc = null;
         if (row.cc_json) { try { cc = JSON.parse(row.cc_json); } catch { cc = [row.cc_json]; } }
         let bcc = null;
         if (row.bcc_json) { try { bcc = JSON.parse(row.bcc_json); } catch { bcc = [row.bcc_json]; } }
+        let attachments: any[] = [];
+        if (row.attachments_json) { try { attachments = JSON.parse(row.attachments_json); } catch {} }
+        const { attachments_json, ...rest } = row;
         return jsonResponse({
           email: {
-            ...row,
+            ...rest,
             to,
             cc,
             bcc,
             html_body: row.body,
-            text_body: row.body,
+            text_body: row.text_body || row.body,
+            attachments,
+            attachment_count: attachments.length,
             error_message: row.error,
           },
         });
