@@ -1,5 +1,5 @@
 import type { Env } from './queue';
-import { getActiveProviders, getProviderById, getActiveProviderByEmail, type ProviderRecord } from './providers';
+import { getActiveProviders, type ProviderRecord } from './providers';
 
 import {
   bufToHex,
@@ -55,11 +55,13 @@ export async function validateSenderAuthorization(
     return { ok: true, provider: null };
   }
 
-  const allActive = await getActiveProviders(env.DB).catch(() => []);
+  // A database failure must not turn a configured-provider request into an
+  // environment-fallback request.
+  const allActive = await getActiveProviders(env.DB);
 
   // If no providers are configured in D1 yet, check env fallback
   if (allActive.length === 0) {
-    if (senderEmail && env.SMTP_FROM_EMAIL && senderEmail.toLowerCase() === env.SMTP_FROM_EMAIL.toLowerCase()) {
+    if (!providerId && senderEmail && env.SMTP_FROM_EMAIL && senderEmail.toLowerCase() === env.SMTP_FROM_EMAIL.toLowerCase()) {
       return { ok: true, provider: null };
     }
     if (!senderEmail && !providerId) {
@@ -114,14 +116,29 @@ export async function validateSenderAuthorization(
  *
  * Canonical message signed with HMAC-SHA256(API_SECRET, message):
  *   Standard:        timestamp + "\n" + nonce + "\n" + SHA256(request_body)
- *   Header-bound:    timestamp + "\n" + nonce + "\n" + (X-Sender-Email || X-Provider-Id || "") + "\n" + SHA256(request_body)
+ *   Header-bound:    timestamp + "\n" + nonce + "\n" + qualifiers + "\n" + SHA256(request_body)
+ *   qualifiers:     provider:<id>&email:<address> (omit absent qualifiers)
  */
 export async function verifyRequest(
   request: Request,
   rawBody: string,
   env: Env
 ): Promise<AuthResult> {
-  const mode = (env.SECURITY_MODE || 'full').toLowerCase();
+  const mode = (env.SECURITY_MODE || 'full').trim().toLowerCase();
+  if (!['api-key-only', 'signed', 'full'].includes(mode)) {
+    return { ok: false, reason: 'Server misconfiguration: invalid SECURITY_MODE' };
+  }
+
+  const headerSender = request.headers.get('X-Sender-Email') || '';
+  const headerProviderId = request.headers.get('X-Provider-Id') || '';
+  if (headerProviderId && !/^[a-zA-Z0-9_-]{1,64}$/.test(headerProviderId)) {
+    return { ok: false, reason: 'Invalid X-Provider-Id header format' };
+  }
+  // Keep the qualifier encoding unambiguous and reject control characters in
+  // every authentication mode, including dashboard sessions.
+  if (headerSender && (headerSender.length > 254 || !/^[^\s@<>\x00-\x1f\x7f]+@[^\s@<>\x00-\x1f\x7f]+$/.test(headerSender))) {
+    return { ok: false, reason: 'Invalid X-Sender-Email header format' };
+  }
 
   // ── Step 0: Dashboard authenticated session (Bearer token) ──────────────
   const authHeader = request.headers.get('Authorization') || '';
@@ -130,14 +147,14 @@ export async function verifyRequest(
     : request.headers.get('X-Session-Token');
 
   if (sessionToken) {
-    const sessionSecret = (env.API_SECRET || env.API_KEY);
+    // API_KEY and API_SECRET are shared with API clients. The session key must
+    // also depend on administrator-only credentials.
+    const sessionSecret = await getSessionSecret(env);
     if (!sessionSecret) {
       return { ok: false, reason: 'Server misconfiguration: session secrets missing' };
     }
-    const session = await verifySessionToken(sessionToken, `unsent:session:v1:${sessionSecret}`);
+    const session = await verifySessionToken(sessionToken, sessionSecret);
     if (session.ok) {
-      const headerSender = request.headers.get('X-Sender-Email') || '';
-      const headerProviderId = request.headers.get('X-Provider-Id') || '';
       return {
         ok: true,
         explicitSenderEmail: headerSender || undefined,
@@ -155,10 +172,6 @@ export async function verifyRequest(
     return { ok: false, reason: 'Invalid API key' };
   }
 
-  // Extract explicit sender / provider headers
-  const headerSender = request.headers.get('X-Sender-Email') || '';
-  const headerProviderId = request.headers.get('X-Provider-Id') || '';
-
   if (mode === 'api-key-only') {
     return {
       ok: true,
@@ -174,7 +187,7 @@ export async function verifyRequest(
   }
   const timestamp = parseInt(timestampStr.trim(), 10);
   const nowSec = Math.floor(Date.now() / 1000);
-  if (Math.abs(nowSec - timestamp) > 180) {
+  if (!Number.isSafeInteger(timestamp) || Math.abs(nowSec - timestamp) > 180) {
     return { ok: false, reason: 'Timestamp out of range (must be within ±3 minutes of server time in UTC)' };
   }
 
@@ -187,14 +200,6 @@ export async function verifyRequest(
     return { ok: false, reason: 'Invalid X-Nonce format (must be 8-128 alphanumeric characters, dashes, or underscores)' };
   }
   const nonce = rawNonce.trim();
-
-  // Validate routing headers against CRLF / canonical injection
-  if (headerProviderId && !/^[a-zA-Z0-9_-]{1,64}$/.test(headerProviderId)) {
-    return { ok: false, reason: 'Invalid X-Provider-Id header format' };
-  }
-  if (headerSender && /[\r\n\0]/.test(headerSender)) {
-    return { ok: false, reason: 'Invalid X-Sender-Email header format' };
-  }
 
   // ── Step 4: HMAC-SHA256 signature ────────────────────────────────────────
   if (!env.API_SECRET) {
@@ -231,15 +236,9 @@ export async function verifyRequest(
     const expectedSigHeader = await hmacSha256Hex(env.API_SECRET, headerBoundMsg);
     isValidSig = timingSafeEqual(normalizedSig, expectedSigHeader);
 
-    // Backward compatibility fallback for single-qualifier signatures
-    if (!isValidSig) {
-      const fallbackQualifier = headerProviderId ? `provider:${headerProviderId}` : `email:${headerSender}`;
-      const fallbackMsg = timestampStr.trim() + '\n' + nonce + '\n' + fallbackQualifier + '\n' + bodyHash;
-      isValidSig = timingSafeEqual(normalizedSig, await hmacSha256Hex(env.API_SECRET, fallbackMsg));
-    }
-
-    // Legacy qualifier fallback (raw header without prefix)
-    if (!isValidSig) {
+    // Legacy raw qualifiers are safe only with exactly one routing header.
+    // With both headers present, accepting either alone leaves the other unsigned.
+    if (!isValidSig && !(headerSender && headerProviderId)) {
       const legacyQualifier = headerSender || headerProviderId;
       const legacyMsg = timestampStr.trim() + '\n' + nonce + '\n' + legacyQualifier + '\n' + bodyHash;
       const expectedSigLegacy = await hmacSha256Hex(env.API_SECRET, legacyMsg);
@@ -265,7 +264,10 @@ export async function verifyRequest(
     };
   }
 
-  const ttlSeconds = parseInt(env.NONCE_TTL_SECONDS || '300', 10);
+  const ttlSeconds = Number(env.NONCE_TTL_SECONDS || '300');
+  if (!Number.isSafeInteger(ttlSeconds) || ttlSeconds < 0 || ttlSeconds > 86400) {
+    return { ok: false, reason: 'Server misconfiguration: invalid NONCE_TTL_SECONDS' };
+  }
   const nonceExpiresAt = Math.max(nowSec, timestamp) + ttlSeconds + 180;
 
   // Nonce sweep runs asynchronously / opportunistically (non-blocking)
@@ -303,13 +305,26 @@ export async function verifyRequest(
 }
 
 /**
+ * Derive a dashboard-only signing key. API clients know API_SECRET, so domain
+ * separation alone cannot prevent them from forging administrator sessions.
+ * Binding the key to administrator credentials also revokes sessions on rotation.
+ */
+export async function getSessionSecret(env: Env): Promise<string | null> {
+  const password = env.ADMIN_PASSWORD || env.DASHBOARD_PASSWORD;
+  if (!env.API_SECRET || !password) return null;
+  const username = (env.ADMIN_USERNAME || env.DASHBOARD_USERNAME || 'admin').trim();
+  return hmacSha256Hex(env.API_SECRET, JSON.stringify(['unsent:session-key:v2', username, password]));
+}
+
+/**
  * Create a signed session token for authenticated dashboard sessions.
  * Token structure: base64(username:expiresAt) + "." + signature
  */
 export async function createSessionToken(username: string, secret: string): Promise<string> {
+  if (!secret || !username || username.length > 256) throw new Error('Invalid session configuration');
   const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
   const payload = `${username}:${expiresAt}`;
-  const payloadB64 = btoa(payload);
+  const payloadB64 = btoa(String.fromCharCode(...new TextEncoder().encode(payload)));
   const sig = await hmacSha256Hex(secret, payload);
   return `${payloadB64}.${sig}`;
 }
@@ -321,17 +336,19 @@ export async function verifySessionToken(
   token: string,
   secret: string
 ): Promise<{ ok: boolean; username?: string }> {
-  if (!token || typeof token !== 'string') return { ok: false };
+  if (!secret || !token || typeof token !== 'string' || token.length > 2048) return { ok: false };
   const parts = token.split('.');
   if (parts.length !== 2) return { ok: false };
   const [payloadB64, sig] = parts;
+  if (!/^[a-fA-F0-9]{64}$/.test(sig)) return { ok: false };
   try {
-    const payload = atob(payloadB64);
+    const payload = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(atob(payloadB64), c => c.charCodeAt(0)));
     const colonIdx = payload.lastIndexOf(':');
     if (colonIdx === -1) return { ok: false };
     const username = payload.slice(0, colonIdx);
-    const expiresAt = parseInt(payload.slice(colonIdx + 1), 10);
-    if (isNaN(expiresAt) || Date.now() > expiresAt) return { ok: false };
+    const expiry = payload.slice(colonIdx + 1);
+    const expiresAt = Number(expiry);
+    if (!username || username.length > 256 || !/^\d+$/.test(expiry) || !Number.isSafeInteger(expiresAt) || Date.now() >= expiresAt) return { ok: false };
 
     const expectedSig = await hmacSha256Hex(secret, payload);
     if (!timingSafeEqual(sig.toLowerCase(), expectedSig.toLowerCase())) {
@@ -360,9 +377,9 @@ export async function verifyAdminCredentials(
     return false;
   }
 
-  if (!user || !pass) return false;
+  if (typeof user !== 'string' || typeof pass !== 'string' || !user || !pass || user.length > 256 || pass.length > 4096) return false;
   const userOk = timingSafeEqual(user.trim(), expectedUser.trim());
-  const passOk = timingSafeEqual(pass.trim(), expectedPass.trim());
+  // Password whitespace is significant and must not silently reduce entropy.
+  const passOk = timingSafeEqual(pass, expectedPass);
   return userOk && passOk;
 }
-

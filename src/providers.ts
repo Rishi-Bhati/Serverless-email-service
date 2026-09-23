@@ -88,31 +88,41 @@ export function getTodayUtc(): string {
  */
 export function isDisallowedHost(host: string): boolean {
   if (!host) return true;
-  const h = host.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  const h = host.trim().toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  if (!h || h.length > 253 || /[\s/@\\]/.test(h)) return true;
   if (h === 'localhost' || h === '0.0.0.0' || h === '::1' || h === '::') return true;
   if (h === 'metadata' || h === 'metadata.google.internal' || h === 'instance-data') return true;
   if (h.endsWith('.internal') || h.endsWith('.local') || h.endsWith('.localhost')) return true;
 
-  // Integer decimal IP representation (e.g. 2130706433) or hex (0x7f000001)
-  if (/^\d+$/.test(h) || /^0x/i.test(h)) return true;
+  // Integer/hex/octal IP representations (e.g. 2130706433 or 0x7f000001).
+  if (/^(?:0x[0-9a-f]+|\d+)$/.test(h)) return true;
 
-  // Loopback 127.0.0.0/8
-  if (/^127\.\d+\.\d+\.\d+$/.test(h)) return true;
+  const ipv4 = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(h);
+  if (ipv4) {
+    const octets = ipv4.slice(1).map(Number);
+    if (octets.some(o => o > 255)) return true;
+    const [a, b] = octets;
+    if (
+      a === 0 || a === 10 || a === 127 ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && (b === 0 || b === 168)) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224
+    ) return true;
+  }
 
-  // Link-local / Cloud metadata 169.254.0.0/16
-  if (/^169\.254\.\d+\.\d+$/.test(h)) return true;
+  // IPv6 local/link-local/unique-local and IPv4-mapped private forms.
+  if (
+    h.includes(':') &&
+    (/^fe80:/i.test(h) || /^fc/i.test(h) || /^fd/i.test(h) ||
+      /::ffff:(?:127\.|10\.|192\.168\.|169\.254\.)/i.test(h))
+  ) return true;
 
-  // Private network ranges (RFC 1918): 10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12
-  if (/^10\.\d+\.\d+\.\d+$/.test(h)) return true;
-  if (/^192\.168\.\d+\.\d+$/.test(h)) return true;
-  const match172 = /^172\.(\d+)\.\d+\.\d+$/.exec(h);
-  if (match172 && parseInt(match172[1], 10) >= 16 && parseInt(match172[1], 10) <= 31) return true;
-
-  // Zero-network / broadcast
-  if (/^0\.\d+\.\d+\.\d+$/.test(h)) return true;
-
-  // IPv6 local / link-local / unique-local
-  if (/^fe80:/i.test(h) || /^fc00:/i.test(h) || /^fd00:/i.test(h)) return true;
+  // Reject malformed hostnames and non-IP IPv6-like input.
+  if (h.includes(':')) return true;
+  if (!/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(h)) return true;
 
   return false;
 }

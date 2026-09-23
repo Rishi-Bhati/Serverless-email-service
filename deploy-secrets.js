@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const envPath = path.join(__dirname, '.env');
 if (!fs.existsSync(envPath)) {
@@ -19,6 +19,10 @@ for (let line of lines) {
   if (eqIdx === -1) continue;
   const key = line.substring(0, eqIdx).trim();
   const val = line.substring(eqIdx + 1).trim();
+  if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
+    console.error(`Ignoring invalid environment variable name: ${key}`);
+    continue;
+  }
   envVars[key] = val;
 }
 
@@ -28,7 +32,9 @@ let devVarsContent = "";
 for (const [key, val] of Object.entries(envVars)) {
   devVarsContent += `${key}=${val}\n`;
 }
-fs.writeFileSync(path.join(__dirname, '.dev.vars'), devVarsContent, 'utf-8');
+const devVarsPath = path.join(__dirname, '.dev.vars');
+fs.writeFileSync(devVarsPath, devVarsContent, { encoding: 'utf-8', mode: 0o600 });
+try { fs.chmodSync(devVarsPath, 0o600); } catch (_) {}
 console.log(".dev.vars written successfully.");
 
 // 2. Upload to Cloudflare if --prod flag is present
@@ -38,7 +44,7 @@ if (args.includes('--prod')) {
   for (const [key, val] of Object.entries(envVars)) {
     try {
       console.log(`Uploading secret: ${key}...`);
-      execSync(`npx wrangler secret put ${key}`, {
+      execFileSync('npx', ['wrangler', 'secret', 'put', key], {
         input: val,
         stdio: ['pipe', 'inherit', 'inherit']
       });

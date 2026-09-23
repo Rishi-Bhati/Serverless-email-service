@@ -1572,11 +1572,6 @@ export function renderDashboard(): string {
 
     <p id="auth-err" style="color:var(--status-failed);margin-top:14px;font-size:12.5px;display:none"></p>
 
-    <div id="local-dev-hint" style="display:none;margin-top:20px;padding:14px;background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;font-size:12.5px;">
-      <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Local Environment Detected</div>
-      <div style="color:var(--text-muted);font-size:12px;margin-bottom:10px;">Running on localhost. Use admin credentials from <code>.dev.vars</code>:</div>
-      <button type="button" class="btn-subtle" style="width:100%;justify-content:center;" onclick="useDevCredentials()">Sign In with Local Admin</button>
-    </div>
   </div>
 </div>
 
@@ -2444,6 +2439,7 @@ async function fetchProviders(btn) {
     renderProvs(provsCache);
     fillTestSelect(provsCache);
     document.getElementById('qr-provs').textContent = provsCache.filter(p => p.is_active).length + ' Active';
+    if (activeDocsSubTab === 'sdks') renderDocCodeSnippets();
   } catch (e) {
     toast('Error loading providers: ' + e.message, false);
   } finally {
@@ -3125,12 +3121,20 @@ function getCreds(withRealKeys) {
     ? serverBaseUrl
     : defaultUrl;
 
+  const activeProvs = (Array.isArray(provsCache) ? provsCache : []).filter(p => p && p.is_active);
+  const defaultProv = activeProvs.find(p => p.is_default) || activeProvs[0] || (provsCache && provsCache[0]) || null;
+  const targetProviderId = defaultProv ? defaultProv.id : 'resend_marketing';
+  const targetProviderName = defaultProv ? defaultProv.name : 'Resend Marketing';
+
   return {
     url: url,
     key: withRealKeys ? realKey : maskedKey,
     sec: withRealKeys ? realSec : maskedSec,
     realKey: realKey,
-    realSec: realSec
+    realSec: realSec,
+    targetProviderId: targetProviderId,
+    targetProviderName: targetProviderName,
+    providers: provsCache || []
   };
 }
 
@@ -3177,6 +3181,65 @@ const SNIPPET_GENERATORS = {
       '  -H "X-Nonce: $NONCE" ' + BS,
       '  -H "X-Signature: $SIGNATURE" ' + BS,
       '  -d "$BODY"'
+    ].join(NL);
+  },
+
+  'curl-provider': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const SQ = String.fromCharCode(39);
+    const BS = String.fromCharCode(92);
+    const provId = c.targetProviderId || 'resend_marketing';
+    return [
+      '#!/usr/bin/env bash',
+      'set -e',
+      '',
+      '# ── 1. Configuration & Credentials ──────────────────────────',
+      'UNSENT_URL="' + c.url + '/api/send"',
+      'API_KEY="' + c.key + '"',
+      'API_SECRET="' + c.sec + '"',
+      'TARGET_PROVIDER="' + provId + '"',
+      '',
+      '# ── 2. Request Body with Targeted Provider Circuit ──────────',
+      '# METHOD A (Recommended): Payload Routing via "provider_id"',
+      '# The provider is covered by the body hash; uses standard 3-line HMAC signing.',
+      'BODY=' + SQ + '{',
+      '  "to": "customer@example.com",',
+      '  "subject": "Targeted Circuit Dispatch",',
+      '  "html": "<h2>Order Confirmed</h2><p>Dispatched via ' + provId + '.</p>",',
+      '  "provider_id": "' + provId + '",',
+      '  "from_name": "Unsent System"',
+      '}' + SQ,
+      '',
+      '# ── 3. Timestamp & Replay-Protection Nonce ──────────────────',
+      'TIMESTAMP=$(date +%s)',
+      'NONCE=$(openssl rand -hex 16)',
+      '',
+      '# ── 4. Cryptographic Body Hash (SHA-256 Hex) ────────────────',
+      'BODY_HASH=$(printf "%s" "$BODY" | openssl dgst -sha256 | awk ' + SQ + '{print $NF}' + SQ + ')',
+      '',
+      '# ── 5. Standard 3-line Canonical Message & HMAC Signature ────',
+      '# Format: <timestamp>' + BS + 'n<nonce>' + BS + 'n<bodyHash>',
+      'CANONICAL_MSG=$(printf "%s' + BS + 'n%s' + BS + 'n%s" "$TIMESTAMP" "$NONCE" "$BODY_HASH")',
+      'SIGNATURE="sha256=$(printf "%s" "$CANONICAL_MSG" | openssl dgst -sha256 -hmac "$API_SECRET" | awk ' + SQ + '{print $NF}' + SQ + ')"',
+      '',
+      '# ── 6. Execute POST Request ─────────────────────────────────',
+      'curl -X POST "$UNSENT_URL" ' + BS,
+      '  -H "Content-Type: application/json" ' + BS,
+      '  -H "X-API-Key: $API_KEY" ' + BS,
+      '  -H "X-Timestamp: $TIMESTAMP" ' + BS,
+      '  -H "X-Nonce: $NONCE" ' + BS,
+      '  -H "X-Signature: $SIGNATURE" ' + BS,
+      '  -d "$BODY"',
+      '',
+      '# ─────────────────────────────────────────────────────────────',
+      '# METHOD B (Alternative): Header-Bound Routing via X-Provider-Id',
+      '# If you pass "X-Provider-Id: <id>" header instead of JSON body:',
+      '# Unsent strictly requires binding "provider:<id>" in line 3 of the HMAC:',
+      '#   CANONICAL_HDR=$(printf "%s' + BS + 'n%s' + BS + 'nprovider:%s' + BS + 'n%s" "$TIMESTAMP" "$NONCE" "$TARGET_PROVIDER" "$BODY_HASH")',
+      '#   SIG_HDR="sha256=$(printf "%s" "$CANONICAL_HDR" | openssl dgst -sha256 -hmac "$API_SECRET" | awk ' + SQ + '{print $NF}' + SQ + ')"',
+      '#   curl -X POST "$UNSENT_URL" -H "X-Provider-Id: $TARGET_PROVIDER" -H "X-Signature: $SIG_HDR" ...',
+      '# ─────────────────────────────────────────────────────────────'
     ].join(NL);
   },
 
@@ -3240,6 +3303,69 @@ const SNIPPET_GENERATORS = {
       '',
       'const data = await res.json();',
       'console.log("Email queued successfully with ID:", data.id);'
+    ].join(NL);
+  },
+
+  'ts-provider': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const BS = String.fromCharCode(92);
+    const provId = c.targetProviderId || 'resend_marketing';
+    return [
+      'import crypto from "node:crypto";',
+      '',
+      '// ── Multi-Provider Circuit Targeting ──────────────────────────',
+      '// Method A (Recommended): Set "provider_id" in JSON body (standard 3-line HMAC)',
+      '// Method B: Pass "X-Provider-Id" header (requires 4-line canonical string binding)',
+      '',
+      'const UNSENT_URL = "' + c.url + '/api/send";',
+      'const API_KEY = process.env.UNSENT_API_KEY || "' + c.key + '";',
+      'const API_SECRET = process.env.UNSENT_API_SECRET || "' + c.sec + '";',
+      'const TARGET_PROVIDER = "' + provId + '"; // Active provider circuit ID',
+      '',
+      'async function sendWithTargetedProvider(useHeaderRouting = false) {',
+      '  const payload: Record<string, any> = {',
+      '    to: "customer@example.com",',
+      '    subject: "Targeted Circuit Dispatch",',
+      '    html: "<h2>Circuit Routed Delivery</h2><p>Dispatched via ' + provId + '</p>",',
+      '    from_name: "Acme Platform"',
+      '  };',
+      '',
+      '  const headers: Record<string, string> = {',
+      '    "Content-Type": "application/json",',
+      '    "X-API-Key": API_KEY,',
+      '  };',
+      '',
+      '  const timestamp = Math.floor(Date.now() / 1000).toString();',
+      '  const nonce = crypto.randomUUID();',
+      '  headers["X-Timestamp"] = timestamp;',
+      '  headers["X-Nonce"] = nonce;',
+      '',
+      '  let canonical = "";',
+      '  if (useHeaderRouting) {',
+      '    // Method B: Header-Bound Routing (X-Provider-Id)',
+      '    // Must bind "provider:<id>" into the 4-line HMAC canonical message',
+      '    headers["X-Provider-Id"] = TARGET_PROVIDER;',
+      '    const rawBody = JSON.stringify(payload);',
+      '    const bodyHash = crypto.createHash("sha256").update(rawBody).digest("hex");',
+      '    canonical = [timestamp, nonce, "provider:" + TARGET_PROVIDER, bodyHash].join("' + BS + 'n");',
+      '    headers["X-Signature"] = "sha256=" + crypto.createHmac("sha256", API_SECRET).update(canonical).digest("hex");',
+      '    return fetch(UNSENT_URL, { method: "POST", headers, body: rawBody });',
+      '  } else {',
+      '    // Method A: Payload Routing (Recommended)',
+      '    // provider_id in JSON body is signed via bodyHash using standard 3-line HMAC',
+      '    payload.provider_id = TARGET_PROVIDER;',
+      '    const rawBody = JSON.stringify(payload);',
+      '    const bodyHash = crypto.createHash("sha256").update(rawBody).digest("hex");',
+      '    canonical = [timestamp, nonce, bodyHash].join("' + BS + 'n");',
+      '    headers["X-Signature"] = "sha256=" + crypto.createHmac("sha256", API_SECRET).update(canonical).digest("hex");',
+      '    return fetch(UNSENT_URL, { method: "POST", headers, body: rawBody });',
+      '  }',
+      '}',
+      '',
+      'const res = await sendWithTargetedProvider();',
+      'const data = await res.json();',
+      'console.log("Transmission Response (202 Accepted):", data);'
     ].join(NL);
   },
 
@@ -3351,6 +3477,74 @@ const SNIPPET_GENERATORS = {
       'response = requests.post(UNSENT_URL, data=raw_body, headers=headers)',
       'response.raise_for_status()',
       'print("Dispatched successfully:", response.json())'
+    ].join(NL);
+  },
+
+  'python-provider': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const BS = String.fromCharCode(92);
+    const provId = c.targetProviderId || 'resend_marketing';
+    return [
+      'import hashlib',
+      'import hmac',
+      'import json',
+      'import time',
+      'import uuid',
+      'import requests',
+      '',
+      '# ── Multi-Provider Circuit Targeting in Python ────────────────',
+      'UNSENT_URL = "' + c.url + '/api/send"',
+      'API_KEY = "' + c.key + '"',
+      'API_SECRET = "' + c.sec + '"',
+      'TARGET_PROVIDER = "' + provId + '"',
+      '',
+      'def dispatch_targeted_email(use_header_binding=False):',
+      '    payload = {',
+      '        "to": "customer@example.com",',
+      '        "subject": "Targeted Provider Delivery",',
+      '        "html": "<p>Sent via targeted provider circuit: ' + provId + '</p>",',
+      '        "from_name": "Alert System"',
+      '    }',
+      '',
+      '    timestamp = str(int(time.time()))',
+      '    nonce = str(uuid.uuid4())',
+      '    headers = {',
+      '        "Content-Type": "application/json",',
+      '        "X-API-Key": API_KEY,',
+      '        "X-Timestamp": timestamp,',
+      '        "X-Nonce": nonce,',
+      '    }',
+      '',
+      '    if use_header_binding:',
+      '        # Method B: Header-Bound Routing (X-Provider-Id)',
+      '        # Binds provider:<id> into HMAC canonical string (4 lines)',
+      '        headers["X-Provider-Id"] = TARGET_PROVIDER',
+      '        raw_body = json.dumps(payload, separators=(",", ":"))',
+      '        body_hash = hashlib.sha256(raw_body.encode("utf-8")).hexdigest()',
+      '        canonical = "' + BS + 'n".join([timestamp, nonce, f"provider:{TARGET_PROVIDER}", body_hash])',
+      '    else:',
+      '        # Method A (Recommended): Payload Routing via provider_id',
+      '        # Signed via body_hash using standard 3-line HMAC',
+      '        payload["provider_id"] = TARGET_PROVIDER',
+      '        raw_body = json.dumps(payload, separators=(",", ":"))',
+      '        body_hash = hashlib.sha256(raw_body.encode("utf-8")).hexdigest()',
+      '        canonical = "' + BS + 'n".join([timestamp, nonce, body_hash])',
+      '',
+      '    signature = "sha256=" + hmac.new(',
+      '        API_SECRET.encode("utf-8"),',
+      '        canonical.encode("utf-8"),',
+      '        hashlib.sha256',
+      '    ).hexdigest()',
+      '    headers["X-Signature"] = signature',
+      '',
+      '    resp = requests.post(UNSENT_URL, data=raw_body, headers=headers)',
+      '    resp.raise_for_status()',
+      '    return resp.json()',
+      '',
+      '# Dispatch using Method A (Payload Routing)',
+      'result = dispatch_targeted_email()',
+      'print("Response (202 Accepted):", result)'
     ].join(NL);
   },
 
@@ -3491,6 +3685,95 @@ const SNIPPET_GENERATORS = {
     ].join(NL);
   },
 
+  'go-provider': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const BT = String.fromCharCode(96);
+    const BS = String.fromCharCode(92);
+    const provId = c.targetProviderId || 'resend_marketing';
+    return [
+      'package main',
+      '',
+      'import (',
+      '    "bytes"',
+      '    "context"',
+      '    "crypto/hmac"',
+      '    "crypto/rand"',
+      '    "crypto/sha256"',
+      '    "encoding/hex"',
+      '    "encoding/json"',
+      '    "fmt"',
+      '    "io"',
+      '    "net/http"',
+      '    "strconv"',
+      '    "time"',
+      ')',
+      '',
+      'const (',
+      '    unsentURL        = "' + c.url + '/api/send"',
+      '    apiKey           = "' + c.key + '"',
+      '    apiSecret        = "' + c.sec + '"',
+      '    targetProviderID = "' + provId + '"',
+      ')',
+      '',
+      'type TargetedEmail struct {',
+      '    To         string ' + BT + 'json:"to"' + BT,
+      '    Subject    string ' + BT + 'json:"subject"' + BT,
+      '    HTML       string ' + BT + 'json:"html"' + BT,
+      '    FromName   string ' + BT + 'json:"from_name"' + BT,
+      '    ProviderID string ' + BT + 'json:"provider_id"' + BT,
+      '}',
+      '',
+      'func main() {',
+      '    // Target a specific provider circuit explicitly via JSON payload field',
+      '    payload := TargetedEmail{',
+      '        To:         "recipient@example.com",',
+      '        Subject:    "Targeted Delivery via Go",',
+      '        HTML:       "<h2>Circuit Dispatched</h2><p>Delivered via ' + provId + '</p>",',
+      '        FromName:   "Go Alert Dispatcher",',
+      '        ProviderID: targetProviderID,',
+      '    }',
+      '',
+      '    rawBody, err := json.Marshal(payload)',
+      '    if err != nil { panic(err) }',
+      '',
+      '    timestamp := strconv.FormatInt(time.Now().Unix(), 10)',
+      '    nonceBytes := make([]byte, 16)',
+      '    if _, err := rand.Read(nonceBytes); err != nil { panic(err) }',
+      '    nonce := hex.EncodeToString(nonceBytes)',
+      '',
+      '    // SHA-256 body hash covers ProviderID automatically',
+      '    h := sha256.Sum256(rawBody)',
+      '    bodyHash := hex.EncodeToString(h[:])',
+      '',
+      '    // Standard 3-line canonical message: timestamp\\nnonce\\nbodyHash',
+      '    canonical := fmt.Sprintf("%s' + BS + 'n%s' + BS + 'n%s", timestamp, nonce, bodyHash)',
+      '    mac := hmac.New(sha256.New, []byte(apiSecret))',
+      '    mac.Write([]byte(canonical))',
+      '    signature := "sha256=" + hex.EncodeToString(mac.Sum(nil))',
+      '',
+      '    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)',
+      '    defer cancel()',
+      '',
+      '    req, err := http.NewRequestWithContext(ctx, "POST", unsentURL, bytes.NewReader(rawBody))',
+      '    if err != nil { panic(err) }',
+      '',
+      '    req.Header.Set("Content-Type", "application/json")',
+      '    req.Header.Set("X-API-Key", apiKey)',
+      '    req.Header.Set("X-Timestamp", timestamp)',
+      '    req.Header.Set("X-Nonce", nonce)',
+      '    req.Header.Set("X-Signature", signature)',
+      '',
+      '    resp, err := http.DefaultClient.Do(req)',
+      '    if err != nil { panic(err) }',
+      '    defer resp.Body.Close()',
+      '',
+      '    respBody, _ := io.ReadAll(resp.Body)',
+      '    fmt.Printf("HTTP %d: %s' + BS + 'n", resp.StatusCode, respBody)',
+      '}'
+    ].join(NL);
+  },
+
   'nextjs-route': function(real) {
     const c = getCreds(real);
     const NL = String.fromCharCode(10);
@@ -3595,6 +3878,76 @@ const SNIPPET_GENERATORS = {
       '  return res.json();',
       '}'
     ].join(NL);
+  },
+
+  'nextjs-provider': function(real) {
+    const c = getCreds(real);
+    const NL = String.fromCharCode(10);
+    const SQ = String.fromCharCode(39);
+    const BS = String.fromCharCode(92);
+    const provId = c.targetProviderId || 'resend_marketing';
+    return [
+      '// lib/email-router.ts',
+      SQ + 'use server' + SQ + ';',
+      '',
+      'import crypto from "node:crypto";',
+      '',
+      'type EmailCategory = "transactional" | "marketing" | "security_otp";',
+      '',
+      '// Map email category to configured provider circuit IDs',
+      'const CIRCUIT_MAP: Record<EmailCategory, string> = {',
+      '  security_otp: "' + provId + '",',
+      '  transactional: "' + provId + '",',
+      '  marketing: "' + provId + '",',
+      '};',
+      '',
+      'export async function dispatchCategorizedEmail(',
+      '  category: EmailCategory,',
+      '  to: string,',
+      '  subject: string,',
+      '  html: string',
+      ') {',
+      '  const UNSENT_URL = process.env.UNSENT_BASE_URL || "' + c.url + '/api/send";',
+      '  const API_KEY = process.env.UNSENT_API_KEY || "' + c.key + '";',
+      '  const API_SECRET = process.env.UNSENT_API_SECRET || "' + c.sec + '";',
+      '',
+      '  const targetCircuit = CIRCUIT_MAP[category];',
+      '',
+      '  // Route via payload parameter (automatic 3-line HMAC signing)',
+      '  const rawBody = JSON.stringify({',
+      '    to,',
+      '    subject,',
+      '    html,',
+      '    provider_id: targetCircuit,',
+      '    metadata: { category, dispatchedAt: new Date().toISOString() }',
+      '  });',
+      '',
+      '  const timestamp = Math.floor(Date.now() / 1000).toString();',
+      '  const nonce = crypto.randomUUID();',
+      '  const bodyHash = crypto.createHash("sha256").update(rawBody).digest("hex");',
+      '  const canonical = [timestamp, nonce, bodyHash].join("' + BS + 'n");',
+      '  const signature = "sha256=" + crypto.createHmac("sha256", API_SECRET).update(canonical).digest("hex");',
+      '',
+      '  const res = await fetch(UNSENT_URL, {',
+      '    method: "POST",',
+      '    headers: {',
+      '      "Content-Type": "application/json",',
+      '      "X-API-Key": API_KEY,',
+      '      "X-Timestamp": timestamp,',
+      '      "X-Nonce": nonce,',
+      '      "X-Signature": signature',
+      '    },',
+      '    body: rawBody',
+      '  });',
+      '',
+      '  if (!res.ok) {',
+      '    const err = await res.json().catch(() => ({}));',
+      '    throw new Error(err.reason || err.error || "Failed to dispatch email");',
+      '  }',
+      '',
+      '  return res.json(); // { success: true, id: 142, targetProvider: "' + provId + '" }',
+      '}'
+    ].join(NL);
   }
 };
 
@@ -3627,7 +3980,7 @@ function renderDocCodeSnippets() {
   const container = document.getElementById('lang-pane-content');
   if (!container) return;
 
-  const headerNotice = '<div style="background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:16px 18px;margin-bottom:20px;">' +
+  const headerNotice = '<div style="background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:16px 18px;margin-bottom:16px;">' +
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">' +
       '<div style="font-weight:600;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px;">' +
         '<span>🔒</span> <span>Required Request Headers (Security Mode: Signed &amp; Full)</span>' +
@@ -3657,20 +4010,89 @@ function renderDocCodeSnippets() {
     '</div>' +
   '</div>';
 
-  let html = headerNotice;
+  const provs = Array.isArray(provsCache) ? provsCache : [];
+  let provItemsHtml = '';
+  if (provs.length > 0) {
+    provItemsHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:8px;margin-bottom:12px;">' +
+      provs.map(p => {
+        const badge = p.is_default
+          ? '<span class="circuit-pill" style="color:var(--status-delivered);background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2);font-size:10.5px;">Default</span>'
+          : '<span class="circuit-pill" style="font-size:10.5px;">Priority ' + (p.priority || 1) + '</span>';
+        const typeBadge = '<span class="circuit-pill" style="font-size:10.5px;text-transform:uppercase;">' + esc(p.type) + '</span>';
+        const activeDot = p.is_active
+          ? '<span style="color:var(--status-delivered);font-size:10px;">● Active</span>'
+          : '<span style="color:var(--text-muted);font-size:10px;">○ Inactive</span>';
+        return '<div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">' +
+            '<div style="font-weight:600;font-size:12.5px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.name) + '</div>' +
+            '<div style="display:flex;align-items:center;gap:4px;">' + typeBadge + badge + '</div>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;">' +
+            '<code class="mono" style="font-size:11.5px;color:var(--brand-accent);background:var(--bg-subtle);padding:2px 6px;border-radius:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;cursor:pointer;" title="Click to copy ID" data-circuit-id="' + esc(p.id) + '" onclick="copyCredValue(this.dataset.circuitId, this)">' + esc(p.id) + '</code>' +
+            '<div style="display:flex;align-items:center;gap:6px;">' +
+              activeDot +
+              '<button type="button" class="btn-subtle" style="height:22px;font-size:11px;padding:0 6px;" data-circuit-id="' + esc(p.id) + '" onclick="copyCredValue(this.dataset.circuitId, this)">Copy ID</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  } else {
+    provItemsHtml = '<div style="background:var(--bg-surface);border:1px dashed var(--border-subtle);border-radius:6px;padding:12px 14px;margin-bottom:12px;color:var(--text-muted);font-size:12.5px;">' +
+      'No custom provider circuits configured yet. Visit the <a href="javascript:void(0)" data-view="v-prov" onclick="switchView(this.dataset.view)" style="color:var(--brand-accent);font-weight:500;">Circuits</a> tab to connect SMTP, Resend, Postmark, Brevo, or AWS SES backends.' +
+    '</div>';
+  }
+
+  const multiProviderNotice = '<div style="background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:16px 18px;margin-bottom:20px;">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px;">' +
+      '<div style="font-weight:600;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:6px;">' +
+        '<span>⚡</span> <span>Configured Provider Circuits &amp; Signature Routing</span>' +
+      '</div>' +
+      '<span class="circuit-pill" style="font-size:11px;">' + (provs.filter(p => p.is_active).length) + ' Active Circuits</span>' +
+    '</div>' +
+    '<p style="font-size:12.5px;line-height:1.5;color:var(--text-muted);margin:0 0 12px;">' +
+      'Unsent automatically routes across active circuits based on priority and sender domains with zero-downtime failover. To bypass auto-routing and target a specific circuit, use one of the two methods below:' +
+    '</p>' +
+    provItemsHtml +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:10px;font-size:12px;margin-top:8px;">' +
+      '<div style="background:var(--bg-surface);padding:10px 12px;border-radius:6px;border:1px solid var(--border-subtle);">' +
+        '<div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' +
+          '<span style="color:var(--status-delivered);">●</span> Method A: Payload Routing <span class="circuit-pill" style="font-size:10px;color:var(--status-delivered);background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2);">Recommended</span>' +
+        '</div>' +
+        '<div style="color:var(--text-muted);font-size:11.5px;line-height:1.5;">' +
+          'Include <code class="mono" style="color:var(--text-primary);">"provider_id": "&lt;id&gt;"</code> in the JSON payload body. Cryptographically signed inside <code class="mono">bodyHash</code>; uses standard 3-line HMAC canonical string.' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:var(--bg-surface);padding:10px 12px;border-radius:6px;border:1px solid var(--border-subtle);">' +
+        '<div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;display:flex;align-items:center;gap:6px;">' +
+          '<span style="color:var(--text-muted);">●</span> Method B: Header-Bound Routing' +
+        '</div>' +
+        '<div style="color:var(--text-muted);font-size:11.5px;line-height:1.5;">' +
+          'Send <code class="mono" style="color:var(--text-primary);">X-Provider-Id: &lt;id&gt;</code> header. In signed/full security modes, HMAC strictly binds provider into line 3 of canonical message: <code class="mono">ts\\nnonce\\nprovider:&lt;id&gt;\\nbodyHash</code>.' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  let html = headerNotice + multiProviderNotice;
 
   if (activeLangTab === 'curl') {
-    html += makeCodePanel('curl-signed', 'cURL (Bash) — Complete Signed Request Script', 'Runnable Bash script computing timestamp, random nonce, SHA-256 body hash, HMAC signature, and executing curl with all 5 headers.');
+    html += makeCodePanel('curl-signed', 'cURL (Bash) — Standard Signed Request Script', 'Runnable Bash script computing timestamp, random nonce, SHA-256 body hash, HMAC signature, and executing curl with all 5 headers.');
+    html += makeCodePanel('curl-provider', 'cURL (Bash) — Multi-Provider Circuit Targeting', 'Explicitly route delivery through a specific provider circuit using Payload Routing (Method A) or Header-Bound Routing (Method B).');
     html += makeCodePanel('curl-status', 'cURL — Queue Status &amp; Telemetry Probe', 'Query live queue metrics and delivery counts.');
   } else if (activeLangTab === 'ts') {
     html += makeCodePanel('ts-signed', 'TypeScript / Node.js — Native Signed Fetch', 'Direct execution using Node 18+ native fetch and standard node:crypto library.');
+    html += makeCodePanel('ts-provider', 'TypeScript / Node.js — Targeted Circuit Dispatch', 'Explicit provider routing demonstrating both JSON payload targeting and header-bound HMAC signing.');
     html += makeCodePanel('ts-helper', 'TypeScript — Reusable Signed Client Helper (sendEmail.ts)', 'Drop-in helper function that automatically signs and dispatches emails.');
   } else if (activeLangTab === 'python') {
     html += makeCodePanel('python-signed', 'Python 3 — Synchronous Requests with HMAC-SHA256', 'Production script using requests, hashlib, and hmac.');
+    html += makeCodePanel('python-provider', 'Python 3 — Multi-Provider Targeted Circuit Dispatch', 'Target specific providers using Python requests with payload and header-bound signature options.');
     html += makeCodePanel('python-async', 'Python — Asynchronous Dispatch (HTTPX / FastAPI)', 'Non-blocking async dispatch for high-throughput ASGI workers.');
   } else if (activeLangTab === 'go') {
     html += makeCodePanel('go-signed', 'Go — Standard Library (net/http &amp; crypto/hmac)', 'Idiomatic, zero-dependency Go implementation with context timeout and all 5 authentication headers.');
+    html += makeCodePanel('go-provider', 'Go — Multi-Provider Circuit Targeting', 'Target specific provider circuits with EmailPayload ProviderID and HMAC canonical signing in Go.');
   } else if (activeLangTab === 'nextjs') {
+    html += makeCodePanel('nextjs-provider', 'Next.js App Router — Multi-Circuit Category Router', 'Route transactional, marketing, or OTP security emails to dedicated provider circuits dynamically.');
     html += makeCodePanel('nextjs-route', 'Next.js App Router — Route Handler (app/api/contact/route.ts)', 'Secure server-side route handler for contact and inquiry forms.');
     html += makeCodePanel('nextjs-action', 'Next.js — Server Action (actions/sendEmail.ts)', 'Server Action for React Server Components and client form bindings.');
   }
@@ -4028,8 +4450,8 @@ function renderApiReference() {
             '<tr><td class="mono">X-Timestamp</td><td><span class="param-pill-opt">HMAC Only</span></td><td>Unix epoch seconds. Must be within ±3 minutes of server UTC.</td></tr>' +
             '<tr><td class="mono">X-Nonce</td><td><span class="param-pill-opt">Full Mode</span></td><td>Unique nonce (8-128 chars). Enforces atomic replay protection via D1.</td></tr>' +
             '<tr><td class="mono">X-Signature</td><td><span class="param-pill-opt">HMAC Only</span></td><td>HMAC-SHA256 signature formatted as <code>sha256=&lt;hex&gt;</code>.</td></tr>' +
-            '<tr><td class="mono">X-Provider-Id</td><td><span class="param-pill-opt">Optional</span></td><td>Direct routing override to target a specific provider circuit.</td></tr>' +
-            '<tr><td class="mono">X-Sender-Email</td><td><span class="param-pill-opt">Optional</span></td><td>Direct routing to match an active provider registered with this email.</td></tr>' +
+            '<tr><td class="mono">X-Provider-Id</td><td><span class="param-pill-opt">Optional</span></td><td>Direct routing override to target a specific provider circuit. Requires 4-line HMAC canonical string.</td></tr>' +
+            '<tr><td class="mono">X-Sender-Email</td><td><span class="param-pill-opt">Optional</span></td><td>Direct routing to match an active provider registered with this email. Requires header-bound HMAC.</td></tr>' +
           '</tbody>' +
         '</table>' +
       '</div>' +
@@ -4044,26 +4466,81 @@ function renderApiReference() {
             '<tr><td class="mono">body | html</td><td class="mono">string</td><td><span class="param-pill-req">Required</span></td><td>Email body content. HTML strings are automatically rendered as HTML.</td></tr>' +
             '<tr><td class="mono">text</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Plain-text fallback representation for non-HTML email clients.</td></tr>' +
             '<tr><td class="mono">from_name</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Sender display name (e.g. "Acme Security"). Overrides provider default.</td></tr>' +
-            '<tr><td class="mono">from_email</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Sender email override. Must be verified with provider domain.</td></tr>' +
+            '<tr><td class="mono">from_email</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Sender email override. Must match provider authorized domain.</td></tr>' +
             '<tr><td class="mono">reply_to</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Address to populate in the Reply-To header.</td></tr>' +
             '<tr><td class="mono">cc</td><td class="mono">string | string[]</td><td><span class="param-pill-opt">Optional</span></td><td>Carbon copy recipient email address(es).</td></tr>' +
             '<tr><td class="mono">bcc</td><td class="mono">string | string[]</td><td><span class="param-pill-opt">Optional</span></td><td>Blind carbon copy recipient email address(es).</td></tr>' +
-            '<tr><td class="mono">provider_id</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Explicit provider circuit ID to bypass auto-priority.</td></tr>' +
+            '<tr><td class="mono">provider_id</td><td class="mono">string</td><td><span class="param-pill-opt">Optional</span></td><td>Explicit provider circuit ID (bypasses auto-priority). Uses standard 3-line HMAC signing.</td></tr>' +
             '<tr><td class="mono">priority</td><td class="mono">number</td><td><span class="param-pill-opt">Optional</span></td><td>Dispatch priority: <code>1</code> (Urgent), <code>2</code> (Normal, default), <code>3</code> (Bulk).</td></tr>' +
             '<tr><td class="mono">metadata</td><td class="mono">object</td><td><span class="param-pill-opt">Optional</span></td><td>Arbitrary JSON key-values stored in D1 audit trail for tracing.</td></tr>' +
           '</tbody>' +
         '</table>' +
       '</div>' +
 
-      '<h4 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin:16px 0 8px;">Response Format (200 OK)</h4>' +
+      '<h4 style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin:16px 0 8px;">Response Format (202 Accepted)</h4>' +
       '<div class="code-panel" style="margin-bottom:20px;">' +
         '<pre><code>' + [
           '{',
+          '  "success": true,',
           '  "id": 142,',
-          '  "status": "queued",',
-          '  "message": "Email enqueued for sending"',
+          '  "message": "Email successfully queued for sending",',
+          '  "targetProvider": "resend_marketing"',
           '}'
         ].join(String.fromCharCode(10)) + '</code></pre>' +
+      '</div>' +
+
+      '<div style="background:var(--bg-subtle);border:1px solid var(--border-subtle);border-radius:8px;padding:18px 20px;margin:24px 0 28px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
+          '<span>⚡</span>' +
+          '<span style="font-size:14px;font-weight:600;color:var(--text-primary);">Multi-Provider Circuit Routing &amp; Failover Architecture</span>' +
+        '</div>' +
+        '<p style="font-size:13px;line-height:1.5;color:var(--text-muted);margin:0 0 14px;">' +
+          'Unsent supports both high-availability automatic failover and deterministic provider circuit targeting. When processing a queued dispatch, the edge worker applies the following precedence waterfall:' +
+        '</p>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">' +
+          '<div style="background:var(--bg-surface);padding:10px 14px;border-radius:6px;border:1px solid var(--border-subtle);">' +
+            '<div style="font-weight:600;font-size:12.5px;color:var(--text-primary);margin-bottom:4px;">1. Explicit Targeted Circuit (Highest Precedence)</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">' +
+              'Specified via <code class="mono">"provider_id": "&lt;id&gt;"</code> in the JSON payload (recommended) or <code class="mono">X-Provider-Id</code> header. The worker pins this delivery exclusively to the target circuit. If the provider is inactive or delivery fails, it is recorded without cascading to other providers.' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:var(--bg-surface);padding:10px 14px;border-radius:6px;border:1px solid var(--border-subtle);">' +
+            '<div style="font-weight:600;font-size:12.5px;color:var(--text-primary);margin-bottom:4px;">2. Sender Domain Affinity Matching</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">' +
+              'If no provider is explicitly pinned, Unsent inspects <code class="mono">from_email</code>. Any active provider matching the sender address or verified domain is selected as candidate. If multiple matches exist, they fail over among each other in priority order.' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:var(--bg-surface);padding:10px 14px;border-radius:6px;border:1px solid var(--border-subtle);">' +
+            '<div style="font-weight:600;font-size:12.5px;color:var(--text-primary);margin-bottom:4px;">3. Automatic Priority Waterfall Failover (Zero Downtime)</div>' +
+            '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;">' +
+              'When no explicit provider or matching sender is configured, Unsent iterates over all active providers sorted by <code class="mono">priority ASC, is_default DESC</code>. If the primary circuit encounters rate limits or upstream 5xx outages, Unsent logs telemetry and immediately attempts delivery via the next healthy circuit.' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<h5 style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin:16px 0 8px;">HMAC Canonical Message Signature Matrix</h5>' +
+        '<div class="table-container" style="border:1px solid var(--border-subtle);border-radius:6px;">' +
+          '<table>' +
+            '<thead><tr><th>Routing Method</th><th>Canonical Signing Formula</th><th>Security Details</th></tr></thead>' +
+            '<tbody>' +
+              '<tr>' +
+                '<td class="mono" style="font-weight:600;">Payload Routing<br><span style="font-weight:400;color:var(--status-delivered);font-size:11px;">Recommended</span></td>' +
+                '<td class="mono" style="font-size:11.5px;">timestamp + "\\n" + nonce + "\\n" + sha256(raw_json_body)</td>' +
+                '<td style="font-size:12px;">Standard 3-line format. <code class="mono">provider_id</code> is embedded in JSON payload and hashed inside bodyHash.</td>' +
+              '</tr>' +
+              '<tr>' +
+                '<td class="mono" style="font-weight:600;">Header Routing<br><span style="font-weight:400;color:var(--text-muted);font-size:11px;">X-Provider-Id</span></td>' +
+                '<td class="mono" style="font-size:11.5px;">timestamp + "\\n" + nonce + "\\nprovider:&lt;id&gt;\\n" + sha256(body)</td>' +
+                '<td style="font-size:12px;">4-line header-bound format. Cryptographically prevents header tampering and man-in-the-middle circuit redirection.</td>' +
+              '</tr>' +
+              '<tr>' +
+                '<td class="mono" style="font-weight:600;">Dual Header Routing<br><span style="font-weight:400;color:var(--text-muted);font-size:11px;">Provider + Sender</span></td>' +
+                '<td class="mono" style="font-size:11.5px;">timestamp + "\\n" + nonce + "\\nprovider:&lt;id&gt;&amp;email:&lt;addr&gt;\\n" + sha256(body)</td>' +
+                '<td style="font-size:12px;">Binds both <code class="mono">X-Provider-Id</code> and <code class="mono">X-Sender-Email</code> deterministically into the signature string.</td>' +
+              '</tr>' +
+            '</tbody>' +
+          '</table>' +
+        '</div>' +
       '</div>' +
     '</div>' +
 
@@ -4109,24 +4586,10 @@ function renderApiReference() {
   '</div>';
 }
 
-// ── Local Dev Helper & Init ────────────────────────────────
-function useDevCredentials() {
-  const u = document.getElementById('login-username');
-  const p = document.getElementById('login-password');
-  if (u) u.value = 'admin';
-  if (p) p.value = 'unsent_admin_2026!';
-  doAuth();
-}
-
 ['login-username', 'login-password'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('keydown', ev => { if (ev.key === 'Enter') doAuth(); });
 });
-
-if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-  const h = document.getElementById('local-dev-hint');
-  if (h) h.style.display = 'block';
-}
 
 window.addEventListener('popstate', function() {
   const route = resolveCurrentRoute();

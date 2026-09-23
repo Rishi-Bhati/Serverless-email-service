@@ -19,6 +19,25 @@ import {
   type ProviderType,
 } from './providers';
 
+const MAX_SEND_BODY_BYTES = 1024 * 1024;
+const MAX_EMAIL_BODY_CHARS = 900_000;
+const MAX_RECIPIENTS_PER_FIELD = 100;
+const MAX_RECIPIENT_LENGTH = 320;
+const MAX_PROVIDER_CREDENTIALS_CHARS = 16_384;
+
+function isValidMailbox(value: string): boolean {
+  return value.length <= 254 && /^[^\s@<>]+@[^\s@<>]+$/.test(value);
+}
+
+function parseBoundedInteger(value: unknown, fallback: number, min: number, max: number): number {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`Numeric value must be an integer between ${min} and ${max}`);
+  }
+  return parsed;
+}
+
 // Helper to parse recipients into normalized JSON string for D1 storage
 function parseRecipient(field: any): string {
   if (!field) return '[]';
@@ -40,6 +59,12 @@ function parseRecipient(field: any): string {
   if (cleanList.length === 0) {
     throw new Error('No valid recipient addresses provided');
   }
+  if (cleanList.length > MAX_RECIPIENTS_PER_FIELD) {
+    throw new Error(`Too many recipients (maximum ${MAX_RECIPIENTS_PER_FIELD} per field)`);
+  }
+  if (cleanList.some(address => address.length > MAX_RECIPIENT_LENGTH)) {
+    throw new Error(`Recipient address is too long (maximum ${MAX_RECIPIENT_LENGTH} characters)`);
+  }
 
   return JSON.stringify(cleanList);
 }
@@ -48,9 +73,11 @@ function parseRecipient(field: any): string {
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers':
+      'Access-Control-Allow-Headers':
     'Content-Type, Authorization, X-Session-Token, X-API-Key, X-Timestamp, X-Nonce, X-Signature, X-Sender-Email, X-Provider-Id',
   'Access-Control-Max-Age': '86400',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
 };
 
 function jsonResponse(data: unknown, status = 200): Response {
@@ -59,6 +86,12 @@ function jsonResponse(data: unknown, status = 200): Response {
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
+      // API responses include message bodies, delivery logs, and (for the
+      // authenticated credential endpoint) secrets. Do not retain them in
+      // browser or intermediary caches.
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'no-referrer',
     },
   });
 }
@@ -76,6 +109,10 @@ export default {
         headers: {
           'Content-Type': 'text/html; charset=utf-8',
           'X-Frame-Options': 'DENY',
+          'X-Content-Type-Options': 'nosniff',
+          'Referrer-Policy': 'no-referrer',
+          'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+          'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
           'Content-Security-Policy':
             "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://cloudflareinsights.com; frame-ancestors 'none';",
         },
@@ -109,7 +146,7 @@ export default {
           return jsonResponse({ error: 'Invalid username or password' }, 401);
         }
 
-        const sessionSecret = env.API_SECRET || env.API_KEY;
+        const sessionSecret = env.API_SECRET;
         if (!sessionSecret) {
           return jsonResponse({ error: 'Server misconfiguration: session secrets not set' }, 500);
         }
@@ -129,7 +166,14 @@ export default {
     // 3. POST /api/send — Queue an email for sending
     if (url.pathname === '/api/send' && request.method === 'POST') {
       try {
+        const declaredLength = Number(request.headers.get('content-length') || '');
+        if (Number.isFinite(declaredLength) && declaredLength > MAX_SEND_BODY_BYTES) {
+          return jsonResponse({ error: 'Request body is too large' }, 413);
+        }
         const rawBody = await request.text();
+        if (new TextEncoder().encode(rawBody).byteLength > MAX_SEND_BODY_BYTES) {
+          return jsonResponse({ error: 'Request body is too large' }, 413);
+        }
 
         const authResult = await verifyRequest(request, rawBody, env);
         if (!authResult.ok) {
@@ -144,6 +188,9 @@ export default {
           body = JSON.parse(rawBody);
         } catch {
           return jsonResponse({ error: 'Invalid JSON body' }, 400);
+        }
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
+          return jsonResponse({ error: 'JSON body must be an object' }, 400);
         }
 
         // Validate basic fields
@@ -161,10 +208,14 @@ export default {
         }
 
         // Accept both 'html' (advertised in docs) and 'body' (legacy) field names
-        const htmlBody: string | undefined = body.html || body.body;
-        if (!htmlBody || (typeof htmlBody === 'string' && !htmlBody.trim())) {
+        const htmlBodyValue = body.html ?? body.body;
+        if (typeof htmlBodyValue !== 'string' || !htmlBodyValue.trim()) {
           return jsonResponse({ error: 'Missing "html" (or "body") field' }, 400);
         }
+        if (htmlBodyValue.length > MAX_EMAIL_BODY_CHARS) {
+          return jsonResponse({ error: 'Email body is too large' }, 413);
+        }
+        const htmlBody = htmlBodyValue;
 
         // Determine sender email & name
         let senderEmail: string | undefined = authResult.explicitSenderEmail;
@@ -265,17 +316,21 @@ export default {
         : request.headers.get('X-Session-Token');
 
       if (sessionToken) {
-        const sessionSecret = env.API_SECRET || env.API_KEY || 'unsent_secret';
-        let session = await verifySessionToken(sessionToken, `unsent:session:v1:${sessionSecret}`);
-        if (!session.ok) {
-          session = await verifySessionToken(sessionToken, sessionSecret);
-        }
-        if (!session.ok && sessionSecret !== 'unsent_secret') {
-          session = await verifySessionToken(sessionToken, 'unsent_secret');
-        }
-        if (session.ok) {
-          authorized = true;
-          isAdminSession = true;
+        // Session tokens are only valid when a server-configured secret exists.
+        // Never fall back to a public/default secret: that would let anyone forge
+        // an administrator token and access every authenticated API endpoint.
+        const sessionSecret = env.API_SECRET;
+        if (sessionSecret) {
+          let session = await verifySessionToken(sessionToken, `unsent:session:v1:${sessionSecret}`);
+          // Accept tokens issued by older deployments that used the raw secret,
+          // but still require the configured secret to verify them.
+          if (!session.ok) {
+            session = await verifySessionToken(sessionToken, sessionSecret);
+          }
+          if (session.ok) {
+            authorized = true;
+            isAdminSession = true;
+          }
         }
       }
 
@@ -463,6 +518,9 @@ export default {
         });
       }
       if (request.method === 'DELETE') {
+        if (!isAdminSession) {
+          return jsonResponse({ error: 'Forbidden: Admin session required to delete emails' }, 403);
+        }
         await env.DB.prepare('DELETE FROM emails WHERE id = ?1').bind(emailId).run();
         return jsonResponse({ success: true, message: `Email ${emailId} deleted` });
       }
@@ -473,6 +531,9 @@ export default {
     // GET /api/providers — List all configured providers
     if (url.pathname === '/api/providers' && request.method === 'GET') {
       try {
+        if (!isAdminSession) {
+          return jsonResponse({ error: 'Forbidden: Admin session required to view providers' }, 403);
+        }
         const rawProviders = await getAllProviders(env.DB);
         const providers = await Promise.all(rawProviders.map(p => sanitizeProvider(p, env.API_SECRET)));
         return jsonResponse({ providers, count: providers.length });
@@ -484,6 +545,9 @@ export default {
     // POST /api/providers — Add new provider
     if (url.pathname === '/api/providers' && request.method === 'POST') {
       try {
+        if (!isAdminSession) {
+          return jsonResponse({ error: 'Forbidden: Admin session required to manage providers' }, 403);
+        }
         const body: any = await request.json();
 
         if (!body.name || !body.type || !body.from_email || !body.credentials) {
@@ -501,19 +565,41 @@ export default {
           );
         }
 
+        if (typeof body.name !== 'string' || typeof body.from_email !== 'string') {
+          return jsonResponse({ error: 'Provider name and from_email must be strings' }, 400);
+        }
+        const cleanName = body.name.trim();
+        const cleanFromEmail = body.from_email.replace(/[\r\n\0]+/g, '').trim();
+        const cleanFromName = body.from_name ? String(body.from_name).replace(/[\r\n\0]+/g, '').trim() : null;
+        if (!cleanName || cleanName.length > 200) {
+          return jsonResponse({ error: 'Provider name must be between 1 and 200 characters' }, 400);
+        }
+        if (!isValidMailbox(cleanFromEmail)) {
+          return jsonResponse({ error: 'Invalid provider from_email address' }, 400);
+        }
+        if (cleanFromName && cleanFromName.length > 200) {
+          return jsonResponse({ error: 'Provider from_name must not exceed 200 characters' }, 400);
+        }
+
         const id = (body.id || `${body.type}_${Date.now()}`).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
         const existing = await getProviderById(env.DB, id);
         if (existing) {
           return jsonResponse({ error: `Provider ID "${id}" already exists.` }, 400);
         }
 
-        const priority = parseInt(String(body.priority || 1), 10);
+        const priority = parseBoundedInteger(body.priority, 1, 0, 1_000_000);
         const isDefault = body.is_default ? 1 : 0;
-        const dailyLimit = parseInt(String(body.daily_limit || 0), 10);
+        const dailyLimit = parseBoundedInteger(body.daily_limit, 0, 0, 10_000_000);
         const isActive = body.is_active !== false && body.is_active !== 0 ? 1 : 0;
         
         // Encrypt credentials JSON using AES-256-GCM before writing to D1 database
         const credsToEncrypt = typeof body.credentials === 'string' ? JSON.parse(body.credentials) : body.credentials;
+        if (!credsToEncrypt || typeof credsToEncrypt !== 'object' || Array.isArray(credsToEncrypt)) {
+          return jsonResponse({ error: 'Provider credentials must be a JSON object' }, 400);
+        }
+        if (JSON.stringify(credsToEncrypt).length > MAX_PROVIDER_CREDENTIALS_CHARS) {
+          return jsonResponse({ error: 'Provider credentials payload is too large' }, 413);
+        }
         const credsJson = await encryptCredentials(credsToEncrypt, env.API_SECRET);
         
         const now = Date.now();
@@ -524,9 +610,6 @@ export default {
           await env.DB.prepare('UPDATE providers SET is_default = 0 WHERE is_default = 1').run();
         }
 
-        const cleanFromEmail = body.from_email.replace(/[\r\n\0]+/g, '').trim();
-        const cleanFromName = body.from_name ? body.from_name.replace(/[\r\n\0]+/g, '').trim() : null;
-
         await env.DB.prepare(`
           INSERT INTO providers (
             id, name, type, credentials_json, from_email, from_name,
@@ -536,7 +619,7 @@ export default {
           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10, ?11, ?12, ?13)
         `).bind(
           id,
-          body.name.trim(),
+          cleanName,
           body.type,
           credsJson,
           cleanFromEmail,
@@ -563,6 +646,9 @@ export default {
     // PUT /api/providers — Update provider
     if (url.pathname === '/api/providers' && request.method === 'PUT') {
       try {
+        if (!isAdminSession) {
+          return jsonResponse({ error: 'Forbidden: Admin session required to manage providers' }, 403);
+        }
         const body: any = await request.json();
         const id = body.id || url.searchParams.get('id');
 
@@ -583,14 +669,30 @@ export default {
           );
         }
 
+        if (body.name !== undefined && typeof body.name !== 'string') {
+          return jsonResponse({ error: 'Provider name must be a string' }, 400);
+        }
+        if (body.from_email !== undefined && typeof body.from_email !== 'string') {
+          return jsonResponse({ error: 'Provider from_email must be a string' }, 400);
+        }
+
         const name = body.name !== undefined ? body.name.trim() : existing.name;
         const type = body.type !== undefined ? body.type : existing.type;
         const fromEmail = body.from_email !== undefined ? body.from_email.replace(/[\r\n\0]+/g, '').trim() : existing.from_email;
-        const fromName = body.from_name !== undefined ? (body.from_name ? body.from_name.replace(/[\r\n\0]+/g, '').trim() : null) : existing.from_name;
-        const priority = body.priority !== undefined ? parseInt(String(body.priority), 10) : existing.priority;
-        const dailyLimit = body.daily_limit !== undefined ? parseInt(String(body.daily_limit), 10) : existing.daily_limit;
+        const fromName = body.from_name !== undefined ? (body.from_name ? String(body.from_name).replace(/[\r\n\0]+/g, '').trim() : null) : existing.from_name;
+        const priority = parseBoundedInteger(body.priority, existing.priority, 0, 1_000_000);
+        const dailyLimit = parseBoundedInteger(body.daily_limit, existing.daily_limit, 0, 10_000_000);
         const isActive = body.is_active !== undefined ? (body.is_active ? 1 : 0) : existing.is_active;
         const isDefault = body.is_default !== undefined ? (body.is_default ? 1 : 0) : existing.is_default;
+        if (!name || name.length > 200) {
+          return jsonResponse({ error: 'Provider name must be between 1 and 200 characters' }, 400);
+        }
+        if (!isValidMailbox(fromEmail)) {
+          return jsonResponse({ error: 'Invalid provider from_email address' }, 400);
+        }
+        if (fromName && fromName.length > 200) {
+          return jsonResponse({ error: 'Provider from_name must not exceed 200 characters' }, 400);
+        }
 
         let credsJson = existing.credentials_json;
         if (body.credentials) {
@@ -600,6 +702,12 @@ export default {
           } catch (_) {}
 
           let newCreds: any = typeof body.credentials === 'string' ? JSON.parse(body.credentials) : body.credentials;
+          if (!newCreds || typeof newCreds !== 'object' || Array.isArray(newCreds)) {
+            return jsonResponse({ error: 'Provider credentials must be a JSON object' }, 400);
+          }
+          if (JSON.stringify(newCreds).length > MAX_PROVIDER_CREDENTIALS_CHARS) {
+            return jsonResponse({ error: 'Provider credentials payload is too large' }, 413);
+          }
           if (newCreds.password === '••••••••' || newCreds.password === '') {
             newCreds.password = oldCreds.password;
           }
@@ -652,6 +760,9 @@ export default {
     // DELETE /api/providers — Delete provider
     if (url.pathname === '/api/providers' && request.method === 'DELETE') {
       try {
+        if (!isAdminSession) {
+          return jsonResponse({ error: 'Forbidden: Admin session required to manage providers' }, 403);
+        }
         const id = url.searchParams.get('id');
         if (!id) {
           return jsonResponse({ error: 'Missing "id" query parameter' }, 400);
@@ -670,6 +781,9 @@ export default {
     // POST /api/providers/set-default — Set default provider
     if (url.pathname === '/api/providers/set-default' && request.method === 'POST') {
       try {
+        if (!isAdminSession) {
+          return jsonResponse({ error: 'Forbidden: Admin session required to manage providers' }, 403);
+        }
         const body: any = await request.json();
         const id = body.id;
         if (!id) {
@@ -697,6 +811,9 @@ export default {
     // POST /api/providers/test — Test provider connectivity and dispatch
     if (url.pathname === '/api/providers/test' && request.method === 'POST') {
       try {
+        if (!isAdminSession) {
+          return jsonResponse({ error: 'Forbidden: Admin session required to test providers' }, 403);
+        }
         const body: any = await request.json();
         const id = body.id || body.provider_id;
         const testTo = (body.to || body.from_email || 'test@example.com').replace(/[\r\n\0]+/g, '').trim();
