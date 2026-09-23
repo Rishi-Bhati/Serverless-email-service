@@ -176,7 +176,7 @@ export async function processQueue(env: Env): Promise<void> {
       const activeProviders = await getActiveProviders(env.DB).catch(() => []);
 
       if (emailRow.provider_id) {
-        // Explicit provider ID was requested
+        // Explicit provider ID was requested (direct targeting)
         const explicitProvider = await getProviderById(env.DB, emailRow.provider_id);
         if (explicitProvider && explicitProvider.is_active === 1) {
           candidateProviders = [explicitProvider];
@@ -189,20 +189,35 @@ export async function processQueue(env: Env): Promise<void> {
           `).bind(errMsg, Date.now(), emailRow.id).run();
           continue;
         }
-      } else if (emailRow.from_email) {
-        // Explicit sender email requested: find all active providers configured for this email
-        const matching = activeProviders.filter(
-          p => p.from_email.toLowerCase() === emailRow.from_email!.toLowerCase()
-        );
-        if (matching.length > 0) {
-          candidateProviders = matching;
-        } else {
-          // If no provider explicitly matches in D1, check if other active providers exist or fallback
-          candidateProviders = activeProviders;
-        }
       } else {
-        // Default priority order: use active providers sorted by is_default DESC, priority ASC, id ASC
-        candidateProviders = activeProviders;
+        // Exclude providers marked as 'direct_only' from automatic selection
+        const normalPriorityProviders = activeProviders
+          .filter(p => !p.routing_policy || p.routing_policy === 'priority')
+          .sort((a, b) => (b.is_default - a.is_default) || (a.priority - b.priority) || a.id.localeCompare(b.id));
+
+        const lastResortProviders = activeProviders
+          .filter(p => p.routing_policy === 'last_resort')
+          .sort((a, b) => (a.priority - b.priority) || a.id.localeCompare(b.id));
+
+        if (emailRow.from_email) {
+          // Explicit sender email requested: prioritize active providers configured for this email
+          const matchingNormal = normalPriorityProviders.filter(
+            p => p.from_email.toLowerCase() === emailRow.from_email!.toLowerCase()
+          );
+          const matchingLastResort = lastResortProviders.filter(
+            p => p.from_email.toLowerCase() === emailRow.from_email!.toLowerCase()
+          );
+
+          if (matchingNormal.length > 0 || matchingLastResort.length > 0) {
+            candidateProviders = [...matchingNormal, ...matchingLastResort];
+          } else {
+            // If no provider explicitly matches from_email in D1, use remaining priority waterfall
+            candidateProviders = [...normalPriorityProviders, ...lastResortProviders];
+          }
+        } else {
+          // Standard priority waterfall: normal priority providers first, then last resort providers
+          candidateProviders = [...normalPriorityProviders, ...lastResortProviders];
+        }
       }
 
       // 6. Execute delivery with automatic priority failover
@@ -279,8 +294,9 @@ export async function processQueue(env: Env): Promise<void> {
         }
       }
 
-      // 7. Fallback to legacy environment variables if D1 providers failed or none configured
-      if (!sendSuccess && env.SMTP_HOST && env.SMTP_USERNAME && env.SMTP_PASSWORD) {
+      // 7. Fallback to legacy environment variables if D1 providers failed or none configured.
+      // Do not fall back to env SMTP if the caller explicitly requested a specific provider circuit.
+      if (!sendSuccess && !emailRow.provider_id && env.SMTP_HOST && env.SMTP_USERNAME && env.SMTP_PASSWORD) {
         try {
           console.log(`Using fallback environment SMTP settings for email ${emailRow.id}...`);
           if (!sharedSmtpMailer || sharedSmtpMailerKey !== '__env__') {

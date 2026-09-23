@@ -1735,6 +1735,7 @@ export function renderDashboard(): string {
                 <th style="width:36px">#</th>
                 <th>Provider ID &amp; Name</th>
                 <th>Type</th>
+                <th>Routing Policy</th>
                 <th>From Address</th>
                 <th>Daily Quota</th>
                 <th>Status</th>
@@ -1743,7 +1744,7 @@ export function renderDashboard(): string {
             </thead>
             <tbody id="prov-body">
               <tr>
-                <td colspan="7">
+                <td colspan="8">
                   <div class="empty-state">
                     <div style="font-weight:600;font-size:14px;color:var(--text-primary);margin-bottom:4px;">No Providers Configured</div>
                     <div style="font-size:12.5px;color:var(--text-muted);">Add your first SMTP or API provider circuit to start sending.</div>
@@ -1975,8 +1976,18 @@ export function renderDashboard(): string {
           </div>
         </div>
 
+        <div class="form-control" style="margin-bottom:14px;">
+          <label>Priority &amp; Routing Waterfall Policy *</label>
+          <select id="pf-routing-policy" onchange="onRoutingPolicyChange()" style="width:100%;">
+            <option value="priority">Include in Priority Waterfall (Default)</option>
+            <option value="direct_only">Exclude from Priority: Target Only (Default when excluded — never auto-selected)</option>
+            <option value="last_resort">Exclude from Priority: Last Resort Backup (Used only if all priority providers fail)</option>
+          </select>
+          <div id="pf-routing-hint" style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.45;"></div>
+        </div>
+
         <div class="form-grid">
-          <div class="form-control">
+          <div class="form-control" id="pf-prio-group">
             <label>Priority (1 = highest)</label>
             <input class="mono" type="number" id="pf-prio" value="1" min="1" max="100">
           </div>
@@ -2450,7 +2461,7 @@ async function fetchProviders(btn) {
 function renderProvs(provs) {
   const tb = document.getElementById('prov-body');
   if (!provs.length) {
-    tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div style="font-weight:600;font-size:14px;color:var(--text-primary);margin-bottom:4px;">No Providers Configured</div><div style="font-size:12.5px;color:var(--text-muted);">Add your first SMTP or API provider circuit to start sending.</div></div></td></tr>';
+    tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div style="font-weight:600;font-size:14px;color:var(--text-primary);margin-bottom:4px;">No Providers Configured</div><div style="font-size:12.5px;color:var(--text-muted);">Add your first SMTP or API provider circuit to start sending.</div></div></td></tr>';
     return;
   }
   tb.innerHTML = provs.map((p, i) => {
@@ -2458,11 +2469,22 @@ function renderProvs(provs) {
     const ab = p.is_active
       ? '<span class="status-tag tag-dispatched"><span class="tag-dot">●</span>Active</span>'
       : '<span class="status-tag" style="color:var(--text-muted)"><span class="tag-dot">○</span>Disabled</span>';
-    const setDefBtn = !p.is_default ? '<button class="btn-subtle" style="height:28px;font-size:12px;" onclick="setDefault(\\'' + esc(p.id) + '\\')">Set Default</button>' : '';
+
+    let policyBadge = '';
+    if (p.routing_policy === 'direct_only') {
+      policyBadge = '<span class="status-tag" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.25);" title="Excluded from automatic waterfall. Can only be dispatched when explicitly targeted."><span class="tag-dot" style="background:#ef4444;">●</span>Target Only (Excluded)</span>';
+    } else if (p.routing_policy === 'last_resort') {
+      policyBadge = '<span class="status-tag" style="background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid rgba(245,158,11,0.25);" title="Excluded from normal waterfall. Attempted only if all normal providers fail."><span class="tag-dot" style="background:#f59e0b;">●</span>Last Resort (Prio ' + esc(p.priority) + ')</span>';
+    } else {
+      policyBadge = '<span class="status-tag" style="background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid rgba(59,130,246,0.25);" title="Included in automatic priority waterfall."><span class="tag-dot" style="background:#3b82f6;">●</span>Priority ' + esc(p.priority) + '</span>';
+    }
+
+    const setDefBtn = (!p.is_default && p.routing_policy !== 'direct_only') ? '<button class="btn-subtle" style="height:28px;font-size:12px;" onclick="setDefault(\\'' + esc(p.id) + '\\')">Set Default</button>' : '';
     return '<tr>'
       + '<td style="color:var(--text-muted);font-weight:500">' + (i + 1) + '</td>'
       + '<td><b>' + esc(p.name) + '</b> ' + defBadge + '<br><span class="mono" style="font-size:11.5px;color:var(--text-muted)">' + esc(p.id) + '</span></td>'
       + '<td>' + tbadge(p.type) + '</td>'
+      + '<td>' + policyBadge + '</td>'
       + '<td class="mono" style="font-size:13px">' + esc(p.from_email || '—') + '</td>'
       + '<td>' + qbar(p.daily_sent_count || 0, p.daily_limit || 0) + '</td>'
       + '<td>' + ab + '</td>'
@@ -2480,8 +2502,27 @@ function fillTestSelect(provs) {
   const sel = document.getElementById('te-prov');
   const cur = sel.value;
   sel.innerHTML = '<option value="">Auto (Default priority)</option>'
-    + provs.filter(p => p.is_active).map(p => '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + esc(p.type) + ')</option>').join('');
+    + provs.filter(p => p.is_active).map(p => {
+        let tag = '';
+        if (p.routing_policy === 'direct_only') tag = ' [Target Only]';
+        else if (p.routing_policy === 'last_resort') tag = ' [Last Resort]';
+        return '<option value="' + esc(p.id) + '">' + esc(p.name) + ' (' + esc(p.type) + ')' + tag + '</option>';
+      }).join('');
   sel.value = cur;
+}
+
+function onRoutingPolicyChange() {
+  const sel = document.getElementById('pf-routing-policy');
+  const hint = document.getElementById('pf-routing-hint');
+  if (!sel || !hint) return;
+  const val = sel.value;
+  if (val === 'direct_only') {
+    hint.innerHTML = '<span style="color:#ef4444;font-weight:600">Excluded from Priority List:</span> Used ONLY when explicitly targeted in request (<code class="mono">provider_id</code> or <code class="mono">X-Provider-Id</code>). If all normal providers fail, Unsent uses env SMTP credentials, <span style="font-weight:600;color:#ef4444">never</span> this provider.';
+  } else if (val === 'last_resort') {
+    hint.innerHTML = '<span style="color:#f59e0b;font-weight:600">Last Resort Backup:</span> Excluded from normal priority waterfall, but attempted as a last resort if all normal providers fail, before falling back to env SMTP credentials.';
+  } else {
+    hint.innerHTML = '<span style="color:#3b82f6;font-weight:600">Standard Priority:</span> Included in the automatic priority failover waterfall sorted by priority (1 = highest).';
+  }
 }
 
 function onTypeChange() {
@@ -2500,6 +2541,8 @@ function openAddProv() {
   document.getElementById('prov-editing-id').value = '';
   document.getElementById('prov-form').reset();
   document.getElementById('pf-id').disabled = false;
+  document.getElementById('pf-routing-policy').value = 'priority';
+  onRoutingPolicyChange();
   onTypeChange();
   document.getElementById('prov-modal').classList.add('show');
 }
@@ -2515,8 +2558,10 @@ function openEditProv(id) {
   document.getElementById('pf-type').value = p.type || 'smtp';
   document.getElementById('pf-from').value = p.from_email || '';
   document.getElementById('pf-fromname').value = p.from_name || '';
+  document.getElementById('pf-routing-policy').value = p.routing_policy || 'priority';
   document.getElementById('pf-prio').value = p.priority || 1;
   document.getElementById('pf-limit').value = p.daily_limit || 0;
+  onRoutingPolicyChange();
   onTypeChange();
   if (p.type === 'smtp') {
     const creds = p.credentials || {};
@@ -2570,6 +2615,7 @@ async function saveProv(ev) {
     type,
     from_email: document.getElementById('pf-from').value.trim(),
     from_name: document.getElementById('pf-fromname').value.trim() || undefined,
+    routing_policy: document.getElementById('pf-routing-policy').value || 'priority',
     priority: parseInt(document.getElementById('pf-prio').value, 10) || 1,
     daily_limit: parseInt(document.getElementById('pf-limit').value, 10) || 0,
     credentials: creds,
@@ -2945,7 +2991,7 @@ async function fetchKeys() {
       serverApiKey = res.api_key;
       serverApiSecret = res.api_secret || '';
       serverSecurityMode = res.security_mode || 'full';
-      serverBaseUrl = res.base_url || 'https://unsent.rishi.website';
+      serverBaseUrl = res.base_url || 'https://unsent.rishibhati.in';
     }
   } catch (e) {
     console.warn('Could not fetch server keys:', e);
@@ -2960,7 +3006,7 @@ function renderCredentialsCard() {
   const sessionToken = sessionStorage.getItem('unsent_session_token');
   const key = serverApiKey || authToken || '';
   const sec = serverApiSecret || authSecret || '';
-  const url = serverBaseUrl || 'https://unsent.rishi.website';
+  const url = serverBaseUrl || 'https://unsent.rishibhati.in';
 
   if (!sessionToken && !key) {
     el.innerHTML = '<div class="creds-unauth-box">' +
@@ -3116,7 +3162,7 @@ function getCreds(withRealKeys) {
   const realSec = (hasCreds && (serverApiSecret || authSecret)) ? (serverApiSecret || authSecret) : 'YOUR_HMAC_SECRET';
   const maskedKey = '••••••••••••••••••••••••••••••••';
   const maskedSec = '••••••••••••••••••••••••••••••••';
-  const defaultUrl = 'https://unsent.rishi.website';
+  const defaultUrl = 'https://unsent.rishibhati.in';
   const url = (serverBaseUrl && !serverBaseUrl.includes('localhost') && !serverBaseUrl.includes('127.0.0.1'))
     ? serverBaseUrl
     : defaultUrl;

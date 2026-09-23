@@ -17,6 +17,7 @@ import {
   getTodayUtc,
   type ProviderRecord,
   type ProviderType,
+  type RoutingPolicy,
 } from './providers';
 
 const MAX_SEND_BODY_BYTES = 1024 * 1024;
@@ -240,7 +241,7 @@ export default {
           senderEmail = String(senderEmail).replace(/[\r\n\0\s]+/g, '').trim().slice(0, 254);
         }
 
-        const explicitProviderId = authResult.explicitProviderId || body.provider_id || undefined;
+        const explicitProviderId = authResult.explicitProviderId || body.provider_id || body.provider || undefined;
 
         // Security check: validate that explicit sender or provider is authorized
         const senderAuth = await validateSenderAuthorization(env, senderEmail, explicitProviderId);
@@ -357,7 +358,7 @@ export default {
           );
         }
 
-        const defaultBaseUrl = 'https://unsent.rishi.website';
+        const defaultBaseUrl = 'https://unsent.rishibhati.in';
         const baseUrl = (url.origin && !url.origin.includes('localhost') && !url.origin.includes('127.0.0.1'))
           ? url.origin
           : defaultBaseUrl;
@@ -588,6 +589,10 @@ export default {
         }
 
         const priority = parseBoundedInteger(body.priority, 1, 0, 1_000_000);
+        const validPolicies: RoutingPolicy[] = ['priority', 'direct_only', 'last_resort'];
+        const routingPolicy: RoutingPolicy = (body.routing_policy && validPolicies.includes(body.routing_policy))
+          ? body.routing_policy
+          : 'priority';
         const isDefault = body.is_default ? 1 : 0;
         const dailyLimit = parseBoundedInteger(body.daily_limit, 0, 0, 10_000_000);
         const isActive = body.is_active !== false && body.is_active !== 0 ? 1 : 0;
@@ -613,10 +618,10 @@ export default {
         await env.DB.prepare(`
           INSERT INTO providers (
             id, name, type, credentials_json, from_email, from_name,
-            priority, is_default, daily_limit, daily_sent_count, last_reset_date,
+            priority, routing_policy, is_default, daily_limit, daily_sent_count, last_reset_date,
             is_active, created_at, updated_at
           )
-          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10, ?11, ?12, ?13)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11, ?12, ?13, ?14)
         `).bind(
           id,
           cleanName,
@@ -625,6 +630,7 @@ export default {
           cleanFromEmail,
           cleanFromName,
           priority,
+          routingPolicy,
           isDefault,
           dailyLimit,
           today,
@@ -722,6 +728,11 @@ export default {
           credsJson = await encryptCredentials(merged, env.API_SECRET);
         }
 
+        const validPolicies: RoutingPolicy[] = ['priority', 'direct_only', 'last_resort'];
+        const routingPolicy: RoutingPolicy = (body.routing_policy !== undefined && validPolicies.includes(body.routing_policy))
+          ? body.routing_policy
+          : (existing.routing_policy || 'priority');
+
         if (isDefault === 1 && existing.is_default !== 1) {
           await env.DB.prepare('UPDATE providers SET is_default = 0 WHERE is_default = 1').run();
         }
@@ -729,9 +740,9 @@ export default {
         await env.DB.prepare(`
           UPDATE providers
           SET name = ?1, type = ?2, credentials_json = ?3, from_email = ?4,
-              from_name = ?5, priority = ?6, is_default = ?7, daily_limit = ?8,
-              is_active = ?9, updated_at = ?10
-          WHERE id = ?11
+              from_name = ?5, priority = ?6, routing_policy = ?7, is_default = ?8, daily_limit = ?9,
+              is_active = ?10, updated_at = ?11
+          WHERE id = ?12
         `).bind(
           name,
           type,
@@ -739,6 +750,7 @@ export default {
           fromEmail,
           fromName,
           priority,
+          routingPolicy,
           isDefault,
           dailyLimit,
           isActive,

@@ -40,6 +40,8 @@ export type ProviderCredentials =
   | PostmarkCredentials
   | Record<string, any>;
 
+export type RoutingPolicy = 'priority' | 'direct_only' | 'last_resort';
+
 export interface ProviderRecord {
   id: string;
   name: string;
@@ -48,6 +50,7 @@ export interface ProviderRecord {
   from_email: string;
   from_name: string | null;
   priority: number;
+  routing_policy?: RoutingPolicy;
   is_default: number;
   daily_limit: number;
   daily_sent_count: number;
@@ -159,6 +162,7 @@ export async function sanitizeProvider(p: ProviderRecord, secret?: string): Prom
     from_email: p.from_email,
     from_name: p.from_name,
     priority: p.priority,
+    routing_policy: p.routing_policy || 'priority',
     is_default: p.is_default === 1,
     daily_limit: p.daily_limit,
     daily_sent_count: p.daily_sent_count,
