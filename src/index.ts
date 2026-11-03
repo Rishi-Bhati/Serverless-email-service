@@ -10,13 +10,14 @@ import {
   getSessionSecret,
   getValidSessionSecrets,
 } from './auth';
-import { encryptCredentials, decryptCredentials, sha256Hex } from './crypto';
+import { encryptCredentials, decryptCredentials, sha256Hex, credentialKeys, ConfigError } from './crypto';
 import {
   getAllProviders,
   getProviderById,
   sanitizeProvider,
   sendEmailViaProvider,
   getTodayUtc,
+  reencryptLegacyCredentials,
   type ProviderRecord,
   type ProviderType,
   type RoutingPolicy,
@@ -143,8 +144,38 @@ function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, 
   });
 }
 
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+/**
+ * Map an exception to a response without leaking internals: client input errors
+ * become 400s with their message, everything else is logged and returned as a
+ * generic 500.
+ */
+function errorResponse(err: unknown, context: string): Response {
+  if (err instanceof ValidationError) {
+    return jsonResponse({ error: err.message, code: 'validation_error' }, 400);
+  }
+  if (err instanceof SyntaxError) {
+    return jsonResponse({ error: 'Invalid JSON body', code: 'invalid_json' }, 400);
+  }
+  if (err instanceof ConfigError) {
+    console.error(`${context}: configuration error:`, err.message);
+    return jsonResponse({ error: 'Server misconfiguration', code: 'server_misconfigured' }, 500);
+  }
+  console.error(`${context} failed:`, err);
+  return jsonResponse({ error: 'Internal server error', code: 'internal_error' }, 500);
+}
+
+/** How long an idempotency key is remembered, in milliseconds (IDEMPOTENCY_TTL_HOURS, default 24). */
+function idempotencyTtlMs(env: Env): number {
+  const raw = env.IDEMPOTENCY_TTL_HOURS;
+  const hours = raw === undefined || raw === '' ? 24 : Number(raw);
+  if (!Number.isFinite(hours) || hours < 1 || hours > 720) {
+    throw new ConfigError('IDEMPOTENCY_TTL_HOURS must be a number between 1 and 720');
+  }
+  return hours * 60 * 60 * 1000;
+}
+
+const handlers = {
+  async route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     // 1. Dashboard UI — publicly accessible
@@ -208,7 +239,7 @@ export default {
           expires_in: 86400,
         });
       } catch (err: any) {
-        return jsonResponse({ error: 'Authentication failed: ' + (err.message || String(err)) }, 400);
+        return errorResponse(err, 'POST /api/auth/login');
       }
     }
 
@@ -417,9 +448,12 @@ export default {
             ]))
           : null;
 
+        // Resolve before writing, so a bad IDEMPOTENCY_TTL_HOURS fails the request cleanly.
+        const idempotencyCutoff = idempotencyKey ? Date.now() - idempotencyTtlMs(env) : 0;
+
         // ON CONFLICT makes the key check atomic: of two concurrent requests with the
-        // same key, exactly one inserts and the other falls through to the lookup below.
-        const insertResult = await env.DB.prepare(`
+        // same key, exactly one inserts and the others fall through to the lookup below.
+        const insertEmail = () => env.DB.prepare(`
           INSERT INTO emails (
             to_json, cc_json, bcc_json, subject, body, text_body, attachments_json,
             from_email, from_name, provider_id, status,
@@ -447,12 +481,27 @@ export default {
           )
           .first<{ id: number }>();
 
-        if (!insertResult && idempotencyKey) {
+        let insertResult = await insertEmail();
+
+        // The key is held by another email. Replay it, reject it, or, if that email's
+        // key has expired (or the email was deleted meanwhile), release it and retry.
+        // Bounded so a pathological race cannot loop forever.
+        for (let attempt = 0; !insertResult && idempotencyKey && attempt < 3; attempt++) {
           const existing = await env.DB.prepare(
-            'SELECT id, status, provider_id, idempotency_hash FROM emails WHERE idempotency_key = ?1'
-          ).bind(idempotencyKey).first<{ id: number; status: string; provider_id: string | null; idempotency_hash: string | null }>();
+            'SELECT id, status, provider_id, idempotency_hash, created_at FROM emails WHERE idempotency_key = ?1'
+          ).bind(idempotencyKey).first<{ id: number; status: string; provider_id: string | null; idempotency_hash: string | null; created_at: number }>();
+
           if (!existing) {
-            throw new Error('Idempotency key conflicted but no matching email was found');
+            insertResult = await insertEmail();
+            continue;
+          }
+          if (existing.created_at < idempotencyCutoff) {
+            // Conditional on the key so a concurrent release-and-insert is not undone.
+            await env.DB.prepare(
+              'UPDATE emails SET idempotency_key = NULL, idempotency_hash = NULL WHERE id = ?1 AND idempotency_key = ?2'
+            ).bind(existing.id, idempotencyKey).run();
+            insertResult = await insertEmail();
+            continue;
           }
           if (existing.idempotency_hash !== idempotencyHash) {
             return jsonResponse({
@@ -494,12 +543,8 @@ export default {
           202
         );
       } catch (err: any) {
-        if (err instanceof ValidationError) {
-          return jsonResponse({ error: err.message, code: 'validation_error' }, 400);
-        }
         // Internal details (D1 errors, stack traces) stay in the Worker logs.
-        console.error('POST /api/send failed:', err);
-        return jsonResponse({ error: 'Failed to queue email', code: 'internal_error' }, 500);
+        return errorResponse(err, 'POST /api/send');
       }
     }
 
@@ -565,7 +610,7 @@ export default {
           base_url: baseUrl,
         });
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 500);
+        return errorResponse(err, 'GET /api/keys');
       }
     }
 
@@ -585,7 +630,7 @@ export default {
 
         return jsonResponse(result);
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 500);
+        return errorResponse(err, 'GET /api/status');
       }
     }
 
@@ -698,7 +743,7 @@ export default {
           offset,
         });
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 500);
+        return errorResponse(err, 'GET /api/emails');
       }
     }
 
@@ -750,10 +795,11 @@ export default {
           return jsonResponse({ error: 'Forbidden: Admin session required to view providers' }, 403);
         }
         const rawProviders = await getAllProviders(env.DB);
-        const providers = await Promise.all(rawProviders.map(p => sanitizeProvider(p, env.API_SECRET)));
+        const keys = credentialKeys(env);
+        const providers = await Promise.all(rawProviders.map(p => sanitizeProvider(p, keys)));
         return jsonResponse({ providers, count: providers.length });
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 500);
+        return errorResponse(err, 'GET /api/providers');
       }
     }
 
@@ -819,7 +865,7 @@ export default {
         if (JSON.stringify(credsToEncrypt).length > MAX_PROVIDER_CREDENTIALS_CHARS) {
           return jsonResponse({ error: 'Provider credentials payload is too large' }, 413);
         }
-        const credsJson = await encryptCredentials(credsToEncrypt, env.API_SECRET);
+        const credsJson = await encryptCredentials(credsToEncrypt, credentialKeys(env));
         
         const now = Date.now();
         const today = getTodayUtc();
@@ -855,11 +901,11 @@ export default {
 
         const created = await getProviderById(env.DB, id);
         return jsonResponse(
-          { success: true, message: 'Provider created successfully', provider: created ? await sanitizeProvider(created, env.API_SECRET) : null },
+          { success: true, message: 'Provider created successfully', provider: created ? await sanitizeProvider(created, credentialKeys(env)) : null },
           201
         );
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 400);
+        return errorResponse(err, 'POST /api/providers');
       }
     }
 
@@ -918,7 +964,7 @@ export default {
         if (body.credentials) {
           let oldCreds: any = {};
           try {
-            oldCreds = await decryptCredentials(existing.credentials_json, env.API_SECRET);
+            oldCreds = await decryptCredentials(existing.credentials_json, credentialKeys(env));
           } catch (_) {}
 
           let newCreds: any = typeof body.credentials === 'string' ? JSON.parse(body.credentials) : body.credentials;
@@ -939,7 +985,7 @@ export default {
           }
 
           const merged = { ...oldCreds, ...newCreds };
-          credsJson = await encryptCredentials(merged, env.API_SECRET);
+          credsJson = await encryptCredentials(merged, credentialKeys(env));
         }
 
         const validPolicies: RoutingPolicy[] = ['priority', 'direct_only', 'last_resort'];
@@ -976,10 +1022,10 @@ export default {
         return jsonResponse({
           success: true,
           message: 'Provider updated successfully',
-          provider: updated ? await sanitizeProvider(updated, env.API_SECRET) : null,
+          provider: updated ? await sanitizeProvider(updated, credentialKeys(env)) : null,
         });
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 400);
+        return errorResponse(err, 'PUT /api/providers');
       }
     }
 
@@ -1000,7 +1046,7 @@ export default {
           message: `Provider "${id}" deleted successfully`,
         });
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 500);
+        return errorResponse(err, 'DELETE /api/providers');
       }
     }
 
@@ -1030,7 +1076,7 @@ export default {
 
         return jsonResponse({ success: true, message: `Provider "${id}" set as default.` });
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 400);
+        return errorResponse(err, 'POST /api/providers/set-default');
       }
     }
 
@@ -1086,14 +1132,27 @@ export default {
           fromName: provider.from_name || undefined,
         };
 
-        const result = await sendEmailViaProvider(provider, testMsg, null, env.API_SECRET);
+        // Resolved outside the provider try block so a server misconfiguration is
+        // reported as such, not as a provider failure.
+        const keys = credentialKeys(env);
+        let result: { messageId?: string };
+        try {
+          result = await sendEmailViaProvider(provider, testMsg, null, keys);
+        } catch (sendErr: any) {
+          // Admin-only endpoint whose purpose is to diagnose the provider, so the
+          // provider's own error is returned.
+          return jsonResponse(
+            { error: `Provider test failed: ${sendErr?.message || String(sendErr)}`, code: 'provider_error' },
+            502
+          );
+        }
         return jsonResponse({
           success: true,
           message: `Test email sent successfully via "${provider.name}" (${provider.type}).`,
           messageId: result.messageId,
         });
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 400);
+        return errorResponse(err, 'POST /api/providers/test');
       }
     }
 
@@ -1105,5 +1164,26 @@ export default {
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     console.log('Cron trigger activated. Running queue processor...');
     ctx.waitUntil(processQueue(env));
+    // Move provider credentials off the API_SECRET-derived key once ENCRYPTION_KEY is set.
+    ctx.waitUntil((async () => {
+      try {
+        await reencryptLegacyCredentials(env.DB, credentialKeys(env));
+      } catch (err) {
+        console.error('Credential re-encryption failed:', err);
+      }
+    })());
   },
+};
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    try {
+      return await handlers.route(request, env, ctx);
+    } catch (err) {
+      // Last-resort guard for routes without their own handler, so an uncaught
+      // exception never returns the platform's error page or internal details.
+      return errorResponse(err, `${request.method} ${new URL(request.url).pathname}`);
+    }
+  },
+  scheduled: handlers.scheduled,
 };

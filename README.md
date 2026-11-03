@@ -76,6 +76,16 @@ API_SECRET=your_secure_hmac_secret
 SECURITY_MODE=full
 NONCE_TTL_SECONDS=300
 
+# Server-only key for provider credentials at rest (openssl rand -hex 32). Never share it with API clients.
+ENCRYPTION_KEY=generate_with_openssl_rand_hex_32
+
+# Dashboard login requires these
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your_dashboard_password
+
+# Optional: hours that idempotency keys are remembered (default 24, range 1-720)
+# IDEMPOTENCY_TTL_HOURS=24
+
 # Optional legacy/fallback SMTP credentials
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -108,7 +118,7 @@ Once deployed, your live service URL will be displayed in the terminal:
 ## Critical Security Measures
 
 1. Application-Level AES-256-GCM Envelope Encryption
-Third-party credentials (SMTP passwords, Resend/SendGrid API keys, Postmark tokens) stored in Cloudflare D1 are encrypted using AES-256-GCM with a key derived from `API_SECRET`. Each record uses an independent 96-bit initialization vector (`IV`). Database backups and raw database dumps contain only ciphertext, never plaintext secrets. Decryption occurs solely in Worker memory during email dispatch.
+Third-party credentials (SMTP passwords, Resend/SendGrid API keys, Postmark tokens) stored in Cloudflare D1 are encrypted using AES-256-GCM with a key derived from `ENCRYPTION_KEY`, a server-only secret that is separate from the `API_SECRET` used by API clients. Records written before `ENCRYPTION_KEY` was set are re-encrypted automatically by the cron trigger. If `ENCRYPTION_KEY` is not set, the key is derived from `API_SECRET` instead and the Worker logs a warning. Each record uses an independent 96-bit initialization vector (`IV`). Database backups and raw database dumps contain only ciphertext, never plaintext secrets. Decryption occurs solely in Worker memory during email dispatch.
 
 2. HMAC-SHA256 Request Signing and Anti-Replay Protection
 In `signed` and `full` security modes, API requests require HMAC-SHA256 signatures over a canonical string composed of the Unix timestamp, unique nonce, routing headers, and SHA-256 body hash. Timestamps are strictly verified within a +/- 3-minute window, and nonces are recorded in D1 to prevent replay and capture attacks.
@@ -132,6 +142,7 @@ Recipient, subject, and sender fields are sanitized against carriage return/newl
 - The first request returns `202` with the new email `id`. A repeat with the same key and the same message returns `200` with the original `id`, `"idempotent_replay": true`, and an `Idempotent-Replayed: true` header.
 - Reusing a key with a different message returns `409` with code `idempotency_key_conflict`.
 - Each retry still needs a fresh `X-Nonce` and `X-Timestamp` in `signed`/`full` mode; only the idempotency key stays the same.
+- Keys are remembered for 24 hours by default, counted from when the original email was created. Set `IDEMPOTENCY_TTL_HOURS` (1 to 720) to change this. After a key expires, sending with it creates a new email and the key moves to that email. An invalid `IDEMPOTENCY_TTL_HOURS` makes sends that carry a key fail with `500` and code `server_misconfigured`.
 
 ## Error Responses
 
@@ -151,7 +162,8 @@ Every error response has the same JSON shape:
 | 404 | `not_found` | Unknown route or email |
 | 409 | `idempotency_key_conflict` | Idempotency key reused with different content |
 | 413 | `payload_too_large` | Body or attachments exceed the size limits |
-| 500 | `internal_error`, `server_misconfigured` | Server-side failure (safe to retry with the same idempotency key) |
+| 500 | `internal_error`, `server_misconfigured` | Server-side failure. Details are written to the Worker log only and are not returned in the response. Safe to retry with the same idempotency key |
+| 502 | `provider_error` | The provider rejected a provider test from the dashboard (`POST /api/providers/test`). The provider's error message is returned |
 
 ## Report Issues
 

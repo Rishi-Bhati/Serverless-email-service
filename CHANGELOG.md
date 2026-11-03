@@ -4,6 +4,51 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-11-03
+
+### Upgrade notes
+
+**Recommended:** Set a separate encryption key for provider credentials. This release has no database migration.
+
+1. Generate a key with `openssl rand -hex 32`. It must be at least 32 characters.
+2. Add `ENCRYPTION_KEY=...` to `.env`.
+3. Run `npx wrangler secret put ENCRYPTION_KEY` or `npm run secrets:deploy -- --prod`.
+4. Run `npm run deploy`.
+
+Within a minute, the cron trigger re-encrypts existing provider credentials to the new format. No downtime is required.
+
+**Caution:** once provider credentials have been re-encrypted, they can only be decrypted with this `ENCRYPTION_KEY`. Do not remove or change it afterwards. If it is lost or changed, provider credentials must be re-entered in the dashboard. Keep a backup of it.
+
+Other changes that may affect clients:
+
+- `POST /api/providers/test` returns 502 `provider_error` instead of 400 when the provider rejects the test. Clients that branch on that status must be updated.
+- Login with a malformed JSON body returns "Invalid JSON body" (400 `invalid_json`). Previously the parser message was returned.
+- Idempotency keys now expire after 24 hours by default. Review any client that relies on a key never expiring.
+
+### Security
+
+- Provider credentials were encrypted with a key derived from `API_SECRET`. Every API client holds `API_SECRET` for request signing, so a client holding `API_SECRET` and a copy of the database could decrypt stored SMTP passwords and provider API keys. Rotating `API_SECRET` also made stored credentials unreadable. Set the new `ENCRYPTION_KEY` secret to use a separate key (see Added).
+- Internal error details are no longer returned in any API response. All endpoints (login, keys, status, emails list, providers list, create, update, delete, set-default, and test) return `Internal server error` with code `internal_error` for unexpected failures. The detail is written to the Worker log. In 1.1.0 this applied only to `POST /api/send`.
+
+### Added
+
+- Optional `ENCRYPTION_KEY` secret for provider credential encryption. It is server-only, is never given to API clients, and must be at least 32 characters.
+  - When set, new and updated credentials are written in envelope version v2, keyed from `ENCRYPTION_KEY`.
+  - Existing records stay readable. Records in envelope version v1 (keyed from `API_SECRET`) and older unencrypted records are re-encrypted to v2 by the cron trigger, which runs every minute. A row is overwritten only if it has not changed since it was read.
+  - When `ENCRYPTION_KEY` is not set, behavior is unchanged (v1, keyed from `API_SECRET`) and the Worker logs a warning. Setting it is strongly recommended.
+- New error code `provider_error` with status 502, returned by `POST /api/providers/test` when the provider rejects the test.
+
+### Changed
+
+- Idempotency keys expire. They are remembered for 24 hours by default, counted from when the original email was created. The period is configurable with `IDEMPOTENCY_TTL_HOURS` (a number from 1 to 720). After expiry, a request with the same key creates a new email, and the key moves to that email. The old email keeps its record but no longer holds the key. Concurrent requests with an expired key still produce exactly one new email. Previously, keys were held until the email was deleted.
+- An invalid `IDEMPOTENCY_TTL_HOURS` makes sends that carry an idempotency key fail with 500 `server_misconfigured`. Sends without a key are not affected.
+- If `ENCRYPTION_KEY` is set but shorter than 32 characters, provider endpoints return 500 `server_misconfigured`, with the detail written only to the Worker log. Sends routed through providers fail with that configuration error. Sends are still accepted and queued.
+- Malformed JSON bodies return 400 `invalid_json` with the message "Invalid JSON body". Login previously returned "Authentication failed: <parser message>".
+- Invalid numeric fields on provider create and update (`priority`, `daily_limit`) return 400 `validation_error` with a readable message.
+- Unexpected database errors on provider create, update, and set-default return 500 instead of 400.
+- `POST /api/providers/test`: when the provider rejects the test (connection or authentication failure), the response is 502 `provider_error` with the message `Provider test failed: <provider's error>`. Previously this was 400. The endpoint requires an admin session, and the provider's error is shown because it is the purpose of the test.
+- A last-resort handler wraps every route, so an uncaught exception returns the standard JSON error instead of the platform error page.
+
 ## [1.1.0] - 2026-11-03
 
 ### Upgrade notes
@@ -82,5 +127,6 @@ Initial release.
 - Dashboard output escaping fixes, and unified session-token authentication for the dashboard.
 - Hardening pass across the queue and API that resolved concurrency and logic bugs.
 
+[1.2.0]: https://github.com/Rishi-Bhati/Serverless-email-service/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Rishi-Bhati/Serverless-email-service/compare/e53e5ba...v1.1.0
 [1.0.0]: https://github.com/Rishi-Bhati/Serverless-email-service/tree/e53e5ba

@@ -1,5 +1,5 @@
 import { WorkerMailer } from 'worker-mailer';
-import { decryptCredentials } from './crypto';
+import { decryptCredentials, encryptCredentials, isCurrentCredentialEnvelope, type CredentialKeys } from './crypto';
 
 export type ProviderType = 'smtp' | 'resend' | 'sendgrid' | 'mailgun' | 'postmark';
 
@@ -142,10 +142,10 @@ export function isDisallowedHost(host: string): boolean {
  * Sanitizes provider record so secrets (API keys, passwords) are masked
  * when returning data over APIs or displaying in dashboard.
  */
-export async function sanitizeProvider(p: ProviderRecord, secret?: string): Promise<Record<string, any>> {
+export async function sanitizeProvider(p: ProviderRecord, keys: CredentialKeys): Promise<Record<string, any>> {
   let creds: any = {};
   try {
-    creds = await decryptCredentials(p.credentials_json || '{}', secret);
+    creds = await decryptCredentials(p.credentials_json || '{}', keys);
   } catch {
     creds = {};
   }
@@ -260,12 +260,12 @@ export async function incrementProviderDailySent(db: D1Database, providerId: str
 export async function sendEmailViaProvider(
   provider: ProviderRecord,
   message: EmailMessage,
-  sharedMailer?: any,
-  encryptionSecret?: string
+  sharedMailer: any,
+  keys: CredentialKeys
 ): Promise<{ success: boolean; messageId?: string; mailerInstance?: any }> {
   let creds: any = {};
   try {
-    creds = await decryptCredentials(provider.credentials_json || '{}', encryptionSecret);
+    creds = await decryptCredentials(provider.credentials_json || '{}', keys);
   } catch (err: any) {
     throw new Error(`Invalid or undecryptable credentials for provider "${provider.name}": ${err.message}`);
   }
@@ -511,4 +511,36 @@ export async function sendEmailViaProvider(
     default:
       throw new Error(`Unsupported provider type "${provider.type}"`);
   }
+}
+
+/**
+ * Re-encrypt provider credentials that are not yet in the current (ENCRYPTION_KEY)
+ * envelope: v1/legacy records encrypted with an API_SECRET-derived key, and old
+ * unencrypted records. Runs from the cron trigger; a no-op without ENCRYPTION_KEY.
+ * Each row is updated only if it has not changed since it was read.
+ */
+export async function reencryptLegacyCredentials(
+  db: D1Database,
+  keys: CredentialKeys
+): Promise<{ migrated: number; failed: number }> {
+  if (!keys.encryptionKey) return { migrated: 0, failed: 0 };
+  const rows = await db.prepare('SELECT id, credentials_json FROM providers').all<{ id: string; credentials_json: string }>();
+  let migrated = 0;
+  let failed = 0;
+  for (const row of rows.results || []) {
+    if (isCurrentCredentialEnvelope(row.credentials_json)) continue;
+    try {
+      const creds = await decryptCredentials(row.credentials_json || '{}', keys);
+      const reencrypted = await encryptCredentials(creds, keys);
+      const res = await db.prepare(
+        'UPDATE providers SET credentials_json = ?1, updated_at = ?2 WHERE id = ?3 AND credentials_json = ?4'
+      ).bind(reencrypted, Date.now(), row.id, row.credentials_json).run();
+      if (res.meta?.changes) migrated++;
+    } catch (err) {
+      failed++;
+      console.error(`Could not re-encrypt credentials for provider "${row.id}":`, err);
+    }
+  }
+  if (migrated) console.log(`Re-encrypted credentials for ${migrated} provider(s) with ENCRYPTION_KEY.`);
+  return { migrated, failed };
 }

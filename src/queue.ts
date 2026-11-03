@@ -1,4 +1,5 @@
 import { WorkerMailer } from 'worker-mailer';
+import { credentialKeys } from './crypto';
 import {
   getActiveProviders,
   getProviderById,
@@ -13,6 +14,8 @@ export interface Env {
   DB: D1Database;
   API_KEY: string;
   API_SECRET: string;         // HMAC signing secret — configure on both server and client, never transmit
+  ENCRYPTION_KEY?: string;    // Server-only key for provider credentials at rest (>= 32 chars). Never give it to API clients.
+  IDEMPOTENCY_TTL_HOURS?: string; // How long an idempotency key is remembered (default: '24', range 1-720)
   SECURITY_MODE?: string;     // 'api-key-only' | 'signed' | 'full'  (default: 'full')
   NONCE_TTL_SECONDS?: string; // How long to keep used nonces in D1 (default: '300' = 5 minutes)
   SMTP_HOST?: string;
@@ -269,7 +272,7 @@ export async function processQueue(env: Env): Promise<void> {
               sharedSmtpMailer = null;
               sharedSmtpMailerKey = null;
             }
-            const result = await sendEmailViaProvider(provider, emailMessage, mailerToPass, env.API_SECRET);
+            const result = await sendEmailViaProvider(provider, emailMessage, mailerToPass, credentialKeys(env));
             if (provider.type === 'smtp' && result.mailerInstance) {
               sharedSmtpMailer = result.mailerInstance;
               sharedSmtpMailerKey = provider.id;
