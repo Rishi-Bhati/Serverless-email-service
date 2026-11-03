@@ -10,7 +10,7 @@ import {
   getSessionSecret,
   getValidSessionSecrets,
 } from './auth';
-import { encryptCredentials, decryptCredentials } from './crypto';
+import { encryptCredentials, decryptCredentials, sha256Hex } from './crypto';
 import {
   getAllProviders,
   getProviderById,
@@ -33,6 +33,23 @@ const MAX_RECIPIENT_LENGTH = 320;
 const MAX_PROVIDER_CREDENTIALS_CHARS = 16_384;
 const MAX_ATTACHMENTS = 20;
 const MAX_ATTACHMENT_FILENAME_LEN = 255;
+// Printable ASCII without spaces; long enough for UUIDs and composite keys like "order-123:receipt".
+const IDEMPOTENCY_KEY_RE = /^[\x21-\x7e]{1,255}$/;
+
+/** Thrown for bad client input; mapped to 400 `validation_error` instead of 500. */
+class ValidationError extends Error {}
+
+/**
+ * Coerce a client-supplied scalar to a string. Objects and arrays are rejected,
+ * because String() on them either yields "[object Object]" or throws (e.g. a
+ * non-callable `toString`), which would otherwise surface as a 500.
+ */
+function asText(value: unknown, field: string): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  throw new ValidationError(`"${field}" must be a string`);
+}
 
 function isValidMailbox(value: string): boolean {
   return value.length <= 254 && /^[^\s@<>]+@[^\s@<>]+$/.test(value);
@@ -42,7 +59,7 @@ function parseBoundedInteger(value: unknown, fallback: number, min: number, max:
   if (value === undefined || value === null || value === '') return fallback;
   const parsed = Number(value);
   if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
-    throw new Error(`Numeric value must be an integer between ${min} and ${max}`);
+    throw new ValidationError(`Numeric value must be an integer between ${min} and ${max}`);
   }
   return parsed;
 }
@@ -52,13 +69,13 @@ function parseRecipient(field: any): string {
   if (!field) return '[]';
   let list: string[] = [];
   if (Array.isArray(field)) {
-    list = field.map(x => (typeof x === 'object' && x ? String(x.email || '') : String(x || '')));
+    list = field.map(x => (typeof x === 'object' && x ? asText(x.email, 'email') || '' : asText(x, 'recipient') || ''));
   } else if (typeof field === 'object') {
-    list = [String(field.email || '')];
+    list = [asText(field.email, 'email') || ''];
   } else if (typeof field === 'string') {
     list = field.split(',');
   } else {
-    throw new Error('Invalid recipient format');
+    throw new ValidationError('Invalid recipient format');
   }
 
   const cleanList = list
@@ -66,13 +83,13 @@ function parseRecipient(field: any): string {
     .filter(Boolean);
 
   if (cleanList.length === 0) {
-    throw new Error('No valid recipient addresses provided');
+    throw new ValidationError('No valid recipient addresses provided');
   }
   if (cleanList.length > MAX_RECIPIENTS_PER_FIELD) {
-    throw new Error(`Too many recipients (maximum ${MAX_RECIPIENTS_PER_FIELD} per field)`);
+    throw new ValidationError(`Too many recipients (maximum ${MAX_RECIPIENTS_PER_FIELD} per field)`);
   }
   if (cleanList.some(address => address.length > MAX_RECIPIENT_LENGTH)) {
-    throw new Error(`Recipient address is too long (maximum ${MAX_RECIPIENT_LENGTH} characters)`);
+    throw new ValidationError(`Recipient address is too long (maximum ${MAX_RECIPIENT_LENGTH} characters)`);
   }
 
   return JSON.stringify(cleanList);
@@ -83,18 +100,39 @@ const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers':
-    'Content-Type, Authorization, X-Session-Token, X-API-Key, X-Timestamp, X-Nonce, X-Signature, X-Sender-Email, X-Provider-Id',
+    'Content-Type, Authorization, X-Session-Token, X-API-Key, X-Timestamp, X-Nonce, X-Signature, X-Sender-Email, X-Provider-Id, Idempotency-Key',
   'Access-Control-Max-Age': '86400',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
 };
 
-function jsonResponse(data: unknown, status = 200): Response {
+// Default machine-readable code for error responses that do not set a more specific one.
+const DEFAULT_ERROR_CODES: Record<number, string> = {
+  400: 'bad_request',
+  401: 'unauthorized',
+  403: 'forbidden',
+  404: 'not_found',
+  409: 'conflict',
+  413: 'payload_too_large',
+  429: 'rate_limited',
+};
+
+/**
+ * JSON response helper. Every error body has the shape `{ error, code, reason? }`:
+ * `error` is a human-readable message, `code` is a stable identifier clients can
+ * branch on, and `reason` (optional) carries extra detail.
+ */
+function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
+  if (status >= 400 && data && typeof data === 'object' && !Array.isArray(data) && !('code' in data)) {
+    data = { ...data, code: DEFAULT_ERROR_CODES[status] || (status >= 500 ? 'internal_error' : 'error') };
+  }
   return new Response(JSON.stringify(data), {
     status,
     headers: {
+      ...extraHeaders,
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
+      'Access-Control-Expose-Headers': 'Idempotent-Replayed',
       // API responses include message bodies, delivery logs, and (for the
       // authenticated credential endpoint) secrets. Do not retain them in
       // browser or intermediary caches.
@@ -155,7 +193,9 @@ export default {
           return jsonResponse({ error: 'Invalid username or password' }, 401);
         }
 
-        const sessionSecret = (await getSessionSecret(env)) || (env.API_SECRET ? `unsent:session:v1:${env.API_SECRET}` : null);
+        // Sessions are signed only with the key derived from the admin credentials.
+        // There is deliberately no API_SECRET-only fallback: API clients hold API_SECRET.
+        const sessionSecret = await getSessionSecret(env);
         if (!sessionSecret) {
           return jsonResponse({ error: 'Server misconfiguration: session secrets not set' }, 500);
         }
@@ -186,8 +226,13 @@ export default {
 
         const authResult = await verifyRequest(request, rawBody, env);
         if (!authResult.ok) {
+          if (authResult.code === 'server_misconfigured') {
+            // The detail names missing secrets/settings; keep it out of unauthenticated responses.
+            console.error('POST /api/send rejected:', authResult.reason);
+            return jsonResponse({ error: 'Server misconfiguration', code: 'server_misconfigured' }, 500);
+          }
           return jsonResponse(
-            { error: 'Unauthorized', reason: authResult.reason },
+            { error: 'Unauthorized', code: authResult.code || 'unauthorized', reason: authResult.reason },
             401
           );
         }
@@ -196,30 +241,60 @@ export default {
         try {
           body = JSON.parse(rawBody);
         } catch {
-          return jsonResponse({ error: 'Invalid JSON body' }, 400);
+          return jsonResponse({ error: 'Invalid JSON body', code: 'invalid_json' }, 400);
         }
         if (!body || typeof body !== 'object' || Array.isArray(body)) {
-          return jsonResponse({ error: 'JSON body must be an object' }, 400);
+          return jsonResponse({ error: 'JSON body must be an object', code: 'validation_error' }, 400);
+        }
+
+        // Optional idempotency key, as the `idempotency_key` body field or the
+        // `Idempotency-Key` header. The header is outside the HMAC canonical string,
+        // so on signature-verified requests the key must be in the (signed) body;
+        // otherwise an in-path party could attach or swap a key on a signed request.
+        const hasHeaderIdemKey = request.headers.has('Idempotency-Key');
+        const hasBodyIdemKey = body.idempotency_key !== undefined && body.idempotency_key !== null;
+        if (hasBodyIdemKey && typeof body.idempotency_key !== 'string') {
+          return jsonResponse({ error: '"idempotency_key" must be a string', code: 'invalid_idempotency_key' }, 400);
+        }
+        const headerIdemKey = (request.headers.get('Idempotency-Key') || '').trim();
+        const bodyIdemKey = hasBodyIdemKey ? String(body.idempotency_key).trim() : '';
+        // An empty key (often an unset variable on the client) would silently disable
+        // deduplication, so reject it rather than ignore it.
+        if ((hasHeaderIdemKey && !headerIdemKey) || (hasBodyIdemKey && !bodyIdemKey)) {
+          return jsonResponse({ error: 'Idempotency key must not be empty', code: 'invalid_idempotency_key' }, 400);
+        }
+        if (headerIdemKey && bodyIdemKey && headerIdemKey !== bodyIdemKey) {
+          return jsonResponse({ error: 'Idempotency-Key header and "idempotency_key" body field differ', code: 'invalid_idempotency_key' }, 400);
+        }
+        if (headerIdemKey && !bodyIdemKey && authResult.signed) {
+          return jsonResponse({
+            error: 'Signed requests must send the idempotency key in the "idempotency_key" body field so it is covered by the signature',
+            code: 'invalid_idempotency_key',
+          }, 400);
+        }
+        const idempotencyKey = bodyIdemKey || headerIdemKey || null;
+        if (idempotencyKey && !IDEMPOTENCY_KEY_RE.test(idempotencyKey)) {
+          return jsonResponse({ error: 'Idempotency key must be 1-255 printable ASCII characters without spaces', code: 'invalid_idempotency_key' }, 400);
         }
 
         // Validate basic fields
         if (!body.to || (typeof body.to === 'string' && !body.to.trim())) {
-          return jsonResponse({ error: 'Missing recipient "to" field' }, 400);
+          return jsonResponse({ error: 'Missing recipient "to" field', code: 'validation_error' }, 400);
         }
         if (!body.subject || (typeof body.subject === 'string' && !body.subject.trim())) {
-          return jsonResponse({ error: 'Missing "subject" field' }, 400);
+          return jsonResponse({ error: 'Missing "subject" field', code: 'validation_error' }, 400);
         }
 
         // Sanitize subject against CRLF header injection and limit length
-        const cleanSubject = String(body.subject).replace(/[\r\n\0]+/g, ' ').trim().slice(0, 1000);
+        const cleanSubject = (asText(body.subject, 'subject') || '').replace(/[\r\n\0]+/g, ' ').trim().slice(0, 1000);
         if (!cleanSubject) {
-          return jsonResponse({ error: 'Invalid or empty "subject" field' }, 400);
+          return jsonResponse({ error: 'Invalid or empty "subject" field', code: 'validation_error' }, 400);
         }
 
         // Accept both 'html' (advertised in docs) and 'body' (legacy) field names
         const htmlBodyValue = body.html ?? body.body;
         if (typeof htmlBodyValue !== 'string' || !htmlBodyValue.trim()) {
-          return jsonResponse({ error: 'Missing "html" (or "body") field' }, 400);
+          return jsonResponse({ error: 'Missing "html" (or "body") field', code: 'validation_error' }, 400);
         }
         if (htmlBodyValue.length > MAX_EMAIL_BODY_CHARS) {
           return jsonResponse({ error: 'Email body is too large' }, 413);
@@ -230,7 +305,7 @@ export default {
         let textBody: string | null = null;
         if (body.text !== undefined && body.text !== null) {
           if (typeof body.text !== 'string') {
-            return jsonResponse({ error: '"text" field must be a string' }, 400);
+            return jsonResponse({ error: '"text" field must be a string', code: 'validation_error' }, 400);
           }
           if (body.text.length > MAX_EMAIL_BODY_CHARS) {
             return jsonResponse({ error: '"text" body is too large' }, 413);
@@ -242,33 +317,36 @@ export default {
         let attachmentsJson: string | null = null;
         if (body.attachments !== undefined && body.attachments !== null) {
           if (!Array.isArray(body.attachments)) {
-            return jsonResponse({ error: '"attachments" must be an array' }, 400);
+            return jsonResponse({ error: '"attachments" must be an array', code: 'validation_error' }, 400);
           }
           if (body.attachments.length > MAX_ATTACHMENTS) {
-            return jsonResponse({ error: `Too many attachments (max ${MAX_ATTACHMENTS})` }, 400);
+            return jsonResponse({ error: `Too many attachments (max ${MAX_ATTACHMENTS})`, code: 'validation_error' }, 400);
           }
           const cleanAttachments: EmailAttachment[] = [];
           for (let i = 0; i < body.attachments.length; i++) {
             const att = body.attachments[i];
             if (!att || typeof att !== 'object' || Array.isArray(att)) {
-              return jsonResponse({ error: `attachments[${i}] must be an object` }, 400);
+              return jsonResponse({ error: `attachments[${i}] must be an object`, code: 'validation_error' }, 400);
             }
             if (typeof att.filename !== 'string' || !att.filename.trim()) {
-              return jsonResponse({ error: `attachments[${i}].filename is required` }, 400);
+              return jsonResponse({ error: `attachments[${i}].filename is required`, code: 'validation_error' }, 400);
             }
             if (att.filename.length > MAX_ATTACHMENT_FILENAME_LEN) {
-              return jsonResponse({ error: `attachments[${i}].filename exceeds ${MAX_ATTACHMENT_FILENAME_LEN} characters` }, 400);
+              return jsonResponse({ error: `attachments[${i}].filename exceeds ${MAX_ATTACHMENT_FILENAME_LEN} characters`, code: 'validation_error' }, 400);
             }
             if (typeof att.content !== 'string') {
-              return jsonResponse({ error: `attachments[${i}].content must be a non-empty base64 string` }, 400);
+              return jsonResponse({ error: `attachments[${i}].content must be a non-empty base64 string`, code: 'validation_error' }, 400);
             }
             // Tolerate line-wrapped base64 (e.g. output of the `base64` CLI)
             const cleanContent = att.content.replace(/\s+/g, '');
             if (!cleanContent || cleanContent.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(cleanContent)) {
-              return jsonResponse({ error: `attachments[${i}].content must be valid base64` }, 400);
+              return jsonResponse({ error: `attachments[${i}].content must be valid base64`, code: 'validation_error' }, 400);
             }
             const cleanFilename = String(att.filename).replace(/[\r\n\0]/g, '').trim();
-            const cleanMime = att.mimeType ? String(att.mimeType).replace(/[\r\n\0\s]/g, '').slice(0, 127) : undefined;
+            if (att.mimeType !== undefined && att.mimeType !== null && typeof att.mimeType !== 'string') {
+              return jsonResponse({ error: `attachments[${i}].mimeType must be a string`, code: 'validation_error' }, 400);
+            }
+            const cleanMime = att.mimeType ? att.mimeType.replace(/[\r\n\0\s]/g, '').slice(0, 127) : undefined;
             cleanAttachments.push({ filename: cleanFilename, content: cleanContent, mimeType: cleanMime || undefined });
           }
           attachmentsJson = cleanAttachments.length > 0 ? JSON.stringify(cleanAttachments) : null;
@@ -290,30 +368,36 @@ export default {
 
         if (body.from) {
           if (typeof body.from === 'object') {
-            senderEmail = senderEmail || body.from.email;
-            senderName = body.from.name;
+            senderEmail = senderEmail || asText(body.from.email, 'from.email');
+            senderName = asText(body.from.name, 'from.name');
           } else if (typeof body.from === 'string') {
             senderEmail = senderEmail || body.from;
           }
         }
-        if (body.from_email) senderEmail = senderEmail || body.from_email;
-        if (body.from_name) senderName = senderName || body.from_name;
+        if (body.from_email) senderEmail = senderEmail || asText(body.from_email, 'from_email');
+        if (body.from_name) senderName = senderName || asText(body.from_name, 'from_name');
 
         // Sanitize sender fields against CRLF injection
         if (senderName) {
-          senderName = String(senderName).replace(/[\r\n\0]+/g, ' ').trim().slice(0, 200);
+          senderName = senderName.replace(/[\r\n\0]+/g, ' ').trim().slice(0, 200);
         }
         if (senderEmail) {
-          senderEmail = String(senderEmail).replace(/[\r\n\0\s]+/g, '').trim().slice(0, 254);
+          senderEmail = senderEmail.replace(/[\r\n\0\s]+/g, '').trim().slice(0, 254);
         }
 
-        const explicitProviderId = authResult.explicitProviderId || body.provider_id || body.provider || undefined;
+        const explicitProviderId = authResult.explicitProviderId
+          || asText(body.provider_id, 'provider_id')
+          || asText(body.provider, 'provider')
+          || undefined;
+        if (explicitProviderId && explicitProviderId.length > 255) {
+          return jsonResponse({ error: '"provider_id" is too long', code: 'validation_error' }, 400);
+        }
 
         // Security check: validate that explicit sender or provider is authorized
         const senderAuth = await validateSenderAuthorization(env, senderEmail, explicitProviderId);
         if (!senderAuth.ok) {
           return jsonResponse(
-            { error: 'Unauthorized Sender/Provider', reason: senderAuth.reason },
+            { error: 'Unauthorized Sender/Provider', code: 'unauthorized_sender', reason: senderAuth.reason },
             400
           );
         }
@@ -324,13 +408,25 @@ export default {
         const ccJSON  = hasCc ? parseRecipient(body.cc) : null;
         const bccJSON = hasBcc ? parseRecipient(body.bcc) : null;
 
+        // Fingerprint of the normalized message, so a reused idempotency key with
+        // different content is rejected instead of silently returning the old email.
+        const idempotencyHash = idempotencyKey
+          ? await sha256Hex(JSON.stringify([
+              toJSON, ccJSON, bccJSON, cleanSubject, htmlBody, textBody, attachmentsJson,
+              senderEmail || null, senderName || null, explicitProviderId || null,
+            ]))
+          : null;
+
+        // ON CONFLICT makes the key check atomic: of two concurrent requests with the
+        // same key, exactly one inserts and the other falls through to the lookup below.
         const insertResult = await env.DB.prepare(`
           INSERT INTO emails (
             to_json, cc_json, bcc_json, subject, body, text_body, attachments_json,
             from_email, from_name, provider_id, status,
-            attempts, created_at, updated_at
+            attempts, created_at, updated_at, idempotency_key, idempotency_hash
           )
-          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'queued', 0, ?11, ?12)
+          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'queued', 0, ?11, ?12, ?13, ?14)
+          ON CONFLICT(idempotency_key) DO NOTHING
           RETURNING id
         `)
           .bind(
@@ -345,10 +441,40 @@ export default {
             senderName || null,
             explicitProviderId || null,
             Date.now(),
-            Date.now()
+            Date.now(),
+            idempotencyKey,
+            idempotencyHash
           )
           .first<{ id: number }>();
 
+        if (!insertResult && idempotencyKey) {
+          const existing = await env.DB.prepare(
+            'SELECT id, status, provider_id, idempotency_hash FROM emails WHERE idempotency_key = ?1'
+          ).bind(idempotencyKey).first<{ id: number; status: string; provider_id: string | null; idempotency_hash: string | null }>();
+          if (!existing) {
+            throw new Error('Idempotency key conflicted but no matching email was found');
+          }
+          if (existing.idempotency_hash !== idempotencyHash) {
+            return jsonResponse({
+              error: 'Idempotency key was already used for a different email',
+              code: 'idempotency_key_conflict',
+              id: existing.id,
+            }, 409);
+          }
+          return jsonResponse(
+            {
+              success: true,
+              id: existing.id,
+              status: existing.status,
+              idempotency_key: idempotencyKey,
+              idempotent_replay: true,
+              message: 'Email was already queued with this idempotency key',
+              targetProvider: existing.provider_id || 'Automatic Priority / Default',
+            },
+            200,
+            { 'Idempotent-Replayed': 'true' }
+          );
+        }
         if (!insertResult) {
           throw new Error('Failed to insert email into D1 database');
         }
@@ -359,13 +485,21 @@ export default {
           {
             success: true,
             id: insertResult.id,
+            status: 'queued',
+            idempotency_key: idempotencyKey,
+            idempotent_replay: false,
             message: 'Email successfully queued for sending',
             targetProvider: explicitProviderId || (senderAuth.provider ? senderAuth.provider.name : 'Automatic Priority / Default'),
           },
           202
         );
       } catch (err: any) {
-        return jsonResponse({ error: err.message || String(err) }, 400);
+        if (err instanceof ValidationError) {
+          return jsonResponse({ error: err.message, code: 'validation_error' }, 400);
+        }
+        // Internal details (D1 errors, stack traces) stay in the Worker logs.
+        console.error('POST /api/send failed:', err);
+        return jsonResponse({ error: 'Failed to queue email', code: 'internal_error' }, 500);
       }
     }
 
@@ -478,7 +612,7 @@ export default {
              'size', length(json_extract(a.value, '$.content')) * 3 / 4
                - (length(json_extract(a.value, '$.content')) - length(rtrim(json_extract(a.value, '$.content'), '=')))
            )) FROM json_each(emails.attachments_json) AS a) AS attachments_meta,
-          from_email, from_name, provider_id, provider_used, failover_history, status, attempts, error, created_at, updated_at FROM emails`;
+          from_email, from_name, provider_id, provider_used, failover_history, idempotency_key, status, attempts, error, created_at, updated_at FROM emails`;
         const conditions: string[] = [];
         const bindings: any[] = [];
 
@@ -583,7 +717,7 @@ export default {
         if (row.bcc_json) { try { bcc = JSON.parse(row.bcc_json); } catch { bcc = [row.bcc_json]; } }
         let attachments: any[] = [];
         if (row.attachments_json) { try { attachments = JSON.parse(row.attachments_json); } catch {} }
-        const { attachments_json, ...rest } = row;
+        const { attachments_json, idempotency_hash, ...rest } = row;
         return jsonResponse({
           email: {
             ...rest,

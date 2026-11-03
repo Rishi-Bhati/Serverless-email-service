@@ -100,6 +100,8 @@ npm run secrets:deploy -- --prod
 npm run deploy
 ```
 
+`npm run deploy` applies any pending D1 migrations to the production database before deploying, so the schema is always updated before the new code goes live.
+
 Once deployed, your live service URL will be displayed in the terminal:
 `https://reportary-email-service.<your-subdomain>.workers.dev`
 
@@ -119,6 +121,37 @@ All outbound network calls validate destination hosts and IP ranges against loop
 
 5. Header and Body Injection Prevention
 Recipient, subject, and sender fields are sanitized against carriage return/newline (`CRLF`) characters to prevent email header injection. Secrets returned to the administration dashboard are masked (`••••••••`) before transmission.
+
+## Idempotent Sends
+
+`POST /api/send` accepts an optional idempotency key, so a request retried after a timeout or network error never sends the same email twice.
+
+- Send it as the `idempotency_key` body field. In `signed` and `full` mode the body field is required, because it is covered by the HMAC signature and the header is not. In `api-key-only` mode and dashboard sessions the `Idempotency-Key` header also works. If both are present they must match.
+- Keys are 1-255 printable ASCII characters without spaces (a UUID or `order-123:receipt` both work).
+- An empty or whitespace-only key (an empty `idempotency_key` field, or an `Idempotency-Key` header that is present but empty) is rejected with `400` and code `invalid_idempotency_key`. It is not ignored.
+- The first request returns `202` with the new email `id`. A repeat with the same key and the same message returns `200` with the original `id`, `"idempotent_replay": true`, and an `Idempotent-Replayed: true` header.
+- Reusing a key with a different message returns `409` with code `idempotency_key_conflict`.
+- Each retry still needs a fresh `X-Nonce` and `X-Timestamp` in `signed`/`full` mode; only the idempotency key stays the same.
+
+## Error Responses
+
+Every error response has the same JSON shape:
+
+```json
+{ "error": "Unauthorized", "code": "invalid_signature", "reason": "Invalid signature (request headers or body may have been tampered with)" }
+```
+
+`error` is a readable message, `reason` adds detail when available, and `code` is stable, so branch on `code`:
+
+| Status | Code | Meaning |
+|---|---|---|
+| 400 | `validation_error`, `invalid_json`, `invalid_idempotency_key`, `unauthorized_sender`, `bad_request` | The request is malformed or the sender/provider is not configured |
+| 401 | `invalid_api_key`, `invalid_header`, `timestamp_skew`, `invalid_nonce`, `missing_signature`, `invalid_signature`, `nonce_reused`, `unauthorized` | Authentication failed |
+| 403 | `forbidden` | Requires an admin dashboard session |
+| 404 | `not_found` | Unknown route or email |
+| 409 | `idempotency_key_conflict` | Idempotency key reused with different content |
+| 413 | `payload_too_large` | Body or attachments exceed the size limits |
+| 500 | `internal_error`, `server_misconfigured` | Server-side failure (safe to retry with the same idempotency key) |
 
 ## Report Issues
 

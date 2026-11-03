@@ -33,12 +33,29 @@ export async function verifyApiKey(request: Request, env: Env): Promise<boolean>
   return timingSafeEqual(key, env.API_KEY);
 }
 
+/**
+ * Stable machine-readable error codes for authentication failures. SDKs and API
+ * clients branch on these; the human-readable `reason` text may change.
+ */
+export type AuthErrorCode =
+  | 'invalid_api_key'
+  | 'invalid_header'
+  | 'timestamp_skew'
+  | 'invalid_nonce'
+  | 'missing_signature'
+  | 'invalid_signature'
+  | 'nonce_reused'
+  | 'server_misconfigured';
+
 export interface AuthResult {
   ok: boolean;
   reason?: string;
+  code?: AuthErrorCode;
   explicitSenderEmail?: string;
   explicitProviderId?: string;
   matchedProvider?: ProviderRecord | null;
+  /** True when the request passed HMAC signature verification (signed/full mode). */
+  signed?: boolean;
 }
 
 /**
@@ -126,18 +143,18 @@ export async function verifyRequest(
 ): Promise<AuthResult> {
   const mode = (env.SECURITY_MODE || 'full').trim().toLowerCase();
   if (!['api-key-only', 'signed', 'full'].includes(mode)) {
-    return { ok: false, reason: 'Server misconfiguration: invalid SECURITY_MODE' };
+    return { ok: false, code: 'server_misconfigured', reason: 'Server misconfiguration: invalid SECURITY_MODE' };
   }
 
   const headerSender = request.headers.get('X-Sender-Email') || '';
   const headerProviderId = request.headers.get('X-Provider-Id') || '';
   if (headerProviderId && !/^[a-zA-Z0-9_-]{1,64}$/.test(headerProviderId)) {
-    return { ok: false, reason: 'Invalid X-Provider-Id header format' };
+    return { ok: false, code: 'invalid_header', reason: 'Invalid X-Provider-Id header format' };
   }
   // Keep the qualifier encoding unambiguous and reject control characters in
   // every authentication mode, including dashboard sessions.
   if (headerSender && (headerSender.length > 254 || !/^[^\s@<>\x00-\x1f\x7f]+@[^\s@<>\x00-\x1f\x7f]+$/.test(headerSender))) {
-    return { ok: false, reason: 'Invalid X-Sender-Email header format' };
+    return { ok: false, code: 'invalid_header', reason: 'Invalid X-Sender-Email header format' };
   }
 
   // ── Step 0: Dashboard authenticated session (Bearer token) ──────────────
@@ -147,12 +164,10 @@ export async function verifyRequest(
     : request.headers.get('X-Session-Token');
 
   if (sessionToken) {
-    // API_KEY and API_SECRET are shared with API clients. The session key must
-    // also depend on administrator-only credentials, with fallback for backward compatibility.
+    // API_KEY and API_SECRET are shared with API clients, so the session key must
+    // depend on administrator-only credentials. With no admin password configured
+    // there is no session key; the token is ignored and API-key auth applies.
     const candidateSecrets = await getValidSessionSecrets(env);
-    if (!candidateSecrets.length) {
-      return { ok: false, reason: 'Server misconfiguration: session secrets missing' };
-    }
     for (const secret of candidateSecrets) {
       const session = await verifySessionToken(sessionToken, secret);
       if (session.ok) {
@@ -167,11 +182,11 @@ export async function verifyRequest(
 
   // ── Step 1: API key (all modes) ──────────────────────────────────────────
   if (!env.API_KEY) {
-    return { ok: false, reason: 'Server misconfiguration: API_KEY not set' };
+    return { ok: false, code: 'server_misconfigured', reason: 'Server misconfiguration: API_KEY not set' };
   }
   const apiKey = request.headers.get('X-API-Key');
   if (!apiKey || !timingSafeEqual(apiKey, env.API_KEY)) {
-    return { ok: false, reason: 'Invalid API key' };
+    return { ok: false, code: 'invalid_api_key', reason: 'Invalid API key' };
   }
 
   if (mode === 'api-key-only') {
@@ -185,38 +200,38 @@ export async function verifyRequest(
   // ── Step 2: Timestamp check (±3 minutes = 180 seconds) ──────────────────
   const timestampStr = request.headers.get('X-Timestamp');
   if (!timestampStr || !/^\d+$/.test(timestampStr.trim())) {
-    return { ok: false, reason: 'Invalid or missing X-Timestamp header (must be Unix epoch seconds)' };
+    return { ok: false, code: 'timestamp_skew', reason: 'Invalid or missing X-Timestamp header (must be Unix epoch seconds)' };
   }
   const timestamp = parseInt(timestampStr.trim(), 10);
   const nowSec = Math.floor(Date.now() / 1000);
   if (!Number.isSafeInteger(timestamp) || Math.abs(nowSec - timestamp) > 180) {
-    return { ok: false, reason: 'Timestamp out of range (must be within ±3 minutes of server time in UTC)' };
+    return { ok: false, code: 'timestamp_skew', reason: 'Timestamp out of range (must be within ±3 minutes of server time in UTC)' };
   }
 
   // ── Step 3: Nonce presence & format (required in 'full' mode) ────────────
   const rawNonce = request.headers.get('X-Nonce') || '';
   if (mode === 'full' && !rawNonce) {
-    return { ok: false, reason: 'Missing X-Nonce header (required in full security mode)' };
+    return { ok: false, code: 'invalid_nonce', reason: 'Missing X-Nonce header (required in full security mode)' };
   }
   if (rawNonce && !/^[a-zA-Z0-9_-]{8,128}$/.test(rawNonce.trim())) {
-    return { ok: false, reason: 'Invalid X-Nonce format (must be 8-128 alphanumeric characters, dashes, or underscores)' };
+    return { ok: false, code: 'invalid_nonce', reason: 'Invalid X-Nonce format (must be 8-128 alphanumeric characters, dashes, or underscores)' };
   }
   const nonce = rawNonce.trim();
 
   // ── Step 4: HMAC-SHA256 signature ────────────────────────────────────────
   if (!env.API_SECRET) {
-    return { ok: false, reason: 'Server misconfiguration: API_SECRET not set' };
+    return { ok: false, code: 'server_misconfigured', reason: 'Server misconfiguration: API_SECRET not set' };
   }
   const signature = request.headers.get('X-Signature');
   if (!signature) {
-    return { ok: false, reason: 'Missing X-Signature header' };
+    return { ok: false, code: 'missing_signature', reason: 'Missing X-Signature header' };
   }
 
   // Normalize signature: accept both "sha256=<hex>" and bare "<hex>" formats in any casing.
   const rawSig = signature.startsWith('sha256=') ? signature.slice(7) : signature;
   const normalizedSig = rawSig.toLowerCase().trim();
   if (!/^[a-f0-9]{64}$/.test(normalizedSig)) {
-    return { ok: false, reason: 'Invalid signature format (must be SHA-256 hex string)' };
+    return { ok: false, code: 'invalid_signature', reason: 'Invalid signature format (must be SHA-256 hex string)' };
   }
 
   const bodyHash = await sha256Hex(rawBody);
@@ -254,7 +269,7 @@ export async function verifyRequest(
   }
 
   if (!isValidSig) {
-    return { ok: false, reason: 'Invalid signature (request headers or body may have been tampered with)' };
+    return { ok: false, code: 'invalid_signature', reason: 'Invalid signature (request headers or body may have been tampered with)' };
   }
 
   // ── Step 5: Atomic Nonce Replay Protection (full mode only) ─────────────
@@ -263,12 +278,13 @@ export async function verifyRequest(
       ok: true,
       explicitSenderEmail: headerSender || undefined,
       explicitProviderId: headerProviderId || undefined,
+      signed: true,
     };
   }
 
   const ttlSeconds = Number(env.NONCE_TTL_SECONDS || '300');
   if (!Number.isSafeInteger(ttlSeconds) || ttlSeconds < 0 || ttlSeconds > 86400) {
-    return { ok: false, reason: 'Server misconfiguration: invalid NONCE_TTL_SECONDS' };
+    return { ok: false, code: 'server_misconfigured', reason: 'Server misconfiguration: invalid NONCE_TTL_SECONDS' };
   }
   const nonceExpiresAt = Math.max(nowSec, timestamp) + ttlSeconds + 180;
 
@@ -289,12 +305,12 @@ export async function verifyRequest(
     ).bind(nonce, nonceExpiresAt).run();
 
     if (!insertRes.success) {
-      return { ok: false, reason: 'Nonce already used (replay attack detected)' };
+      return { ok: false, code: 'nonce_reused', reason: 'Nonce already used (replay attack detected)' };
     }
   } catch (dbErr: any) {
     const errMsg = String(dbErr?.message || dbErr);
     if (errMsg.includes('UNIQUE') || errMsg.includes('constraint')) {
-      return { ok: false, reason: 'Nonce already used (replay attack detected)' };
+      return { ok: false, code: 'nonce_reused', reason: 'Nonce already used (replay attack detected)' };
     }
     throw dbErr;
   }
@@ -303,6 +319,7 @@ export async function verifyRequest(
     ok: true,
     explicitSenderEmail: headerSender || undefined,
     explicitProviderId: headerProviderId || undefined,
+    signed: true,
   };
 }
 
@@ -319,18 +336,16 @@ export async function getSessionSecret(env: Env): Promise<string | null> {
 }
 
 /**
- * Returns all valid session secrets for verifying dashboard tokens.
- * Supports credentials-derived secrets, scoped API_SECRET tokens, and legacy tokens.
+ * Returns the secrets accepted for verifying dashboard session tokens.
+ *
+ * Only the key derived from the administrator credentials is accepted. Keys
+ * derived from API_SECRET alone (the old `unsent:session:v1:` form and the raw
+ * secret) were removed: every API client holds API_SECRET, so accepting them
+ * let any client mint an administrator session.
  */
 export async function getValidSessionSecrets(env: Env): Promise<string[]> {
-  const secrets: string[] = [];
   const derived = await getSessionSecret(env);
-  if (derived) secrets.push(derived);
-  if (env.API_SECRET) {
-    secrets.push(`unsent:session:v1:${env.API_SECRET}`);
-    secrets.push(env.API_SECRET);
-  }
-  return secrets;
+  return derived ? [derived] : [];
 }
 
 /**
