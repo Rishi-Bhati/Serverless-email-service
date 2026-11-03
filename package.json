@@ -1,6 +1,6 @@
 {
   "name": "reportary-email-service",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Email queue service on Cloudflare Workers and D1",
   "main": "src/index.ts",
   "scripts": {

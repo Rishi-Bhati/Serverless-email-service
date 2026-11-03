@@ -3860,10 +3860,13 @@ const SNIPPET_GENERATORS = {
       'API_SECRET="' + c.sec + '"',
       '',
       '# ── 2. Request Body (Raw JSON) ──────────────────────────────',
+      '# Use a unique idempotency_key per logical email (e.g. your order ID). Resending the same key',
+      '# within 24 hours returns the original email instead of sending a second one.',
       'BODY=' + SQ + '{',
       '  "to": "customer@example.com",',
       '  "subject": "Production Signed Dispatch",',
       '  "html": "<h2>Order Confirmed</h2><p>Your delivery has been queued at the edge.</p>",',
+      '  "idempotency_key": "order-8492-confirmation",',
       '  "from_name": "Unsent System"',
       '}' + SQ,
       '',
@@ -3977,6 +3980,9 @@ const SNIPPET_GENERATORS = {
       '  to: "customer@example.com",',
       '  subject: "Welcome to the Platform",',
       '  html: "<h1>Account Activated</h1><p>Your subscription is now live.</p>",',
+      '  // Use a unique idempotency_key per logical email (e.g. your order ID).',
+      '  // Resending the same key within 24 hours returns the original email instead of sending a second one.',
+      '  idempotency_key: "order-8492-confirmation",',
       '  from_name: "Acme Operations"',
       '};',
       '',
@@ -4004,7 +4010,7 @@ const SNIPPET_GENERATORS = {
       '',
       'if (!res.ok) {',
       '  const error = await res.json().catch(() => ({}));',
-      '  throw new Error("Unsent dispatch failed (" + res.status + "): " + (error.reason || error.error || res.statusText));',
+      '  throw new Error("Unsent dispatch failed (" + res.status + ", " + error.code + "): " + (error.reason || error.error || res.statusText));',
       '}',
       '',
       'const data = await res.json();',
@@ -4089,11 +4095,11 @@ const SNIPPET_GENERATORS = {
       '  text?: string;',
       '  from_name?: string;',
       '  from_email?: string;',
-      '  reply_to?: string;',
       '  cc?: string | string[];',
       '  bcc?: string | string[];',
       '  provider_id?: string;',
-      '  metadata?: Record<string, any>;',
+      '  idempotency_key?: string;',
+      '  attachments?: { filename: string; content: string; mimeType?: string }[];',
       '}',
       '',
       'export async function sendEmail(opts: EmailOptions) {',
@@ -4101,31 +4107,43 @@ const SNIPPET_GENERATORS = {
       '  const apiKey = process.env.UNSENT_API_KEY || "' + c.key + '";',
       '  const apiSecret = process.env.UNSENT_API_SECRET || "' + c.sec + '";',
       '',
-      '  const rawBody = JSON.stringify(opts);',
-      '  const timestamp = Math.floor(Date.now() / 1000).toString();',
-      '  const nonce = crypto.randomUUID();',
+      '  // Set once, so every retry carries the same key and the server can deduplicate.',
+      '  const rawBody = JSON.stringify({ ...opts, idempotency_key: opts.idempotency_key ?? crypto.randomUUID() });',
       '  const bodyHash = crypto.createHash("sha256").update(rawBody).digest("hex");',
-      '  const canonical = [timestamp, nonce, bodyHash].join("' + BS + 'n");',
-      '  const signature = "sha256=" + crypto.createHmac("sha256", apiSecret).update(canonical).digest("hex");',
       '',
-      '  const res = await fetch(baseUrl + "/api/send", {',
-      '    method: "POST",',
-      '    headers: {',
-      '      "Content-Type": "application/json",',
-      '      "X-API-Key": apiKey,',
-      '      "X-Timestamp": timestamp,',
-      '      "X-Nonce": nonce,',
-      '      "X-Signature": signature',
-      '    },',
-      '    body: rawBody',
-      '  });',
+      '  for (let attempt = 1; attempt <= 3; attempt++) {',
+      '    // Fresh timestamp, nonce and signature on every attempt; the body stays the same.',
+      '    const timestamp = Math.floor(Date.now() / 1000).toString();',
+      '    const nonce = crypto.randomUUID();',
+      '    const canonical = [timestamp, nonce, bodyHash].join("' + BS + 'n");',
+      '    const signature = "sha256=" + crypto.createHmac("sha256", apiSecret).update(canonical).digest("hex");',
       '',
-      '  if (!res.ok) {',
+      '    let res: Response;',
+      '    try {',
+      '      res = await fetch(baseUrl + "/api/send", {',
+      '        method: "POST",',
+      '        headers: {',
+      '          "Content-Type": "application/json",',
+      '          "X-API-Key": apiKey,',
+      '          "X-Timestamp": timestamp,',
+      '          "X-Nonce": nonce,',
+      '          "X-Signature": signature',
+      '        },',
+      '        body: rawBody',
+      '      });',
+      '    } catch (networkError) {',
+      '      if (attempt === 3) throw networkError;',
+      '      await new Promise(r => setTimeout(r, attempt * 500));',
+      '      continue;',
+      '    }',
+      '',
+      '    if (res.ok) return res.json();',
+      '',
       '    const error = await res.json().catch(() => ({}));',
-      '    throw new Error("Unsent dispatch failed: " + (error.reason || error.error || res.statusText));',
+      '    const message = "Unsent dispatch failed (" + res.status + ", " + error.code + "): " + (error.reason || error.error || res.statusText);',
+      '    if (res.status < 500 || attempt === 3) throw new Error(message);',
+      '    await new Promise(r => setTimeout(r, attempt * 500));',
       '  }',
-      '',
-      '  return res.json();',
       '}'
     ].join(NL);
   },
@@ -4153,6 +4171,9 @@ const SNIPPET_GENERATORS = {
       '    "to": "customer@example.com",',
       '    "subject": "Order #8492 Processed",',
       '    "html": "<p>Your transaction has cleared successfully.</p>",',
+      '    # Use a unique idempotency_key per logical email (e.g. your order ID).',
+      '    # Resending the same key within 24 hours returns the original email instead of sending a second one.',
+      '    "idempotency_key": "order-8492-confirmation",',
       '    "from_name": "Billing Service"',
       '}',
       '',
@@ -4181,7 +4202,12 @@ const SNIPPET_GENERATORS = {
       '}',
       '',
       'response = requests.post(UNSENT_URL, data=raw_body, headers=headers)',
-      'response.raise_for_status()',
+      'if not response.ok:',
+      '    try:',
+      '        error = response.json()',
+      '    except ValueError:',
+      '        error = {}',
+      '    raise RuntimeError("Unsent dispatch failed (" + str(response.status_code) + ", " + str(error.get("code")) + "): " + str(error.get("reason") or error.get("error") or response.reason))',
       'print("Dispatched successfully:", response.json())'
     ].join(NL);
   },
@@ -4336,6 +4362,8 @@ const SNIPPET_GENERATORS = {
       '    To       string ' + BT + 'json:"to"' + BT,
       '    Subject  string ' + BT + 'json:"subject"' + BT,
       '    HTML     string ' + BT + 'json:"html"' + BT,
+      '    // Use a unique key per logical email (e.g. your order ID). Resending it within 24 hours returns the original email.',
+      '    IdempotencyKey string ' + BT + 'json:"idempotency_key"' + BT,
       '    FromName string ' + BT + 'json:"from_name"' + BT,
       '}',
       '',
@@ -4344,6 +4372,8 @@ const SNIPPET_GENERATORS = {
       '        To:       "recipient@example.com",',
       '        Subject:  "Go Microservice Alert",',
       '        HTML:     "<h2>Incident Resolved</h2><p>Cluster metrics returned to nominal.</p>",',
+      '        // Use a unique key per logical email (e.g. your order ID).',
+      '        IdempotencyKey: "order-8492-confirmation",',
       '        FromName: "Go Alert Manager",',
       '    }',
       '',
@@ -4491,7 +4521,7 @@ const SNIPPET_GENERATORS = {
       '',
       'export async function POST(req: Request) {',
       '  try {',
-      '    const { name, email, message } = await req.json();',
+      '    const { name, email, message, submissionId } = await req.json();',
       '',
       '    const UNSENT_URL = process.env.UNSENT_BASE_URL || "' + c.url + '/api/send";',
       '    const API_KEY = process.env.UNSENT_API_KEY || "' + c.key + '";',
@@ -4499,7 +4529,9 @@ const SNIPPET_GENERATORS = {
       '',
       '    const rawBody = JSON.stringify({',
       '      to: "support@yourdomain.com",',
-      '      reply_to: email,',
+      '      // submissionId is created once per form submit in the browser (for example crypto.randomUUID()).',
+      '      // Retries within 24 hours return the original email instead of sending a second one.',
+      '      idempotency_key: submissionId,',
       '      subject: "Inquiry from " + name,',
       '      html: "<p><strong>From:</strong> " + name + " (" + email + ")</p><p>" + message + "</p>",',
       '      from_name: name',
@@ -4525,12 +4557,13 @@ const SNIPPET_GENERATORS = {
       '',
       '    if (!res.ok) {',
       '      const err = await res.json().catch(() => ({}));',
-      '      throw new Error(err.reason || err.error || "Delivery dispatch failed");',
+      '      throw new Error("Delivery dispatch failed (" + res.status + ", " + err.code + "): " + (err.reason || err.error));',
       '    }',
       '',
       '    return NextResponse.json({ ok: true, data: await res.json() });',
       '  } catch (err: any) {',
-      '    return NextResponse.json({ error: err.message }, { status: 500 });',
+      '    console.error(err);',
+      '    return NextResponse.json({ error: "Could not send message" }, { status: 500 });',
       '  }',
       '}'
     ].join(NL);
@@ -4555,7 +4588,10 @@ const SNIPPET_GENERATORS = {
       '  const rawBody = JSON.stringify({',
       '    to,',
       '    subject: "Welcome to the team, " + userName + "!",',
-      '    html: "<p>Hi " + userName + ", we are thrilled to have you onboard.</p>"',
+      '    html: "<p>Hi " + userName + ", we are thrilled to have you onboard.</p>",',
+      '    // Use a unique key per logical email. Here it is the recipient, so each address gets one welcome email.',
+      '    // Retries within 24 hours return the original email instead of sending a second one.',
+      '    idempotency_key: "welcome-" + to',
       '  });',
       '',
       '  const timestamp = Math.floor(Date.now() / 1000).toString();',
@@ -4578,7 +4614,8 @@ const SNIPPET_GENERATORS = {
       '',
       '  if (!res.ok) {',
       '    const err = await res.json().catch(() => ({}));',
-      '    throw new Error(err.reason || err.error || "Failed to dispatch email");',
+      '    console.error("Unsent dispatch failed (" + res.status + ", " + err.code + "): " + (err.reason || err.error));',
+      '    throw new Error("Could not send welcome email");',
       '  }',
       '',
       '  return res.json();',
@@ -4624,8 +4661,7 @@ const SNIPPET_GENERATORS = {
       '    to,',
       '    subject,',
       '    html,',
-      '    provider_id: targetCircuit,',
-      '    metadata: { category, dispatchedAt: new Date().toISOString() }',
+      '    provider_id: targetCircuit',
       '  });',
       '',
       '  const timestamp = Math.floor(Date.now() / 1000).toString();',
@@ -4648,10 +4684,10 @@ const SNIPPET_GENERATORS = {
       '',
       '  if (!res.ok) {',
       '    const err = await res.json().catch(() => ({}));',
-      '    throw new Error(err.reason || err.error || "Failed to dispatch email");',
+      '    throw new Error("Unsent " + res.status + " " + (err.code || "error") + ": " + (err.reason || err.error || "Failed to dispatch email"));',
       '  }',
       '',
-      '  return res.json(); // { success: true, id: 142, targetProvider: "' + provId + '" }',
+      '  return res.json(); // { success: true, id: 142, status: "queued", targetProvider: "' + provId + '" }',
       '}'
     ].join(NL);
   }
@@ -5179,7 +5215,8 @@ function renderApiReference() {
         ['from_name', 'string', opt, 'Sender display name.'],
         ['from', 'string | {email, name}', opt, 'Shorthand for the two fields above.'],
         ['provider_id', 'string', opt, 'Send through this provider only (no failover). Alias: <code>provider</code>.'],
-        ['attachments', 'object[]', opt, 'Up to 20 items of <code>{ filename, content, mimeType? }</code>. <code>content</code> is base64.']
+        ['attachments', 'object[]', opt, 'Up to 20 items of <code>{ filename, content, mimeType? }</code>. <code>content</code> is base64.'],
+        ['idempotency_key', 'string', opt, '1-255 printable ASCII characters, no spaces. Retry-safe: the same key with the same email within 24 hours (the default; the server operator can change it) returns the original email. In signed and full mode, send it in the body, not in a header.']
       ]) +
 
       '<div class="docs-h">Headers</div>' +
@@ -5189,9 +5226,11 @@ function renderApiReference() {
         ['X-Nonce', '—', opt, req],
         ['X-Signature', '—', req, req],
         ['X-Provider-Id', opt, opt, opt],
-        ['X-Sender-Email', opt, opt, opt]
+        ['X-Sender-Email', opt, opt, opt],
+        ['Idempotency-Key', opt, '—', '—']
       ]) +
       '<p class="docs-sub">X-Timestamp is Unix seconds (±3 min). X-Nonce is 8–128 characters of <code>A-Z a-z 0-9 _ -</code>. ' +
+        'In signed and full mode, put the key in the body field, because the signature does not cover the Idempotency-Key header. ' +
         'If you send X-Provider-Id or X-Sender-Email, they become an extra line in the signed message:</p>' +
       docTable(['Routing headers sent', 'Signed message lines (joined by newlines)'], [
         ['none', '<code>timestamp</code> · <code>nonce</code> · <code>bodyHash</code>'],
@@ -5201,11 +5240,40 @@ function renderApiReference() {
       ]) +
 
       '<div class="docs-h">Responses</div>' +
+      '<p class="docs-sub">Error bodies have the shape <code>{ "error", "code", "reason" }</code>. <code>reason</code> is optional. Branch on <code>code</code>.</p>' +
       docTable(['Status', 'Meaning'], [
-        ['202', 'Queued. Body: <code>{ "success": true, "id": 142, "targetProvider": "..." }</code>'],
-        ['400', 'Invalid body, bad attachment, or a sender/provider that is not configured. See <code>error</code> and <code>reason</code>.'],
-        ['401', 'Missing or wrong API key, bad signature, old timestamp, or reused nonce. See <code>reason</code>.'],
-        ['413', 'Too large. <code>html</code> and <code>text</code> max 900,000 characters each, and the stored email (body + base64 attachments) max about 1.9 MB.']
+        ['200', 'Idempotent replay: same key and same email within 24 hours (default). Returns the original <code>id</code> with <code>"idempotent_replay": true</code> and header <code>Idempotent-Replayed: true</code>. No second email is queued.'],
+        ['202', 'Queued. Body: <code>{ "success": true, "id": 142, "status": "queued", "idempotency_key": "order-142-receipt", "idempotent_replay": false, "targetProvider": "..." }</code>'],
+        ['400', '<code>validation_error</code>, <code>invalid_json</code>, <code>invalid_idempotency_key</code> (empty or malformed key, or a header-only key in signed or full mode), <code>unauthorized_sender</code>, or <code>bad_request</code>.'],
+        ['401', 'Authentication failed. Codes include <code>invalid_api_key</code>, <code>timestamp_skew</code>, <code>invalid_nonce</code>, <code>missing_signature</code>, <code>invalid_signature</code> and <code>nonce_reused</code>. See <code>reason</code>.'],
+        ['409', '<code>idempotency_key_conflict</code>: this key was already used with a different email. Use a new key for the new email.'],
+        ['413', '<code>payload_too_large</code>. <code>html</code> and <code>text</code> max 900,000 characters each, and the stored email (body + base64 attachments) max about 1.9 MB.'],
+        ['500', '<code>internal_error</code> or <code>server_misconfigured</code>. No details are returned; they are written to the Worker log. Retry with the same idempotency key.']
+      ]) +
+
+      '<div class="docs-h">Retries</div>' +
+      '<p class="docs-sub">Retry on network errors and on <code>5xx</code> responses. Each retry uses the same <code>idempotency_key</code> and a new <code>X-Timestamp</code>, <code>X-Nonce</code> and signature. Do not retry other <code>4xx</code> responses; fix the request instead. Exception: on <code>401 timestamp_skew</code>, fix the client clock and then retry.</p>' +
+      docTable(['Status', 'Code', 'Meaning'], [
+        ['400', '<code>validation_error</code>', 'A field is missing or has an invalid value.'],
+        ['400', '<code>invalid_json</code>', 'The body is not valid JSON.'],
+        ['400', '<code>invalid_idempotency_key</code>', 'The key is empty or malformed, or it was sent in a header in signed or full mode.'],
+        ['400', '<code>unauthorized_sender</code>', 'The sender address or provider is not configured.'],
+        ['400', '<code>bad_request</code>', 'The request is malformed in another way.'],
+        ['401', '<code>invalid_api_key</code>', 'The X-API-Key value is unknown or wrong.'],
+        ['401', '<code>invalid_header</code>', 'X-Provider-Id or X-Sender-Email has an invalid format.'],
+        ['401', '<code>timestamp_skew</code>', 'X-Timestamp is missing, not Unix seconds, or more than 3 minutes from server time. Fix the client clock.'],
+        ['401', '<code>invalid_nonce</code>', 'X-Nonce is missing or has an invalid format.'],
+        ['401', '<code>missing_signature</code>', 'X-Signature is missing (signed and full modes).'],
+        ['401', '<code>invalid_signature</code>', 'The signature does not match the request.'],
+        ['401', '<code>nonce_reused</code>', 'X-Nonce was already used. Generate a new one.'],
+        ['401', '<code>unauthorized</code>', 'Authentication failed for another reason.'],
+        ['403', '<code>forbidden</code>', 'Requires an admin dashboard session.'],
+        ['404', '<code>not_found</code>', 'Unknown route or email.'],
+        ['409', '<code>idempotency_key_conflict</code>', 'The key was already used with a different email.'],
+        ['413', '<code>payload_too_large</code>', 'The body or attachments exceed the size limits.'],
+        ['500', '<code>internal_error</code>', 'Unexpected server failure. Details are in the Worker log only. Retry.'],
+        ['500', '<code>server_misconfigured</code>', 'Server settings are invalid. Details are in the Worker log only. Retry once the operator fixes the settings.'],
+        ['502', '<code>provider_error</code>', 'Dashboard provider test only: the provider rejected the test.']
       ]) +
 
       '<div class="docs-h">Which provider sends it</div>' +
@@ -5218,12 +5286,12 @@ function renderApiReference() {
 
     '<section class="docs-ref-section">' +
       '<div class="docs-h" style="margin-top:0;">Other endpoints</div>' +
-      '<p class="docs-sub">These need only the <code>X-API-Key</code> header. No signing.</p>' +
-      docEndpoint('GET', '/api/emails/:id', 'One email, including attachment content') +
-      docEndpoint('DELETE', '/api/emails/:id', 'Delete an email record') +
+      '<p class="docs-sub">The GET endpoints need only the <code>X-API-Key</code> header. No signing. <code>DELETE</code> requires an admin dashboard session, so an API key alone returns <code>403 forbidden</code>.</p>' +
+      docEndpoint('GET', '/api/emails/:id', 'One email, including attachment content and <code>idempotency_key</code>') +
+      docEndpoint('DELETE', '/api/emails/:id', 'Delete an email record. Requires an admin dashboard session.') +
       docEndpoint('GET', '/api/status', 'Counts by status') +
       '<div class="code-panel"><pre><code>' + ['{ "queued": 0, "sending": 0, "sent": 284, "failed": 2 }'].join(NL) + '</code></pre></div>' +
-      docEndpoint('GET', '/api/logs', 'List emails. Attachments are listed as <code>{ filename, mimeType, size }</code> without content.') +
+      docEndpoint('GET', '/api/logs', 'List emails. Each item includes <code>idempotency_key</code>. Attachments are listed as <code>{ filename, mimeType, size }</code> without content.') +
       docTable(['Query', 'Default', 'Notes'], [
         ['limit', '100', '1–200'],
         ['offset', '0', ''],

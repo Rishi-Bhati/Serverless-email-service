@@ -4,6 +4,22 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-11-03
+
+This release changes only the API documentation built into the dashboard. It has no API or server behavior changes, no migration, and no new settings.
+
+### Changed
+
+- The dashboard API reference documents `idempotency_key` (body field) and the `Idempotency-Key` header (api-key-only mode only), the 200 idempotent replay and 409 conflict responses, the new 202 response fields, the `{ error, code, reason }` error shape, and a full error-code table. It also has a Retries section. It says to retry network errors and 5xx responses with the same key and a fresh timestamp, nonce and signature, and not to retry other 4xx responses.
+- Code examples (cURL, TypeScript, Python, Go, and the Next.js route handler and server action) send an `idempotency_key`. The TypeScript, Python, and Next.js examples include the error `code` in the error they raise or log. The cURL and Go examples print the response body instead.
+- The reusable TypeScript `sendEmail()` helper retries network errors and 5xx responses up to 3 times with backoff. It keeps one idempotency key across attempts (generated if not supplied), re-signs each attempt, and accepts `attachments`.
+
+### Fixed
+
+- `DELETE /api/emails/:id` was documented as needing only an API key. It requires an admin dashboard session, and an API key alone gets `403 forbidden`.
+- Examples no longer send `reply_to` or `metadata`, which the API does not support and silently ignores. This applies to the TypeScript helper, the Next.js route handler, and the Next.js provider routing example.
+- The Next.js route handler example no longer returns internal error messages to the browser. It logs them on the server and returns a generic message.
+
 ## [1.2.0] - 2026-11-03
 
 ### Upgrade notes
@@ -127,6 +143,7 @@ Initial release.
 - Dashboard output escaping fixes, and unified session-token authentication for the dashboard.
 - Hardening pass across the queue and API that resolved concurrency and logic bugs.
 
+[1.2.1]: https://github.com/Rishi-Bhati/Serverless-email-service/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/Rishi-Bhati/Serverless-email-service/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Rishi-Bhati/Serverless-email-service/compare/e53e5ba...v1.1.0
 [1.0.0]: https://github.com/Rishi-Bhati/Serverless-email-service/tree/e53e5ba
