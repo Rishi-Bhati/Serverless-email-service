@@ -1,0 +1,35 @@
+export { Unsent, Emails, MAX_DELIVERY_ATTEMPTS } from './client';
+export {
+  UnsentError,
+  UnsentConfigError,
+  UnsentValidationError,
+  UnsentConnectionError,
+  UnsentTimeoutError,
+  UnsentAPIError,
+  UnsentAuthenticationError,
+  UnsentPermissionError,
+  UnsentNotFoundError,
+  UnsentConflictError,
+  UnsentRequestError,
+  UnsentRateLimitError,
+  UnsentServerError,
+} from './errors';
+export { VERSION } from './version';
+export type {
+  Address,
+  Attachment,
+  AttachmentInfo,
+  Email,
+  EmailDetail,
+  EmailStatus,
+  FailoverAttempt,
+  Health,
+  ListEmailsOptions,
+  ListEmailsResult,
+  QueueStatus,
+  RequestOptions,
+  SendEmailOptions,
+  SendEmailResult,
+  UnsentOptions,
+  WaitOptions,
+} from './types';

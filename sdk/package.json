@@ -1,0 +1,81 @@
+{
+  "name": "unsent-sdk",
+  "version": "1.0.0",
+  "description": "Official TypeScript/JavaScript SDK for the Unsent email service. Zero dependencies; runs on Node, Bun, Deno, Cloudflare Workers and Vercel Edge.",
+  "keywords": [
+    "unsent",
+    "email",
+    "smtp",
+    "sdk",
+    "transactional-email",
+    "cloudflare-workers",
+    "idempotency"
+  ],
+  "homepage": "https://github.com/Rishi-Bhati/Serverless-email-service/tree/main/sdk#readme",
+  "bugs": "https://github.com/Rishi-Bhati/Serverless-email-service/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rishi-Bhati/Serverless-email-service.git",
+    "directory": "sdk"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "node": [
+        "./dist/node.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./node": {
+      "import": {
+        "types": "./dist/node.d.ts",
+        "default": "./dist/node.js"
+      },
+      "require": {
+        "types": "./dist/node.d.cts",
+        "default": "./dist/node.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "vitest run test/e2e.test.ts",
+    "lint:package": "publint && attw --pack .",
+    "check": "npm run typecheck && npm run build && npm test && npm run lint:package",
+    "prepublishOnly": "npm run check"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.0",
+    "@types/node": "^22.0.0",
+    "publint": "^0.3.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.4.5",
+    "vitest": "^3.2.0"
+  }
+}

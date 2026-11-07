@@ -165,6 +165,19 @@ Every error response has the same JSON shape:
 | 500 | `internal_error`, `server_misconfigured` | Server-side failure. Details are written to the Worker log only and are not returned in the response. Safe to retry with the same idempotency key |
 | 502 | `provider_error` | The provider rejected a provider test from the dashboard (`POST /api/providers/test`). The provider's error message is returned |
 
+## JavaScript / TypeScript SDK
+
+The [`sdk/`](sdk/README.md) folder contains `unsent-sdk`, an official client with no dependencies for Node, Bun, Deno, Cloudflare Workers and Next.js. It handles request signing, nonces, idempotency keys, retries and attachments for you:
+
+```ts
+import { Unsent } from 'unsent-sdk';
+
+const unsent = new Unsent(); // reads UNSENT_BASE_URL, UNSENT_API_KEY, UNSENT_API_SECRET
+await unsent.send({ to: 'user@example.com', subject: 'Welcome', html: '<p>Hello!</p>' });
+```
+
+See the [SDK README](sdk/README.md) for the full guide.
+
 ## Report Issues
 
 If you run into any issues or have feedback, please report them here:
