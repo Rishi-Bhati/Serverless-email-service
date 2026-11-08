@@ -19,13 +19,47 @@ It includes an embedded, authenticated single-page administration dashboard for 
 
 ## How to Install
 
-### Prerequisites
+### Quick install (one command)
+
+The installer checks your Node.js version, installs dependencies, creates the D1 database, applies migrations, generates your secrets, uploads them to Cloudflare and deploys the Worker.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Rishi-Bhati/Serverless-email-service/main/install.sh | bash
+```
+
+Or from a checkout you already have:
+
+```bash
+./install.sh
+```
+
+It asks for the dashboard username, Worker name and (optionally) a custom domain and fallback SMTP account. Anything you skip takes a safe default. Useful flags:
+
+| Flag | Effect |
+|---|---|
+| `--local-only` | Install dependencies and set up only the local dev database. No Cloudflare account needed. |
+| `--skip-deploy` | Do everything except the final deploy, so you can review `.env` and `wrangler.toml` first. |
+| `--yes` | Never prompt; accept every default. Non-secret values only. |
+| `--worker-name NAME` | Worker name, default `unsent` (its URL becomes `https://NAME.<subdomain>.workers.dev`). |
+| `--domain HOST` | Serve from a custom domain you already have on Cloudflare. Omit it for the `*.workers.dev` URL. |
+| `--admin-user NAME` | Dashboard login name, default `admin`. |
+| `--db-name NAME` | D1 database name, default `reportary-email-db`. |
+
+Secrets are generated with a CSPRNG and written to `.env` with mode `600`. An existing `.env` is never modified, and an existing D1 database is reused rather than duplicated, so the script is safe to re-run. `API_KEY`, `API_SECRET`, `ENCRYPTION_KEY` and `ADMIN_PASSWORD` are honoured if you export them first.
+
+Once it finishes, the generated credentials are printed and saved in `.env`. Sign in to the dashboard with them.
+
+### Manual install
+
+Use these steps if you would rather do each part yourself, or if the script does not fit your environment.
+
+#### Prerequisites
 
 - Node.js 18 or later
 - Cloudflare account
 - Cloudflare Wrangler CLI (`npm install -g wrangler` or via `npx wrangler`)
 
-### Step 1: Clone and Install Dependencies
+#### Step 1: Clone and Install Dependencies
 
 ```bash
 git clone https://github.com/Rishi-Bhati/Serverless-email-service.git
@@ -33,13 +67,13 @@ cd Serverless-email-service
 npm install
 ```
 
-### Step 2: Authenticate with Cloudflare
+#### Step 2: Authenticate with Cloudflare
 
 ```bash
 npx wrangler login
 ```
 
-### Step 3: Provision the D1 Database
+#### Step 3: Provision the D1 Database
 
 ```bash
 npx wrangler d1 create reportary-email-db
@@ -54,7 +88,7 @@ database_name = "reportary-email-db"
 database_id = "your-database-id-here"
 ```
 
-### Step 4: Apply Database Migrations
+#### Step 4: Apply Database Migrations
 
 Apply database schemas to both local and production environments:
 
@@ -66,7 +100,7 @@ npm run db:migrate:local
 npm run db:migrate:prod
 ```
 
-### Step 5: Configure Environment Secrets
+#### Step 5: Configure Environment Secrets
 
 Create a `.env` file in the root directory:
 
@@ -104,7 +138,7 @@ Deploy secrets to Cloudflare:
 npm run secrets:deploy -- --prod
 ```
 
-### Step 6: Deploy to Cloudflare Workers
+#### Step 6: Deploy to Cloudflare Workers
 
 ```bash
 npm run deploy
@@ -131,6 +165,9 @@ All outbound network calls validate destination hosts and IP ranges against loop
 
 5. Header and Body Injection Prevention
 Recipient, subject, and sender fields are sanitized against carriage return/newline (`CRLF`) characters to prevent email header injection. Secrets returned to the administration dashboard are masked (`••••••••`) before transmission.
+
+6. Blind Copies Stay Blind
+Blind-copied (`bcc`) recipients are delivered through the SMTP envelope only. The generated message carries no `BCC:` header, so its recipients cannot see the blind-copy list. `npm run test:bcc` verifies both halves of that guarantee: the bcc address is offered in `RCPT TO`, and it appears nowhere in the message. See `src/mailer.ts` for why the SMTP library is wrapped.
 
 ## Idempotent Sends
 
@@ -165,9 +202,13 @@ Every error response has the same JSON shape:
 | 500 | `internal_error`, `server_misconfigured` | Server-side failure. Details are written to the Worker log only and are not returned in the response. Safe to retry with the same idempotency key |
 | 502 | `provider_error` | The provider rejected a provider test from the dashboard (`POST /api/providers/test`). The provider's error message is returned |
 
-## JavaScript / TypeScript SDK
+## Official SDKs
 
-The [`sdk/`](sdk/README.md) folder contains `unsent-sdk`, an official client with no dependencies for Node, Bun, Deno, Cloudflare Workers and Next.js. It handles request signing, nonces, idempotency keys, retries and attachments for you:
+Official clients handle request signing, nonces, idempotency keys, retries and attachments for you. Each implements the same contract ([`sdk/SPEC.md`](sdk/SPEC.md)), so behavior is identical across languages.
+
+### JavaScript / TypeScript
+
+The [`sdk/`](sdk/README.md) folder contains `unsent-sdk`, with no dependencies, for Node, Bun, Deno, Cloudflare Workers and Next.js:
 
 ```ts
 import { Unsent } from 'unsent-sdk';
@@ -177,6 +218,46 @@ await unsent.send({ to: 'user@example.com', subject: 'Welcome', html: '<p>Hello!
 ```
 
 See the [SDK README](sdk/README.md) for the full guide.
+
+### Python
+
+[`sdk-python/`](sdk-python/README.md) — `pip install unsent-sdk`. Standard library only, sync and `asyncio` clients, plus a Django `EMAIL_BACKEND` and FastAPI helpers:
+
+```python
+from unsent import Unsent
+
+unsent = Unsent()  # reads UNSENT_BASE_URL, UNSENT_API_KEY, UNSENT_API_SECRET
+unsent.send(to="user@example.com", subject="Welcome", html="<p>Hello!</p>")
+```
+
+### Go
+
+[`sdk-go/`](sdk-go/README.md) — standard library only, `context.Context` on every call, typed errors for `errors.As`/`errors.Is`:
+
+```go
+client, _ := unsent.NewFromEnv()
+client.Send(ctx, unsent.SendParams{To: []string{"user@example.com"}, Subject: "Welcome", HTML: "<p>Hello!</p>"})
+```
+
+### Ruby
+
+[`sdk-ruby/`](sdk-ruby/README.md) — `gem install unsent-sdk`. No runtime dependencies, with an ActionMailer delivery method for Rails:
+
+```ruby
+client = Unsent::Client.new   # reads UNSENT_BASE_URL, UNSENT_API_KEY, UNSENT_API_SECRET
+client.send_email(to: 'user@example.com', subject: 'Welcome', html: '<p>Hello!</p>')
+```
+
+### Rust
+
+[`sdk-rust/`](sdk-rust/README.md) — `cargo add unsent-sdk`. Async on tokio + reqwest (rustls), no `unsafe` code:
+
+```rust
+let client = unsent::Unsent::from_env()?;
+client.emails().send(
+    unsent::SendEmail::builder().to("user@example.com").subject("Welcome").html("<p>Hello!</p>"),
+).await?;
+```
 
 ## Report Issues
 

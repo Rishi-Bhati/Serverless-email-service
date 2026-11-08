@@ -6,10 +6,16 @@ npm-debug.log*
 .wrangler/
 .dev.vars
 
-# Local environment variables
+# Local environment variables and secrets written by install.sh
 .env
+.env.backup.*
+.env.old
 
 # Build outputs (if any)
 dist/
 build/
 worker-configuration.d.ts
+
+# Editor / tooling state
+.commandcode/
+.DS_Store

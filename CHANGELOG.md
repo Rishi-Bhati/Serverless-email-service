@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - `sdk/`: the official JavaScript/TypeScript client, `unsent-sdk` 1.0.0 (see `sdk/CHANGELOG.md`). It does not change the server, the API, or the database.
+- `sdk-python/`, `sdk-go/`, `sdk-ruby/` and `sdk-rust/`: official Python, Go, Ruby and Rust clients, each version 1.0.0, implementing the same contract as `sdk/SPEC.md` (see each SDK's `CHANGELOG.md`). They contain a Django `EMAIL_BACKEND` and FastAPI helpers (Python) and an ActionMailer delivery method (Ruby). They do not change the server, the API, or the database.
+- `sdk/TEST_PLAN.md` and `sdk/SECURITY_TEST_REPORT.md`: the TypeScript SDK's threat model, test plan and security results.
+
+### Fixed
+
+- Blind-copied recipients were disclosed in the delivered message. `worker-mailer` 1.2.x writes a literal `BCC:` header into the SMTP message containing every blind recipient, so anyone receiving (or later reading) the email could see the bcc list. `src/mailer.ts` now owns the `worker-mailer` import and disables the one method that emits that header; delivery is unchanged, because blind recipients are still offered in the SMTP `RCPT TO` envelope. Add `npm run test:bcc` (`scripts/test-bcc.mjs`) as a regression test. It asserts the bcc address reaches the envelope but appears in no header, and it fails if the shim is removed. `scripts/smtp-sink.mjs` now also records envelope recipients (`rcpt`).
 
 ## [1.2.1] - 2026-11-03
 
