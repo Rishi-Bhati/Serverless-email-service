@@ -1,0 +1,39 @@
+# Attachment helpers and address parsing.
+module Unsent
+  # Helpers for building attachments. An attachment is a Hash:
+  #
+  #   { filename: 'report.csv', content: csv_bytes, content_type: 'text/csv' }
+  #
+  # `content` is a binary String (raw bytes, encoded for you), any other String (already base64, validated) or an
+  # IO-like object responding to `read`.
+  module Attachment
+    # At most this many attachments per email.
+    MAX_ATTACHMENTS: Integer
+    # Filenames longer than this are rejected.
+    MAX_FILENAME: Integer
+    # The request body limit (3 MiB).
+    MAX_BODY_BYTES: Integer
+    # Guessed content types, keyed by lower-case file extension.
+    MIME: Hash[String, String]
+
+    # Reads a file from disk as an attachment Hash; filename and content type are guessed from the path.
+    #
+    #   attachments: [Unsent::Attachment.from_file('./invoice.pdf')]
+    def self.from_file: (String | _ToPath path, ?filename: String?, ?content_type: String?) -> Hash[Symbol, untyped]
+  end
+
+  # Parsing and validation of sender and recipient addresses. All scans are linear (no backtracking regexes),
+  # so pathological 100k-character inputs finish immediately.
+  module Address
+    # At most this many addresses per recipient field.
+    MAX_RECIPIENTS: Integer
+    # The server rejects longer addresses.
+    MAX_RECIPIENT_LENGTH: Integer
+
+    # Splits "Name <a@b.com>" into its parts; passes Hashes and bare addresses through.
+    def self.parse: (address value, String field) -> { email: String, name?: String }
+
+    # Validates a recipient list and returns it as an Array of Strings (nil when optional and empty).
+    def self.recipients: (recipients? value, String field, bool required) -> Array[String]?
+  end
+end

@@ -1,0 +1,10 @@
+go test fuzz v1
+string("a@b.co")
+string("Name <f@x.co>")
+string("subject")
+string("<p>x</p>")
+string("text")
+string("fn.txt")
+string("aGk=")
+string("p1")
+string("key-1")

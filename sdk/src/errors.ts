@@ -27,15 +27,15 @@ export class UnsentError extends Error {
 
 /** The client was constructed or called with invalid arguments. Nothing was sent. */
 export class UnsentConfigError extends UnsentError {
-  constructor(message: string, code = 'invalid_config') {
-    super(message, { code });
+  constructor(message: string, code = 'invalid_config', cause?: unknown) {
+    super(message, { code, cause });
   }
 }
 
 /** A request option failed client-side validation. Nothing was sent. */
 export class UnsentValidationError extends UnsentError {
-  constructor(message: string, code = 'validation_error') {
-    super(message, { code });
+  constructor(message: string, code = 'validation_error', cause?: unknown) {
+    super(message, { code, cause });
   }
 }
 
@@ -103,7 +103,7 @@ export class UnsentRateLimitError extends UnsentAPIError {}
 /** 5xx: server-side failure. Safe to retry when an idempotency key was used. */
 export class UnsentServerError extends UnsentAPIError {}
 
-const HINTS: Record<string, string> = {
+const HINTS: Record<string, string> = Object.assign(Object.create(null) as Record<string, string>, {
   invalid_api_key: 'Check that apiKey matches the API_KEY secret of your Unsent deployment.',
   unauthorized: 'Check that apiKey matches the API_KEY secret of your Unsent deployment.',
   invalid_signature:
@@ -115,7 +115,15 @@ const HINTS: Record<string, string> = {
   unauthorized_sender:
     'The "from" address or providerId is not an active provider. Configure it in the dashboard, or omit "from" to use the default provider.',
   forbidden: 'This endpoint needs an admin dashboard session; API keys cannot call it.',
-};
+});
+
+/** Longest server-provided text copied into an error message (the full value stays in `body`). */
+const MAX_MESSAGE_CHARS = 500;
+const MAX_REASON_CHARS = 2000;
+
+function clip(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
 
 /** Build the right error class from an HTTP error response. */
 export function apiErrorFromResponse(
@@ -126,19 +134,20 @@ export function apiErrorFromResponse(
   const obj = body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined;
   const code =
     typeof obj?.code === 'string' && obj.code
-      ? obj.code
+      ? clip(obj.code, 100)
       : status >= 500
         ? 'internal_error'
         : `http_${status}`;
   const baseMessage =
     typeof obj?.error === 'string' && obj.error
-      ? obj.error
+      ? clip(obj.error, MAX_MESSAGE_CHARS)
       : typeof body === 'string' && body.trim()
-        ? body.trim().slice(0, 200)
-        : ctx.statusText || `HTTP ${status}`;
-  const reason = typeof obj?.reason === 'string' ? obj.reason : undefined;
+        ? clip(body.trim(), 200)
+        : clip(ctx.statusText || `HTTP ${status}`, 200);
+  const reason = typeof obj?.reason === 'string' ? clip(obj.reason, MAX_REASON_CHARS) : undefined;
 
-  let hint = HINTS[code];
+  // Own-property lookup: a hostile `code` such as "constructor" must not pick up Object.prototype members.
+  let hint: string | undefined = Object.prototype.hasOwnProperty.call(HINTS, code) ? HINTS[code] : undefined;
   if (code === 'timestamp_skew') {
     hint = ctx.hasApiSecret
       ? 'Your system clock differs from the server by more than 3 minutes. Sync it (NTP).'
@@ -147,10 +156,10 @@ export function apiErrorFromResponse(
     hint = 'The server requires signed requests. Pass apiSecret (UNSENT_API_SECRET) to the client.';
   }
 
-  let message = reason && !baseMessage.includes(reason) ? `${baseMessage}: ${reason}` : baseMessage;
+  let message = reason && !baseMessage.includes(reason) ? `${baseMessage}: ${clip(reason, MAX_MESSAGE_CHARS)}` : baseMessage;
   if (hint) message += ` (${hint})`;
 
-  const existingEmailId = typeof obj?.id === 'number' ? obj.id : undefined;
+  const existingEmailId = typeof obj?.id === 'number' && Number.isSafeInteger(obj.id) ? obj.id : undefined;
   const opts = { status, code, reason, hint, body, existingEmailId, retryAfterMs: ctx.retryAfterMs, serverTimeMs: ctx.serverTimeMs };
 
   if (status === 401) return new UnsentAuthenticationError(message, opts);

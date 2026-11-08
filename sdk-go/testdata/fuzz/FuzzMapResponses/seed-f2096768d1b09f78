@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("[null,1,\"a\",{\"__proto__\":{}}]")

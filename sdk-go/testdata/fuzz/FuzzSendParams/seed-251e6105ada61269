@@ -1,0 +1,10 @@
+go test fuzz v1
+string("a@b.co\x0d\x0aBcc: x")
+string("")
+string("s")
+string("")
+string("t")
+string("")
+string("")
+string("")
+string("")

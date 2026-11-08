@@ -1,0 +1,32 @@
+# frozen_string_literal: true
+
+require 'rake/testtask'
+
+SUITES = {
+  unit: 'test/unit/**/*_test.rb',
+  fuzz: 'test/fuzz/**/*_test.rb',
+  security: 'test/security/**/*_test.rb',
+  e2e: 'test/e2e/**/*_test.rb',
+  actionmailer: 'test/actionmailer/**/*_test.rb'
+}.freeze
+
+namespace :test do
+  SUITES.each do |name, pattern|
+    Rake::TestTask.new(name) do |t|
+      t.libs << 'test' << 'lib'
+      t.pattern = pattern
+      t.warning = true
+      t.description = "Run the #{name} tests" + (name == :e2e ? ' (needs UNSENT_E2E_BASE_URL; skipped otherwise)' : '')
+    end
+  end
+end
+
+desc 'Run every suite (end-to-end tests are skipped unless UNSENT_E2E_BASE_URL is set)'
+task test: %w[test:unit test:fuzz test:security test:actionmailer test:e2e]
+
+desc 'Validate the RBS signatures in sig/'
+task :rbs do
+  sh 'rbs', '-I', 'sig', 'validate'
+end
+
+task default: :test

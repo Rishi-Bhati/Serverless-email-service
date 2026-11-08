@@ -111,11 +111,18 @@ run('live worker', () => {
   });
 
   it('rejects wrong credentials with actionable errors', async () => {
+    // `api-key-only` servers never check the secret, so only a wrong key is an authentication failure there.
+    const mode = process.env.UNSENT_E2E_MODE ?? 'full';
+
     const badSecret = new Unsent({ baseUrl: baseUrl!, apiKey, apiSecret: 'wrong-secret', maxRetries: 0 });
     const e1 = await badSecret.send({ to: 'a@example.com', subject: 's', text: 't' }).catch((e) => e);
-    expect(e1).toBeInstanceOf(UnsentAuthenticationError);
-    expect(e1.code).toBe('invalid_signature');
-    expect(e1.hint).toMatch(/apiSecret/);
+    if (mode === 'api-key-only') {
+      expect(e1.id).toBeGreaterThan(0);
+    } else {
+      expect(e1).toBeInstanceOf(UnsentAuthenticationError);
+      expect(e1.code).toBe('invalid_signature');
+      expect(e1.hint).toMatch(/apiSecret/);
+    }
 
     const badKey = new Unsent({ baseUrl: baseUrl!, apiKey: 'nope', apiSecret, maxRetries: 0 });
     expect(await badKey.send({ to: 'a@example.com', subject: 's', text: 't' }).catch((e) => e.code)).toBe('invalid_api_key');
@@ -124,10 +131,12 @@ run('live worker', () => {
     expect(e2.status).toBe(401);
     expect(e2.hint).toMatch(/apiKey/);
 
-    const noSecret = new Unsent({ baseUrl: baseUrl!, apiKey, maxRetries: 0 });
-    const e3 = await noSecret.send({ to: 'a@example.com', subject: 's', text: 't' }).catch((e) => e);
-    expect(e3).toBeInstanceOf(UnsentAuthenticationError);
-    expect(e3.hint).toMatch(/signed requests/);
+    if (mode !== 'api-key-only') {
+      const noSecret = new Unsent({ baseUrl: baseUrl!, apiKey, maxRetries: 0 });
+      const e3 = await noSecret.send({ to: 'a@example.com', subject: 's', text: 't' }).catch((e) => e);
+      expect(e3).toBeInstanceOf(UnsentAuthenticationError);
+      expect(e3.hint).toMatch(/signed requests/);
+    }
   });
 
   it('rejects unauthorized senders and unknown emails', async () => {

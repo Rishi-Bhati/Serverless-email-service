@@ -1,0 +1,55 @@
+# Cooperative cancellation and the ActionMailer delivery method.
+module Unsent
+  # Cooperative cancellation for in-flight calls. Pass one as `cancel:` to any client method and call
+  # {#cancel!} from another thread: the request is dropped, no further attempts are made, and
+  # {ConnectionError} with code "aborted" is raised. Thread-safe.
+  #
+  #   token = Unsent::CancelToken.new
+  #   Thread.new { sleep 5; token.cancel! }
+  #   client.emails.wait(id, cancel: token)
+  class CancelToken
+    def initialize: () -> void
+
+    # Cancels the token. Safe to call more than once, from any thread.
+    def cancel!: () -> self
+
+    def cancelled?: () -> bool
+    alias canceled? cancelled?
+
+    # Sleeps up to +seconds+, waking early on cancellation. Returns true when cancelled.
+    def wait: (Numeric seconds) -> bool
+  end
+
+  # ActionMailer / Mail delivery method that sends through an Unsent deployment.
+  #
+  #   config.action_mailer.delivery_method = :unsent
+  #   config.action_mailer.unsent_settings = { base_url: '...', api_key: '...', api_secret: '...' }
+  #
+  # Settings accept every {Client#initialize} option, plus +client:+ to supply a ready-made {Client}.
+  class DeliveryMethod
+    # Header names that select a provider.
+    PROVIDER_HEADERS: Array[String]
+    # Header names that set the idempotency key.
+    IDEMPOTENCY_HEADERS: Array[String]
+    # Acceptable setting keys.
+    SETTING_KEYS: Array[Symbol]
+
+    # Registers +:unsent+ with ActionMailer (called automatically when ActionMailer is present).
+    def self.register!: () -> bool
+
+    # Clears the cached clients (used by tests).
+    def self.clear_cache!: () -> void
+
+    # The settings Hash given by ActionMailer (+unsent_settings+).
+    attr_accessor settings: Hash[Symbol, untyped]
+
+    def initialize: (?Hash[Symbol | String, untyped]? settings) -> void
+
+    # Delivers +mail+ (a Mail::Message). Returns the {SendResult}.
+    # @raise [Error] on failure; ActionMailer raises it when +raise_delivery_errors+ is true
+    def deliver!: (untyped mail) -> SendResult
+
+    # Translates a Mail::Message into {Emails#send_email} options (exposed for tests and tooling).
+    def build_options: (untyped mail) -> Hash[Symbol, untyped]
+  end
+end

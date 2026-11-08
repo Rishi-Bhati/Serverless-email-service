@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("{\"emails\":[{\"id\":\"x\",\"to\":5}],\"total\":1e300}")

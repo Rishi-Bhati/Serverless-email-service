@@ -1,0 +1,6 @@
+go test fuzz v1
+string("https://unsent.example.com")
+string("key")
+string("secret")
+int64(0)
+int(3)

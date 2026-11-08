@@ -1,0 +1,6 @@
+go test fuzz v1
+string("http://[::1]")
+string("k\x0a")
+string("s")
+int64(-1)
+int(11)

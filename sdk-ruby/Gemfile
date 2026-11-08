@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gemspec
+
+group :development, :test do
+  gem 'minitest', '>= 5.20'
+  gem 'rake', '>= 13.0'
+end
+
+# Only needed for the ActionMailer / Rails / Sinatra tests (the gem itself has no runtime dependencies).
+group :integration do
+  gem 'actionmailer', '>= 6.1'
+  gem 'railties', '>= 6.1'
+  gem 'rack-test'
+  gem 'sinatra', '>= 3.0'
+end
+
+group :development do
+  gem 'rbs', '>= 3.0'
+end

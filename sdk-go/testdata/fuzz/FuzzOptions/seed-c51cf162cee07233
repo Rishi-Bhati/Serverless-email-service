@@ -1,0 +1,6 @@
+go test fuzz v1
+string("ftp://x")
+string("")
+string("")
+int64(1)
+int(-1)

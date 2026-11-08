@@ -1,0 +1,6 @@
+go test fuzz v1
+string("https://user:pw@h")
+string("\xc3\xa9")
+string("s")
+int64(0)
+int(10)

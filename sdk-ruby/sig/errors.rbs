@@ -1,0 +1,88 @@
+# The error hierarchy. Everything the gem raises on purpose derives from {Unsent::Error}, so
+# `rescue Unsent::Error` catches every SDK failure. Branch on #code, not on the message.
+module Unsent
+  # Base class of every SDK error.
+  class Error < StandardError
+    # Stable machine-readable code, e.g. "invalid_api_key", "validation_error", "timeout".
+    attr_reader code: String
+
+    # Extra detail from the server (the API's `reason` field).
+    attr_reader reason: String?
+
+    # A short suggestion for fixing the problem, when the SDK knows one.
+    attr_reader hint: String?
+
+    def initialize: (?String? message, ?code: String?, ?reason: String?, ?hint: String?) -> void
+
+    def to_h: () -> { class: String, code: String, message: String, ?reason: String, ?hint: String }
+  end
+
+  # The client was constructed with invalid options. Nothing was sent.
+  class ConfigError < Error
+  end
+
+  # A call was made with invalid arguments. Nothing was sent.
+  class ValidationError < Error
+  end
+
+  # The request never produced an HTTP response (DNS, TLS, reset, offline...).
+  class ConnectionError < Error
+  end
+
+  # A request exceeded its timeout (or {Emails#wait} exceeded its deadline).
+  class TimeoutError < ConnectionError
+  end
+
+  # The server answered with an error status.
+  class APIError < Error
+    # HTTP status code.
+    attr_reader status: Integer
+
+    # Parsed JSON error body (`{ "error", "code", "reason" }`), or the raw text when it was not JSON.
+    attr_reader body: untyped
+
+    # `id` of the conflicting email on idempotency conflicts (409).
+    attr_reader existing_email_id: Integer?
+
+    # Delay requested by the server through `Retry-After`, in seconds.
+    attr_reader retry_after: Float?
+
+    # Server time (Unix seconds) taken from the response `Date` header.
+    attr_reader server_time: Float?
+
+    def initialize: (?String? message, status: Integer, code: String, ?reason: String?, ?hint: String?,
+                     ?body: untyped, ?existing_email_id: Integer?, ?retry_after: Float?,
+                     ?server_time: Float?) -> void
+
+    def to_h: () -> { class: String, code: String, message: String, status: Integer, ?reason: String,
+                      ?hint: String, ?existing_email_id: Integer, ?retry_after: Float }
+  end
+
+  # 401: bad API key, bad signature, clock skew, replayed nonce...
+  class AuthenticationError < APIError
+  end
+
+  # 403: the endpoint needs an admin dashboard session, which API keys cannot provide.
+  class PermissionError < APIError
+  end
+
+  # 404: unknown email or route.
+  class NotFoundError < APIError
+  end
+
+  # 409: the idempotency key was already used for a different email.
+  class ConflictError < APIError
+  end
+
+  # 400 / 413: the server rejected the request contents.
+  class RequestError < APIError
+  end
+
+  # 429.
+  class RateLimitError < APIError
+  end
+
+  # 5xx: server-side failure.
+  class ServerError < APIError
+  end
+end

@@ -1,0 +1,51 @@
+# Types for the whole gem, plus the constants and aliases the rest of `sig/` refers to.
+#
+# Validate with:  rbs -I sig validate
+
+module Unsent
+  # Gem version, mirrored from lib/unsent/version.rb.
+  VERSION: String
+
+  # Every status an email can have.
+  EMAIL_STATUSES: Array[String]
+
+  # Every value accepted by `list(sort:)` / `each(sort:)`.
+  SORT_ORDERS: Array[String]
+
+  # After this many delivery attempts the service stops retrying a failed email.
+  MAX_DELIVERY_ATTEMPTS: Integer
+
+  # Anything that responds to `read` can be attached (File, Tempfile, StringIO, ...).
+  interface _Reader
+    def read: () -> String
+  end
+
+  # Anything path-like that `Unsent::Attachment.from_file` accepts (Pathname, ...).
+  interface _ToPath
+    def to_path: () -> String
+  end
+
+  # An IO whose `path` supplies a default attachment filename.
+  interface _NamedIO
+    def read: () -> String
+    def path: () -> String
+  end
+
+  # A sender address: `"Name <a@b.co>"`, `"a@b.co"`, or `{ email:, name: }`.
+  type address = String | { email: String, name?: String } | Hash[Symbol | String, untyped]
+
+  # One or many recipient addresses.
+  type recipients = String | Array[String]
+
+  # Attachment content: raw bytes (a binary String), an already-base64 String, or an IO.
+  type attachment_content = String | _Reader
+
+  # An attachment Hash, e.g. `{ filename: 'a.pdf', content: bytes, content_type: 'application/pdf' }`.
+  type attachment = Hash[Symbol | String, untyped]
+
+  # Per-call transport overrides accepted by every resource method.
+  type request_options = { ?timeout: Numeric?, ?max_retries: Integer?, ?cancel: CancelToken? }
+
+  # Returned by a `{ ... }` block given to `Emails#each`.
+  type each_block_result = untyped
+end

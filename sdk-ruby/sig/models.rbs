@@ -1,0 +1,154 @@
+# Result objects returned by the SDK. All of them are frozen by the SDK and are plain value objects.
+module Unsent
+  # Result of {Emails#send_email}.
+  class SendResult < Struct[untyped]
+    attr_reader id: Integer
+    attr_reader status: String
+    attr_reader idempotency_key: String?
+    attr_reader idempotent_replay: bool
+    attr_reader target_provider: String
+    attr_reader message: String
+
+    def initialize: (?id: Integer, ?status: String, ?idempotency_key: String?, ?idempotent_replay: bool,
+                     ?target_provider: String, ?message: String) -> void
+
+    # True when the key matched an email that was already queued (no new email was created).
+    def idempotent_replay?: () -> bool
+  end
+
+  # A provider that failed before an email was delivered.
+  class FailoverAttempt < Struct[untyped]
+    attr_reader provider: String
+    attr_reader type: String
+    attr_reader error: String
+    attr_reader timestamp: Time
+
+    def initialize: (?provider: String, ?type: String, ?error: String, ?timestamp: Time) -> void
+  end
+
+  # Attachment metadata, as returned in lists. +size+ is the decoded size in bytes.
+  class AttachmentInfo < Struct[untyped]
+    attr_reader filename: String
+    attr_reader mime_type: String?
+    attr_reader size: Integer
+
+    def initialize: (?filename: String, ?mime_type: String?, ?size: Integer) -> void
+  end
+
+  # Attachment with its base64 content, as returned by {Emails#get}.
+  class AttachmentDetail < Struct[untyped]
+    attr_reader filename: String
+    attr_reader mime_type: String?
+    attr_reader size: Integer
+    attr_reader content: String
+
+    def initialize: (?filename: String, ?mime_type: String?, ?size: Integer, ?content: String) -> void
+
+    # The decoded bytes (a binary String).
+    def data: () -> String
+  end
+
+  # Status predicates shared by {Email} and {EmailDetail}. The `status` and `attempts` readers they are based on
+  # are declared by each class (`attr_reader`), so they are not repeated here.
+  interface _EmailStatus
+    def queued?: () -> bool
+    def sending?: () -> bool
+    def sent?: () -> bool
+    def failed?: () -> bool
+
+    # True once the service will do nothing more with the email: sent, or failed after all delivery attempts.
+    def final?: () -> bool
+  end
+
+  # An email as stored by the service (list responses; attachments carry metadata only).
+  class Email < Struct[untyped]
+    include _EmailStatus
+
+    attr_reader id: Integer
+    attr_reader status: String
+    attr_reader to: Array[String]
+    attr_reader cc: Array[String]?
+    attr_reader bcc: Array[String]?
+    attr_reader subject: String
+    attr_reader html_body: String
+    attr_reader text_body: String?
+    attr_reader from_email: String?
+    attr_reader from_name: String?
+    attr_reader provider_id: String?
+    attr_reader provider_used: String?
+    attr_reader failover_history: Array[FailoverAttempt]
+    attr_reader idempotency_key: String?
+    attr_reader attempts: Integer
+    attr_reader error: String?
+    attr_reader created_at: Time
+    attr_reader updated_at: Time
+    attr_reader attachments: Array[AttachmentInfo]
+  end
+
+  # Full email from {Emails#get}; attachments include their base64 content.
+  class EmailDetail < Struct[untyped]
+    include _EmailStatus
+
+    attr_reader id: Integer
+    attr_reader status: String
+    attr_reader to: Array[String]
+    attr_reader cc: Array[String]?
+    attr_reader bcc: Array[String]?
+    attr_reader subject: String
+    attr_reader html_body: String
+    attr_reader text_body: String?
+    attr_reader from_email: String?
+    attr_reader from_name: String?
+    attr_reader provider_id: String?
+    attr_reader provider_used: String?
+    attr_reader failover_history: Array[FailoverAttempt]
+    attr_reader idempotency_key: String?
+    attr_reader attempts: Integer
+    attr_reader error: String?
+    attr_reader created_at: Time
+    attr_reader updated_at: Time
+    attr_reader attachments: Array[AttachmentDetail]
+  end
+
+  # One page of {Emails#list}. Enumerable over {#emails}.
+  class ListResult
+    include Enumerable[Email]
+
+    attr_reader emails: Array[Email]
+    attr_reader total: Integer
+    attr_reader limit: Integer
+    attr_reader offset: Integer
+
+    def initialize: (emails: Array[Email], total: Integer, limit: Integer, offset: Integer) -> void
+
+    def has_more: () -> bool
+    alias has_more? has_more
+
+    def each: () -> Enumerator[Email, self]
+            | () { (Email) -> void } -> self
+
+    def to_h: () -> { emails: Array[Email], total: Integer, limit: Integer, offset: Integer, has_more: bool }
+  end
+
+  # Queue counters from {Client#status}.
+  class QueueStatus < Struct[untyped]
+    attr_reader queued: Integer
+    attr_reader sending: Integer
+    attr_reader sent: Integer
+    attr_reader failed: Integer
+
+    def initialize: (?queued: Integer, ?sending: Integer, ?sent: Integer, ?failed: Integer) -> void
+  end
+
+  # Result of {Client#health}.
+  class Health < Struct[untyped]
+    attr_reader status: String
+    attr_reader runtime: String
+    attr_reader d1: String
+    attr_reader timestamp: Time
+
+    def initialize: (?status: String, ?runtime: String, ?d1: String, ?timestamp: Time) -> void
+
+    def ok?: () -> bool
+  end
+end

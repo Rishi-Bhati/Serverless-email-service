@@ -1,0 +1,10 @@
+go test fuzz v1
+string("\xff@x")
+string("<>")
+string("\xe2\x80\xa8")
+string("\x00")
+string("\xc3\xa9")
+string("f\x0a")
+string("====")
+string("p\x00")
+string("\xff")

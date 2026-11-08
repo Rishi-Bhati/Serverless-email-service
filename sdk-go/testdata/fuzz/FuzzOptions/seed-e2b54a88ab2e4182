@@ -1,0 +1,6 @@
+go test fuzz v1
+string("http://localhost:8787/prefix/?q=1#h")
+string("k")
+string("")
+int64(1000000000)
+int(0)

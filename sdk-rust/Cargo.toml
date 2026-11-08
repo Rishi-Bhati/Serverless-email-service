@@ -1,0 +1,33 @@
+[package]
+name = "unsent-sdk"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.89"
+description = "Official Rust client for the self-hosted Unsent email service"
+license = "MIT"
+readme = "README.md"
+keywords = ["email", "unsent", "smtp", "sdk", "api-client"]
+categories = ["api-bindings", "email"]
+exclude = [".gitignore"]
+
+[lib]
+name = "unsent"
+path = "src/lib.rs"
+
+[dependencies]
+base64 = "0.22"
+hex = "0.4"
+hmac = "0.12"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", default-features = false, features = ["time", "sync"] }
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+getrandom = "0.3"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "time", "sync", "test-util"] }
+axum = "0.8"

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("{\"email\":{\"attachments\":[null,{\"size\":\"x\"},{\"content\":5}],\"created_at\":1e308,\"failover_history\":{\"a\":1}}}")

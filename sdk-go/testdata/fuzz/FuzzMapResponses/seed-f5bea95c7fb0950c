@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("{\"email\":{\"id\":1,\"to\":[\"a@b.co\"],\"attachments\":[{\"filename\":\"a\",\"content\":\"QQ==\"}],\"failover_history\":\"[]\"}}")
