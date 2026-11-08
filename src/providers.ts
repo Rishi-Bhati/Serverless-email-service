@@ -1,4 +1,4 @@
-import { WorkerMailer } from 'worker-mailer';
+import { WorkerMailer } from './mailer';
 import { decryptCredentials, encryptCredentials, isCurrentCredentialEnvelope, type CredentialKeys } from './crypto';
 
 export type ProviderType = 'smtp' | 'resend' | 'sendgrid' | 'mailgun' | 'postmark';

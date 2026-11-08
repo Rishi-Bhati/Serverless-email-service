@@ -1,4 +1,4 @@
-import { WorkerMailer } from 'worker-mailer';
+import { WorkerMailer } from './mailer';
 import { credentialKeys } from './crypto';
 import {
   getActiveProviders,

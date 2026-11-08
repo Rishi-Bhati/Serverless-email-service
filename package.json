@@ -8,7 +8,9 @@
     "deploy": "npm run db:migrate:prod && wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply reportary-email-db --local",
     "db:migrate:prod": "wrangler d1 migrations apply reportary-email-db --remote",
-    "secrets:deploy": "node deploy-secrets.js"
+    "secrets:deploy": "node deploy-secrets.js",
+    "typecheck": "tsc --noEmit",
+    "test:bcc": "node scripts/test-bcc.mjs"
   },
   "dependencies": {
     "worker-mailer": "^1.2.1"
